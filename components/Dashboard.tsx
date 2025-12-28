@@ -7,7 +7,7 @@ import ConsensusMap from "./ConsensusMap";
 import MyProfile from "./MyProfile";
 import Auth from "./Auth";
 
-type View = "bills" | "consensus" | "profile" | "test-api";
+type View = "bills" | "consensus" | "profile";
 
 interface DashboardProps {
   user: any;
@@ -20,9 +20,9 @@ export default function Dashboard({ user }: DashboardProps) {
     <div className="flex h-screen bg-nordic-white">
       <Sidebar activeView={activeView} setActiveView={setActiveView} user={user} />
       <main className="flex-1 overflow-y-auto">
-        {activeView === "bills" && <ActiveBills user={user} />}
+        {activeView === "bills" && <ActiveBills />}
         {activeView === "consensus" && <ConsensusMap />}
-        {activeView === "profile" && <MyProfile user={user} />}
+        {activeView === "profile" && <MyProfile />}
       </main>
     </div>
   );

@@ -36,7 +36,7 @@ Tavoite: YKSITYISKOHTAINEN ja PIDEMPI selitys. Vähintään 500-800 sanaa (3000-
     
     // Use OpenAI API to generate summary
     const { text } = await generateText({
-      model: openai("gpt-4o-mini"),
+      model: openai("gpt-4o-mini") as any, // Type workaround for version conflict
       system: systemPrompt,
       prompt: `Tiivistä tämä lakiteksti selkokielelle. Ole YKSITYISKOHTAINEN ja PIDEMPI. Generoi vähintään 500-800 sanaa (3000-5000 merkkiä). Selitä kaikki tärkeät asiat perusteellisesti:\n\n${rawText.substring(0, 20000)}`, // Limit to 20k chars
       temperature: 0.7,

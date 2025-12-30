@@ -49,13 +49,11 @@ export async function deleteUserAccount(): Promise<{ success: boolean; error?: s
       };
     }
 
-    // Delete the auth user (this requires admin privileges or user action)
-    // In production, you might want to use Supabase Admin API
-    // For now, we'll sign out the user and mark them for deletion
+    // Sign out the user
     await supabase.auth.signOut();
 
     // Note: Actual user deletion from auth.users requires admin API
-    // The profile and votes are deleted, which is the main GDPR requirement
+    // The profile is deleted and votes are anonymized, which is the main GDPR requirement
     // The auth user record can be cleaned up by an admin process
 
     return {

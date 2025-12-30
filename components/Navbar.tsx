@@ -30,17 +30,17 @@ export default function Navbar({ user }: NavbarProps) {
 
   return (
     <>
-      <nav className="bg-white dark:bg-nordic-deep border-b border-nordic-gray shadow-sm">
+      <nav className="bg-white dark:bg-nordic-deep border-b border-nordic-gray shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo/Brand */}
+            {/* Logo/Brand - Always visible */}
             <div className="flex items-center">
               <h1 className="text-xl font-bold text-nordic-darker dark:text-nordic-white">
                 Eduskuntavahti
               </h1>
             </div>
 
-            {/* Desktop Navigation */}
+            {/* Desktop Navigation - Hidden on mobile */}
             <div className="hidden md:flex items-center gap-4">
               {user ? (
                 <div className="flex items-center gap-3">
@@ -53,7 +53,8 @@ export default function Navbar({ user }: NavbarProps) {
                   </div>
                   <button
                     onClick={handleSignOut}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors touch-manipulation select-none"
+                    style={{ minWidth: "44px", minHeight: "44px" }}
                   >
                     <LogOut size={16} />
                     <span>Kirjaudu ulos</span>
@@ -62,21 +63,34 @@ export default function Navbar({ user }: NavbarProps) {
               ) : (
                 <button
                   onClick={() => setShowLoginModal(true)}
-                  className="px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium"
+                  className="px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium touch-manipulation select-none"
+                  style={{ minWidth: "44px", minHeight: "44px" }}
                 >
                   Kirjaudu
                 </button>
               )}
             </div>
 
-            {/* Mobile Menu Button */}
+            {/* Mobile: Profile icon or login button only */}
             <div className="md:hidden">
-              <button
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="p-2 text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white"
-              >
-                <Menu size={24} />
-              </button>
+              {user ? (
+                <button
+                  onClick={() => setShowMobileMenu(!showMobileMenu)}
+                  className="p-2 text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white touch-manipulation select-none"
+                  style={{ minWidth: "44px", minHeight: "44px" }}
+                  aria-label="Profiili"
+                >
+                  <User size={24} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="px-3 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium touch-manipulation select-none"
+                  style={{ minWidth: "44px", minHeight: "44px" }}
+                >
+                  Kirjaudu
+                </button>
+              )}
             </div>
           </div>
 
@@ -94,7 +108,8 @@ export default function Navbar({ user }: NavbarProps) {
                   </div>
                   <button
                     onClick={handleSignOut}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors touch-manipulation select-none"
+                    style={{ minWidth: "44px", minHeight: "44px" }}
                   >
                     <LogOut size={16} />
                     <span>Kirjaudu ulos</span>

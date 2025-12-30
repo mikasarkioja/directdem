@@ -11,6 +11,71 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: system-ui, -apple-system, sans-serif;
+  /* Prevent text selection on buttons and interactive elements */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch-friendly button styles */
+button,
+a,
+[role="button"],
+[role="link"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Ensure minimum touch target size */
+button,
+a[role="button"],
+[role="button"] {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Safe area for mobile devices with notches */
+@supports (padding: max(0px)) {
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  
+  .safe-area-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+}
+
+/* Prevent pull-to-refresh on mobile */
+html {
+  overscroll-behavior-y: none;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  /* Add bottom padding for bottom navigation */
+  body {
+    padding-bottom: 64px;
+  }
+  
+  /* Prevent text selection on mobile for better UX */
+  * {
+    -webkit-touch-callout: none;
+  }
+  
+  /* Allow text selection in input fields */
+  input,
+  textarea {
+    -webkit-touch-callout: default;
+    user-select: text;
+    -webkit-user-select: text;
+  }
 }
 
 

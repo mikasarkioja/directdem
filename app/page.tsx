@@ -1,5 +1,6 @@
 import Dashboard from "@/components/Dashboard";
 import Navbar from "@/components/Navbar";
+import BottomNav from "@/components/BottomNav";
 import FirstTimeGDPR from "@/components/FirstTimeGDPR";
 import { getUser } from "@/app/actions/auth";
 

@@ -102,9 +102,14 @@ export default function ConstituencyMap({
     return stats;
   }, [selectedBill]);
 
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
   return (
-    <div className="p-6 bg-nordic-light rounded-2xl border-2 border-nordic-gray">
-      <div className="mb-4">
+    <div className="md:p-6 p-0 bg-nordic-light md:rounded-2xl border-2 border-nordic-gray md:border-0">
+      <div className="mb-4 px-4 pt-4 md:px-0 md:pt-0">
         <h2 className="text-2xl font-bold text-nordic-darker mb-2">
           Vaalipiirikartta
         </h2>
@@ -119,17 +124,86 @@ export default function ConstituencyMap({
         )}
       </div>
 
-      <div className="relative bg-white rounded-lg p-4 border border-nordic-gray">
-        <ComposableMap
-          projection="geoMercator"
-          projectionConfig={{
-            scale: 2800,
-            center: [26, 64.5], // Center of Finland
+      {/* Mobile: Full screen map container */}
+      <div className="relative bg-white md:rounded-lg p-2 md:p-4 border border-nordic-gray md:border-0 w-full md:w-auto h-[calc(100vh-200px)] md:h-auto md:min-h-[600px] overflow-hidden touch-pan-y touch-pan-x">
+        {/* Zoom Controls - Mobile only */}
+        <div className="md:hidden absolute top-4 right-4 z-20 flex flex-col gap-2 bg-white rounded-lg shadow-lg border border-nordic-gray p-2">
+          <button
+            onClick={() => setZoom((z) => Math.min(z + 0.2, 2))}
+            className="w-10 h-10 flex items-center justify-center bg-nordic-blue text-white rounded touch-manipulation select-none"
+            style={{ minWidth: "44px", minHeight: "44px" }}
+            aria-label="Lähennä"
+          >
+            +
+          </button>
+          <button
+            onClick={() => setZoom((z) => Math.max(z - 0.2, 0.5))}
+            className="w-10 h-10 flex items-center justify-center bg-nordic-gray text-white rounded touch-manipulation select-none"
+            style={{ minWidth: "44px", minHeight: "44px" }}
+            aria-label="Loitonna"
+          >
+            −
+          </button>
+          <button
+            onClick={() => {
+              setZoom(1);
+              setPan({ x: 0, y: 0 });
+            }}
+            className="w-10 h-10 flex items-center justify-center bg-nordic-dark text-white rounded text-xs touch-manipulation select-none"
+            style={{ minWidth: "44px", minHeight: "44px" }}
+            aria-label="Palauta"
+          >
+            ↻
+          </button>
+        </div>
+
+        <div
+          style={{
+            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+            transformOrigin: "center center",
+            transition: isDragging ? "none" : "transform 0.1s ease-out",
+            width: "100%",
+            height: "100%",
+            touchAction: "pan-x pan-y pinch-zoom",
           }}
-          width={800}
-          height={600}
-          style={{ width: "100%", height: "auto" }}
+          onTouchStart={(e) => {
+            if (e.touches.length === 1) {
+              setIsDragging(true);
+              setDragStart({
+                x: e.touches[0].clientX - pan.x,
+                y: e.touches[0].clientY - pan.y,
+              });
+            }
+          }}
+          onTouchMove={(e) => {
+            if (e.touches.length === 1 && isDragging) {
+              setPan({
+                x: e.touches[0].clientX - dragStart.x,
+                y: e.touches[0].clientY - dragStart.y,
+              });
+            } else if (e.touches.length === 2) {
+              // Pinch to zoom
+              const touch1 = e.touches[0];
+              const touch2 = e.touches[1];
+              const distance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+              );
+              // Simple pinch zoom - in production, use a library like react-zoom-pan-pinch
+            }
+          }}
+          onTouchEnd={() => setIsDragging(false)}
         >
+          <ComposableMap
+            projection="geoMercator"
+            projectionConfig={{
+              scale: 2800 * zoom,
+              center: [26, 64.5], // Center of Finland
+            }}
+            width={800}
+            height={600}
+            style={{ width: "100%", height: "100%" }}
+          >
           <Geographies geography={geoData}>
             {({ geographies }) =>
               geographies.map((geo) => {
@@ -185,6 +259,7 @@ export default function ConstituencyMap({
             }
           </Geographies>
         </ComposableMap>
+        </div>
 
         {/* Tooltip */}
         {tooltip && (

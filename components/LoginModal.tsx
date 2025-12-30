@@ -15,6 +15,7 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [joinReportList, setJoinReportList] = useState(false);
   const [activeTab, setActiveTab] = useState<"email" | "bankid">("email");
   const [showPrivacySummary, setShowPrivacySummary] = useState(false);
   const [hasSeenPrivacy, setHasSeenPrivacy] = useState(false);
@@ -76,6 +77,7 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
           data: {
             gdpr_consent: true,
             gdpr_consent_date: new Date().toISOString(),
+            join_report_list: joinReportList, // Include report list preference
           },
         },
       });
@@ -226,22 +228,41 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
 
               {/* GDPR Checkbox - only show if privacy summary was already shown */}
               {hasSeenPrivacy && (
-                <div className="flex items-start gap-2">
-                  <input
-                    id="accept-terms"
-                    type="checkbox"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    required
-                    className="mt-1 w-4 h-4 text-nordic-blue border-nordic-gray rounded focus:ring-nordic-blue"
-                  />
-                  <label
-                    htmlFor="accept-terms"
-                    className="text-sm text-nordic-dark dark:text-nordic-gray"
-                  >
-                    Olen lukenut tietosuojaselosteen ja ymmärrän, miten tietojani käsitellään
-                    <span className="text-red-600 ml-1">*</span>
-                  </label>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <input
+                      id="accept-terms"
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      required
+                      className="mt-1 w-4 h-4 text-nordic-blue border-nordic-gray rounded focus:ring-nordic-blue"
+                    />
+                    <label
+                      htmlFor="accept-terms"
+                      className="text-sm text-nordic-dark dark:text-nordic-gray"
+                    >
+                      Olen lukenut tietosuojaselosteen ja ymmärrän, miten tietojani käsitellään
+                      <span className="text-red-600 ml-1">*</span>
+                    </label>
+                  </div>
+
+                  {/* Optional: Join Report List */}
+                  <div className="flex items-start gap-2">
+                    <input
+                      id="join-report-list"
+                      type="checkbox"
+                      checked={joinReportList}
+                      onChange={(e) => setJoinReportList(e.target.checked)}
+                      className="mt-1 w-4 h-4 text-nordic-blue border-nordic-gray rounded focus:ring-nordic-blue"
+                    />
+                    <label
+                      htmlFor="join-report-list"
+                      className="text-sm text-nordic-dark dark:text-nordic-gray"
+                    >
+                      Vaikuta suoraan: salli anonyymin äänestysdatasi käyttö viikoittaisessa raportissa, joka toimitetaan kansanedustajille
+                    </label>
+                  </div>
                 </div>
               )}
 

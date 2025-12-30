@@ -18,6 +18,7 @@ export async function GET(request: Request) {
           gdpr_consent: data.user.user_metadata?.gdpr_consent || data.user.user_metadata?.accepted_terms,
           gdpr_consent_date: data.user.user_metadata?.gdpr_consent_date || data.user.user_metadata?.terms_accepted_at,
           full_name: data.user.user_metadata?.full_name,
+          join_report_list: data.user.user_metadata?.join_report_list || false,
         });
       } catch (profileError) {
         console.error("Failed to create/update profile:", profileError);

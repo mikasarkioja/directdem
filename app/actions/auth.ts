@@ -10,6 +10,7 @@ export interface UserProfile {
   is_verified?: boolean;
   vaalipiiri?: string;
   last_login?: string;
+  join_report_list?: boolean;
 }
 
 /**
@@ -33,12 +34,12 @@ export async function getUser(): Promise<UserProfile | null> {
       return null;
     }
 
-    // Fetch profile data
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("full_name, is_verified, vaalipiiri, last_login")
-      .eq("id", user.id)
-      .single();
+  // Fetch profile data
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("full_name, is_verified, vaalipiiri, last_login, join_report_list")
+    .eq("id", user.id)
+    .single();
 
     // If profile doesn't exist, that's okay - return user without profile data
     if (profileError && profileError.code !== "PGRST116") {
@@ -46,14 +47,15 @@ export async function getUser(): Promise<UserProfile | null> {
       console.error("[getUser] Profile error:", profileError);
     }
 
-    return {
-      id: user.id,
-      email: user.email,
-      full_name: profile?.full_name || null,
-      is_verified: profile?.is_verified || false,
-      vaalipiiri: profile?.vaalipiiri || null,
-      last_login: profile?.last_login || null,
-    };
+  return {
+    id: user.id,
+    email: user.email,
+    full_name: profile?.full_name || null,
+    is_verified: profile?.is_verified || false,
+    vaalipiiri: profile?.vaalipiiri || null,
+    last_login: profile?.last_login || null,
+    join_report_list: profile?.join_report_list || false,
+  };
   } catch (error: any) {
     // Catch any unexpected errors (network issues, etc.)
     console.error("[getUser] Unexpected error:", error);
@@ -92,6 +94,11 @@ export async function upsertUserProfile(userId: string, metadata?: any) {
   // If metadata contains full_name, update it
   if (metadata?.full_name) {
     profileData.full_name = metadata.full_name;
+  }
+
+  // If metadata contains join_report_list, update it
+  if (metadata?.join_report_list !== undefined) {
+    profileData.join_report_list = metadata.join_report_list;
   }
 
   const { error } = await supabase

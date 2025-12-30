@@ -112,6 +112,51 @@ export async function getUserDataForExport(): Promise<{
 }
 
 /**
+ * Updates user's report list participation status
+ */
+export async function updateReportListParticipation(joinReportList: boolean): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Sinun täytyy olla kirjautunut päivittääksesi raportointiasetuksia",
+    };
+  }
+
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ join_report_list: joinReportList })
+      .eq("id", user.id);
+
+    if (error) {
+      console.error("[updateReportListParticipation] Error:", error);
+      return {
+        success: false,
+        error: `Raportointiasetuksen päivitys epäonnistui: ${error.message}`,
+      };
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error: any) {
+    console.error("[updateReportListParticipation] Error:", error);
+    return {
+      success: false,
+      error: error.message || "Tuntematon virhe",
+    };
+  }
+}
+
+/**
  * Updates user's electoral district (vaalipiiri)
  */
 export async function updateVaalipiiri(vaalipiiri: string): Promise<{

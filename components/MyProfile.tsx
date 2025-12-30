@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, Trash2, MapPin, Loader2, CheckCircle, AlertTriangle, Save } from "lucide-react";
+import { Download, Trash2, MapPin, Loader2, CheckCircle, AlertTriangle, Save, ToggleLeft, ToggleRight } from "lucide-react";
 import PartyMatchCard from "./PartyMatchCard";
-import { getUserDataForExport, updateVaalipiiri } from "@/app/actions/profile-data";
+import { getUserDataForExport, updateVaalipiiri, updateReportListParticipation } from "@/app/actions/profile-data";
 import { deleteUserAccount } from "@/app/actions/user-management";
 import { getUser } from "@/app/actions/auth";
 import { useRouter } from "next/navigation";
@@ -20,6 +20,8 @@ export default function MyProfile() {
   const [success, setSuccess] = useState<string | null>(null);
   const [selectedVaalipiiri, setSelectedVaalipiiri] = useState<string>("");
   const [savingVaalipiiri, setSavingVaalipiiri] = useState(false);
+  const [joinReportList, setJoinReportList] = useState(false);
+  const [savingReportList, setSavingReportList] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,6 +29,7 @@ export default function MyProfile() {
       const userData = await getUser();
       setUser(userData);
       setSelectedVaalipiiri(userData?.vaalipiiri || "");
+      setJoinReportList(userData?.join_report_list || false);
       setLoading(false);
     }
     loadUser();
@@ -91,6 +94,33 @@ export default function MyProfile() {
       setError(err.message || "Tuntematon virhe");
     } finally {
       setSavingVaalipiiri(false);
+    }
+  };
+
+  const handleToggleReportList = async () => {
+    const newValue = !joinReportList;
+    setSavingReportList(true);
+    setError(null);
+
+    try {
+      const result = await updateReportListParticipation(newValue);
+
+      if (result.success) {
+        setJoinReportList(newValue);
+        setSuccess(
+          newValue
+            ? "Olet nyt osallistumassa viikoittaiseen raportointiin!"
+            : "Olet poistunut viikoittaisesta raportoinnista."
+        );
+        setUser({ ...user, join_report_list: newValue });
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(result.error || "Raportointiasetuksen päivitys epäonnistui");
+      }
+    } catch (err: any) {
+      setError(err.message || "Tuntematon virhe");
+    } finally {
+      setSavingReportList(false);
     }
   };
 
@@ -232,6 +262,39 @@ export default function MyProfile() {
               <p className="text-xs text-nordic-dark mt-1">
                 Vaalipiiriäsi käytetään vaalipiirikartassa
               </p>
+            </div>
+
+            {/* Report List Participation Toggle */}
+            <div className="border-t border-nordic-gray pt-6 mt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <label
+                    htmlFor="report-list-toggle"
+                    className="block text-sm font-medium text-nordic-darker mb-2 cursor-pointer"
+                  >
+                    Osallistu viikoittaiseen raportointiin
+                  </label>
+                  <p className="text-sm text-nordic-dark">
+                    Vaikuta suoraan: salli anonyymin äänestysdatasi käyttö viikoittaisessa raportissa, joka toimitetaan kansanedustajille.
+                  </p>
+                  <p className="text-xs text-nordic-dark mt-1">
+                    Äänesi pysyy anonyyminä, mutta autat luomaan selkeän kuvan kansalaisten mielipiteistä.
+                  </p>
+                </div>
+                <button
+                  id="report-list-toggle"
+                  onClick={handleToggleReportList}
+                  disabled={savingReportList}
+                  className="ml-4 flex-shrink-0"
+                  aria-label={joinReportList ? "Poista raportointilistalta" : "Liity raportointilistalle"}
+                >
+                  {joinReportList ? (
+                    <ToggleRight size={48} className="text-nordic-blue" />
+                  ) : (
+                    <ToggleLeft size={48} className="text-nordic-gray" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

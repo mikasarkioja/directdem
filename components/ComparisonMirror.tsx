@@ -1,26 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertTriangle, Users, Building2, ChevronDown, ChevronUp } from "lucide-react";
+import { PARTY_INFO, type PartyStanceData } from "@/lib/party-stances";
 
 interface ComparisonMirrorProps {
   parliamentVote: number; // e.g., 65 (65% in favor)
   citizenVote: number; // e.g., 30 (30% in favor)
   billName: string;
+  billId?: string;
+  parliamentId?: string;
   partyData?: {
     party: string;
     position: "for" | "against" | "abstain";
     seats: number;
   }[];
+  partyStances?: PartyStanceData[]; // New prop for AI-analyzed stances
 }
 
 export default function ComparisonMirror({
   parliamentVote,
   citizenVote,
   billName,
+  billId,
+  parliamentId,
   partyData,
+  partyStances,
 }: ComparisonMirrorProps) {
   const [isPartyBreakdownOpen, setIsPartyBreakdownOpen] = useState(false);
+  const [loadingStances, setLoadingStances] = useState(false);
+  const [analyzedStances, setAnalyzedStances] = useState<PartyStanceData[] | null>(partyStances || null);
+
+  // Load party stances if billId and parliamentId are provided
+  useEffect(() => {
+    if (billId && parliamentId && !analyzedStances && !loadingStances) {
+      setLoadingStances(true);
+      import("@/app/actions/party-stances")
+        .then(({ getPartyStances }) => getPartyStances(billId, parliamentId))
+        .then((result) => {
+          if (result?.parties) {
+            setAnalyzedStances(result.parties);
+          }
+          setLoadingStances(false);
+        })
+        .catch((error) => {
+          console.error("Failed to load party stances:", error);
+          setLoadingStances(false);
+        });
+    }
+  }, [billId, parliamentId, analyzedStances, loadingStances]);
 
   const gap = Math.abs(parliamentVote - citizenVote);
   const isHighDiscrepancy = gap > 20;
@@ -141,8 +169,96 @@ export default function ComparisonMirror({
         </div>
       )}
 
-      {/* Party Breakdown - Collapsible */}
-      {partyData && partyData.length > 0 && (
+      {/* Party Spectrum Bar - Horizontal visualization */}
+      {analyzedStances && analyzedStances.length > 0 && (
+        <div className="mt-6 border-t border-nordic-gray pt-4">
+          <h4 className="text-sm font-semibold text-nordic-darker mb-3">
+            Puolueiden kannat (mietinnön perusteella)
+          </h4>
+          <div className="relative h-16 bg-gradient-to-r from-red-50 via-gray-50 to-green-50 rounded-lg p-2 border border-nordic-gray">
+            {/* Citizen Pulse indicator line */}
+            <div
+              className="absolute top-0 bottom-0 w-0.5 bg-nordic-blue z-10 shadow-sm"
+              style={{ left: `${citizenVote}%` }}
+            >
+              <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+                <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-nordic-blue" />
+              </div>
+              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
+                <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-nordic-blue" />
+              </div>
+            </div>
+            
+            {/* Party positions */}
+            <div className="relative h-full flex items-center">
+              {analyzedStances.map((stance, index) => {
+                const partyInfo = PARTY_INFO[stance.party];
+                if (!partyInfo) return null;
+                
+                // Calculate position based on stance
+                // PRO parties on right (75-95%), AGAINST on left (5-25%), ABSTAIN in middle (40-60%)
+                let position = 50; // Default middle
+                if (stance.stance === "PRO") {
+                  position = 80 + (index % 4) * 3; // Right side
+                } else if (stance.stance === "AGAINST") {
+                  position = 15 - (index % 4) * 3; // Left side
+                } else {
+                  position = 45 + (index % 3) * 5; // Middle
+                }
+                
+                // Clamp position
+                position = Math.max(5, Math.min(95, position));
+                
+                return (
+                  <div
+                    key={stance.party}
+                    className="absolute flex flex-col items-center gap-1"
+                    style={{ left: `${position}%`, transform: "translateX(-50%)" }}
+                    title={`${partyInfo.name}: ${stance.stance === "PRO" ? "Puolesta" : stance.stance === "AGAINST" ? "Vastaan" : "Tyhjää"} (luottamus: ${Math.round(stance.confidence * 100)}%)`}
+                  >
+                    {/* Party dot/logo */}
+                    <div
+                      className="w-7 h-7 rounded-full border-2 border-white shadow-md flex items-center justify-center text-[10px] font-bold text-white hover:scale-110 transition-transform cursor-help"
+                      style={{ backgroundColor: partyInfo.color }}
+                    >
+                      {partyInfo.shortName}
+                    </div>
+                    {/* Stance indicator */}
+                    <div
+                      className={`w-1.5 h-4 rounded-full ${
+                        stance.stance === "PRO"
+                          ? "bg-green-500"
+                          : stance.stance === "AGAINST"
+                          ? "bg-red-500"
+                          : "bg-gray-400"
+                      }`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="mt-2 flex justify-between text-xs text-nordic-dark">
+            <span>Vastaan</span>
+            <span className="text-nordic-blue font-medium">
+              Kansan tahto: {citizenVote}%
+            </span>
+            <span>Puolesta</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Loading state for party stances */}
+      {loadingStances && (
+        <div className="mt-6 border-t border-nordic-gray pt-4">
+          <p className="text-xs text-nordic-dark text-center">
+            Ladataan puolueiden kantaa mietinnöstä...
+          </p>
+        </div>
+      )}
+
+      {/* Party Breakdown - Collapsible (fallback to old format if no analyzed stances) */}
+      {!analyzedStances && partyData && partyData.length > 0 && (
         <div className="mt-6 border-t border-nordic-gray pt-4">
           <button
             onClick={() => setIsPartyBreakdownOpen(!isPartyBreakdownOpen)}

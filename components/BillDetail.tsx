@@ -175,14 +175,16 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
           {/* Content - Mobile: Single column, Desktop: Scrollable */}
           <div className="p-6 space-y-6 md:space-y-8 pb-24 md:pb-8">
             {/* Comparison Mirror - First on Mobile, Second on Desktop */}
-            <div className="order-1 md:order-2">
-              <ComparisonMirror
-                parliamentVote={politicalForPercent}
-                citizenVote={voteStats ? voteStats.for_percent : bill.citizenPulse.for}
-                billName={bill.title}
-                partyData={bill.politicalReality}
-              />
-            </div>
+                <div className="order-1 md:order-2">
+                  <ComparisonMirror
+                    parliamentVote={politicalForPercent}
+                    citizenVote={voteStats ? voteStats.for_percent : bill.citizenPulse.for}
+                    billName={bill.title}
+                    billId={bill.id}
+                    parliamentId={bill.parliamentId}
+                    partyData={bill.politicalReality}
+                  />
+                </div>
             {/* Streaming Summary Component - Second on Mobile, First on Desktop */}
             <div className="order-2 md:order-1">
                 <StreamingSummary

@@ -6,7 +6,15 @@ import { getUser } from "@/app/actions/auth";
 export default async function Home() {
   // Server-side user fetch using Next.js 15 cookies()
   // This ensures user data is available immediately without flash
-  const user = await getUser();
+  let user = null;
+  try {
+    user = await getUser();
+  } catch (error) {
+    // Log error but don't crash the page
+    // In production, this might be a Supabase connection issue
+    console.error("[Home] Failed to get user:", error);
+    // Continue with user = null (unauthenticated state)
+  }
   
   return (
     <div className="min-h-screen bg-nordic-white">

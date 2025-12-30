@@ -17,30 +17,48 @@ export interface UserProfile {
  * Uses Next.js 15 cookies() for server-side session management
  */
 export async function getUser(): Promise<UserProfile | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (!user) {
+    if (authError) {
+      console.error("[getUser] Auth error:", authError);
+      return null;
+    }
+
+    if (!user) {
+      return null;
+    }
+
+    // Fetch profile data
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("full_name, is_verified, vaalipiiri, last_login")
+      .eq("id", user.id)
+      .single();
+
+    // If profile doesn't exist, that's okay - return user without profile data
+    if (profileError && profileError.code !== "PGRST116") {
+      // PGRST116 = no rows returned, which is fine for new users
+      console.error("[getUser] Profile error:", profileError);
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      full_name: profile?.full_name || null,
+      is_verified: profile?.is_verified || false,
+      vaalipiiri: profile?.vaalipiiri || null,
+      last_login: profile?.last_login || null,
+    };
+  } catch (error: any) {
+    // Catch any unexpected errors (network issues, etc.)
+    console.error("[getUser] Unexpected error:", error);
     return null;
   }
-
-  // Fetch profile data
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, is_verified, vaalipiiri, last_login")
-    .eq("id", user.id)
-    .single();
-
-  return {
-    id: user.id,
-    email: user.email,
-    full_name: profile?.full_name || null,
-    is_verified: profile?.is_verified || false,
-    vaalipiiri: profile?.vaalipiiri || null,
-    last_login: profile?.last_login || null,
-  };
 }
 
 /**

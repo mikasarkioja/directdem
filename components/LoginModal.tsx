@@ -70,12 +70,42 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
     }
   };
 
-  const handleBankIDLogin = () => {
-    // Placeholder for BankID integration
-    setMessage({
-      type: "error",
-      text: "Pankkitunnusvahvistus tulee pian. Käytä toistaiseksi sähköpostivahvistusta.",
-    });
+  const handleBankIDLogin = async () => {
+    if (!acceptedTerms) {
+      setMessage({
+        type: "error",
+        text: "Sinun täytyy hyväksyä käyttöehdot jatkaaksesi",
+      });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      // Import BankID auth function
+      const { initiateBankIDAuth } = await import("@/lib/bankid-auth");
+      const { redirectUrl } = await initiateBankIDAuth();
+
+      // In development, show mock message
+      if (process.env.NODE_ENV === "development" || !process.env.CRIIPTO_CLIENT_ID) {
+        setMessage({
+          type: "error",
+          text: "BankID integraatio on kehitysvaiheessa. Käytä toistaiseksi sähköpostivahvistusta.",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Redirect to Criipto OIDC endpoint
+      window.location.href = redirectUrl;
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: `BankID-virhe: ${err.message || "Tuntematon virhe"}`,
+      });
+      setLoading(false);
+    }
   };
 
   return (
@@ -217,24 +247,61 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             </form>
           ) : (
             <div className="space-y-4">
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800">
-                  Pankkitunnusvahvistus (FTN BankID) tulee pian. Käytä toistaiseksi
-                  sähköpostivahvistusta.
-                </p>
+              {/* GDPR Checkbox for BankID too */}
+              <div className="flex items-start gap-2">
+                <input
+                  id="accept-terms-bankid"
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  required
+                  className="mt-1 w-4 h-4 text-nordic-blue border-nordic-gray rounded focus:ring-nordic-blue"
+                />
+                <label
+                  htmlFor="accept-terms-bankid"
+                  className="text-sm text-nordic-dark dark:text-nordic-gray"
+                >
+                  Hyväksyn{" "}
+                  <Link
+                    href="/privacy-policy"
+                    target="_blank"
+                    className="text-nordic-blue hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    käyttöehdot ja tietosuojaselosteen
+                  </Link>
+                  <span className="text-red-600">*</span>
+                </label>
               </div>
+
+              {process.env.NODE_ENV === "development" && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-800">
+                    BankID integraatio on kehitysvaiheessa. Käytä toistaiseksi sähköpostivahvistusta.
+                  </p>
+                </div>
+              )}
 
               <button
                 onClick={handleBankIDLogin}
-                disabled
-                className="w-full px-4 py-3 bg-nordic-deep text-white rounded-lg opacity-50 cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+                disabled={loading || !acceptedTerms || (process.env.NODE_ENV === "development" && !process.env.CRIIPTO_CLIENT_ID)}
+                className="w-full px-4 py-3 bg-nordic-deep text-white rounded-lg hover:bg-nordic-darker transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
               >
-                <CreditCard size={18} />
-                <span>Vahvista pankkitunnuksilla</span>
+                {loading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Yhdistetään...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard size={18} />
+                    <span>Vahvista pankkitunnuksilla</span>
+                  </>
+                )}
               </button>
 
               <p className="text-xs text-center text-nordic-dark dark:text-nordic-gray">
-                Tulevaisuudessa voit kirjautua suoraan pankkitunnuksillasi
+                Kirjaudu suoraan pankkitunnuksillasi Criipto OIDC:n kautta
               </p>
             </div>
           )}

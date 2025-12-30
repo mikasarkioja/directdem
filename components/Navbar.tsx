@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { User, LogOut, Menu } from "lucide-react";
 import LoginModal from "./LoginModal";
+import VerifiedBadge from "./VerifiedBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -48,11 +49,7 @@ export default function Navbar({ user }: NavbarProps) {
                     <span className="text-sm font-medium text-nordic-darker dark:text-nordic-white">
                       {user.full_name || user.email}
                     </span>
-                    {user.is_verified && (
-                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                        Vahvistettu
-                      </span>
-                    )}
+                    {user.is_verified && <VerifiedBadge />}
                   </div>
                   <button
                     onClick={handleSignOut}
@@ -93,11 +90,7 @@ export default function Navbar({ user }: NavbarProps) {
                     <span className="text-sm font-medium text-nordic-darker dark:text-nordic-white">
                       {user.full_name || user.email}
                     </span>
-                    {user.is_verified && (
-                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                        Vahvistettu
-                      </span>
-                    )}
+                    {user.is_verified && <VerifiedBadge />}
                   </div>
                   <button
                     onClick={handleSignOut}

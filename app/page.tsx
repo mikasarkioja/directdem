@@ -1,5 +1,6 @@
 import Dashboard from "@/components/Dashboard";
 import Navbar from "@/components/Navbar";
+import FirstTimeGDPR from "@/components/FirstTimeGDPR";
 import { getUser } from "@/app/actions/auth";
 
 export default async function Home() {
@@ -10,6 +11,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-nordic-white">
       <Navbar user={user} />
+      {user && <FirstTimeGDPR userId={user.id} />}
       <Dashboard user={user} />
     </div>
   );

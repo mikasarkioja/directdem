@@ -1,7 +1,6 @@
 "use client";
 
 import { FileText, Map, User } from "lucide-react";
-import Auth from "./Auth";
 
 type View = "bills" | "consensus" | "profile";
 
@@ -17,9 +16,6 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
     { id: "consensus" as View, label: "Consensus Map", icon: Map },
     { id: "profile" as View, label: "My Profile", icon: User },
   ];
-  
-  // Add test API link (only in development)
-  const isDev = process.env.NODE_ENV === "development";
 
   return (
     <aside className="w-64 bg-nordic-deep text-nordic-white flex flex-col">
@@ -47,9 +43,6 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
           );
         })}
       </nav>
-      <div className="p-4 border-t border-nordic-darker">
-        <Auth user={user} />
-      </div>
     </aside>
   );
 }

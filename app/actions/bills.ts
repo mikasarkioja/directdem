@@ -2,24 +2,10 @@
 
 import { getLatestBills, type EduskuntaIssue } from "@/lib/eduskunta-api";
 import { generateMockCitizenPulse, generateMockPoliticalReality } from "@/lib/bill-helpers";
+import type { Bill } from "@/lib/types";
 
-export interface Bill {
-  id: string;
-  title: string;
-  summary: string;
-  rawText?: string; // Original legal text for AI processing
-  parliamentId?: string; // e.g., "HE 123/2024"
-  status: "draft" | "in_progress" | "voting" | "passed" | "rejected";
-  citizenPulse: {
-    for: number;
-    against: number;
-  };
-  politicalReality: {
-    party: string;
-    position: "for" | "against" | "abstain";
-    seats: number;
-  }[];
-}
+// Re-export Bill type for backward compatibility
+export type { Bill };
 
 /**
  * Fetches bills from Eduskunta API and converts them to our Bill format.

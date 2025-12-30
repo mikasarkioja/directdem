@@ -1,0 +1,107 @@
+/**
+ * Shared TypeScript type definitions for the DirectDem platform
+ */
+
+// Bill types
+export type BillStatus = "draft" | "in_progress" | "voting" | "passed" | "rejected";
+
+export interface Bill {
+  id: string;
+  title: string;
+  summary: string;
+  rawText?: string;
+  parliamentId?: string;
+  status: BillStatus;
+  citizenPulse: {
+    for: number;
+    against: number;
+  };
+  politicalReality: {
+    party: string;
+    position: "for" | "against" | "abstain";
+    seats: number;
+  }[];
+  category?: string;
+  publishedDate?: string;
+  url?: string;
+}
+
+// Vote types
+export type VotePosition = "for" | "against" | "neutral";
+
+export interface VoteStats {
+  for_count: number;
+  against_count: number;
+  neutral_count: number;
+  total_count: number;
+  for_percent: number;
+  against_percent: number;
+  neutral_percent: number;
+}
+
+// User profile types
+export interface UserProfile {
+  id: string;
+  email?: string;
+  full_name?: string;
+  is_verified?: boolean;
+  vaalipiiri?: string;
+  last_login?: string;
+  gdpr_consent?: boolean;
+  gdpr_consent_date?: string;
+  join_report_list?: boolean;
+  is_admin?: boolean;
+}
+
+// Party stance types
+export type PartyStance = "PRO" | "AGAINST" | "ABSTAIN" | "UNKNOWN";
+
+export interface PartyStanceData {
+  party: string;
+  stance: PartyStance;
+  confidence: number; // 0-1
+  source?: string;
+}
+
+// Supabase database types (matching schema)
+export interface SupabaseBill {
+  id: string;
+  parliament_id: string | null;
+  title: string;
+  summary: string | null;
+  raw_text: string | null;
+  status: string;
+  category: string | null;
+  published_date: string | null;
+  url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupabaseVote {
+  id: string;
+  bill_id: string;
+  user_id: string | null; // null after anonymization
+  position: VotePosition;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupabaseProfile {
+  id: string;
+  full_name: string | null;
+  is_verified: boolean;
+  vaalipiiri: string | null;
+  last_login: string | null;
+  gdpr_consent: boolean;
+  gdpr_consent_date: string | null;
+  join_report_list: boolean;
+  email: string | null;
+  is_admin: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Dashboard view types
+export type DashboardView = "bills" | "consensus" | "profile";
+

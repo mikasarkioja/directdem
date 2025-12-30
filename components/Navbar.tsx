@@ -6,14 +6,10 @@ import LoginModal from "./LoginModal";
 import VerifiedBadge from "./VerifiedBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import type { UserProfile } from "@/lib/types";
 
 interface NavbarProps {
-  user: {
-    id: string;
-    email?: string;
-    full_name?: string;
-    is_verified?: boolean;
-  } | null;
+  user: UserProfile | null;
 }
 
 export default function Navbar({ user }: NavbarProps) {

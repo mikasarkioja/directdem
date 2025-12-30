@@ -7,15 +7,14 @@ import ConsensusMap from "./ConsensusMap";
 import MyProfile from "./MyProfile";
 import BottomNav from "./BottomNav";
 import Auth from "./Auth";
-
-type View = "bills" | "consensus" | "profile";
+import type { DashboardView, UserProfile } from "@/lib/types";
 
 interface DashboardProps {
-  user: any;
+  user: UserProfile | null;
 }
 
 export default function Dashboard({ user }: DashboardProps) {
-  const [activeView, setActiveView] = useState<View>("bills");
+  const [activeView, setActiveView] = useState<DashboardView>("bills");
 
   return (
     <>

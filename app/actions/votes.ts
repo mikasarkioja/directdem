@@ -1,18 +1,12 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import type { VoteStats, VotePosition } from "@/lib/types";
 
-export interface VoteStats {
-  for_count: number;
-  against_count: number;
-  neutral_count: number;
-  total_count: number;
-  for_percent: number;
-  against_percent: number;
-  neutral_percent: number;
-}
+// Re-export for backward compatibility
+export type { VoteStats };
 
-export async function submitVote(billId: string, position: "for" | "against" | "neutral") {
+export async function submitVote(billId: string, position: VotePosition) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -43,7 +37,7 @@ export async function submitVote(billId: string, position: "for" | "against" | "
   return { success: true };
 }
 
-export async function getUserVote(billId: string): Promise<"for" | "against" | "neutral" | null> {
+export async function getUserVote(billId: string): Promise<VotePosition | null> {
   const supabase = await createClient();
   const {
     data: { user },

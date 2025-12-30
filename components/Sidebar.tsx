@@ -1,20 +1,19 @@
 "use client";
 
 import { FileText, Map, User } from "lucide-react";
-
-type View = "bills" | "consensus" | "profile";
+import type { DashboardView, UserProfile } from "@/lib/types";
 
 interface SidebarProps {
-  activeView: View;
-  setActiveView: (view: View) => void;
-  user: any;
+  activeView: DashboardView;
+  setActiveView: (view: DashboardView) => void;
+  user: UserProfile | null;
 }
 
 export default function Sidebar({ activeView, setActiveView, user }: SidebarProps) {
-  const menuItems = [
-    { id: "bills" as View, label: "Active Bills", icon: FileText },
-    { id: "consensus" as View, label: "Consensus Map", icon: Map },
-    { id: "profile" as View, label: "My Profile", icon: User },
+  const menuItems: Array<{ id: DashboardView; label: string; icon: typeof FileText }> = [
+    { id: "bills", label: "Active Bills", icon: FileText },
+    { id: "consensus", label: "Consensus Map", icon: Map },
+    { id: "profile", label: "My Profile", icon: User },
   ];
 
   return (

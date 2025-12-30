@@ -8,9 +8,10 @@ import { deleteUserAccount } from "@/app/actions/user-management";
 import { getUser } from "@/app/actions/auth";
 import { useRouter } from "next/navigation";
 import { FINNISH_DISTRICTS } from "@/lib/finnish-districts-geo";
+import type { UserProfile } from "@/lib/types";
 
 export default function MyProfile() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -83,7 +84,7 @@ export default function MyProfile() {
     try {
       const result = await updateVaalipiiri(selectedVaalipiiri);
 
-      if (result.success) {
+      if (result.success && user) {
         setSuccess("Vaalipiiri tallennettu!");
         setUser({ ...user, vaalipiiri: selectedVaalipiiri });
         setTimeout(() => setSuccess(null), 3000);
@@ -105,7 +106,7 @@ export default function MyProfile() {
     try {
       const result = await updateReportListParticipation(newValue);
 
-      if (result.success) {
+      if (result.success && user) {
         setJoinReportList(newValue);
         setSuccess(
           newValue

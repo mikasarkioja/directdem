@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
 import { submitVote, getUserVote } from "@/app/actions/votes";
 import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 interface StickyVotingBarProps {
   billId: string;
@@ -14,7 +15,7 @@ export default function StickyVotingBar({ billId, onVoteChange }: StickyVotingBa
   const [userVote, setUserVote] = useState<"for" | "against" | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isPressed, setIsPressed] = useState<"for" | "against" | null>(null);
 
   useEffect(() => {

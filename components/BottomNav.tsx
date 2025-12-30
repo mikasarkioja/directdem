@@ -1,10 +1,11 @@
 "use client";
 
 import { Home, Vote, Map as MapIcon, User } from "lucide-react";
+import type { DashboardView } from "@/lib/types";
 
 interface BottomNavProps {
-  activeView: "bills" | "consensus" | "profile";
-  onViewChange: (view: "bills" | "consensus" | "profile") => void;
+  activeView: DashboardView;
+  onViewChange: (view: DashboardView) => void;
 }
 
 export default function BottomNav({ activeView, onViewChange }: BottomNavProps) {

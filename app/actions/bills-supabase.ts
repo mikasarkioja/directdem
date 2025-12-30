@@ -3,24 +3,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { getLatestBills } from "@/lib/eduskunta-api";
 import { generateMockCitizenPulse, generateMockPoliticalReality } from "@/lib/bill-helpers";
+import type { Bill, SupabaseBill } from "@/lib/types";
 
-export interface Bill {
-  id: string;
-  title: string;
-  summary: string;
-  rawText?: string;
-  parliamentId?: string;
-  status: "draft" | "in_progress" | "voting" | "passed" | "rejected";
-  citizenPulse: {
-    for: number;
-    against: number;
-  };
-  politicalReality: {
-    party: string;
-    position: "for" | "against" | "abstain";
-    seats: number;
-  }[];
-}
+// Re-export Bill type for backward compatibility
+export type { Bill };
 
 /**
  * Fetches bills from Supabase, or syncs from Eduskunta API if needed
@@ -37,17 +23,20 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
 
   // If we have bills in Supabase, use them
   if (billsData && billsData.length > 0 && !error) {
-    return billsData.map((bill) => ({
+    return billsData.map((bill: SupabaseBill) => ({
       id: bill.id,
       title: bill.title,
       summary: bill.summary || "",
-      rawText: bill.raw_text,
-      parliamentId: bill.parliament_id,
+      rawText: bill.raw_text || undefined,
+      parliamentId: bill.parliament_id || undefined,
       status: bill.status as Bill["status"],
       // For MVP, use mock data for citizen pulse and political reality
       // In production, these would come from actual voting data
       citizenPulse: generateMockCitizenPulse({ title: bill.title, abstract: bill.summary || "" }),
       politicalReality: generateMockPoliticalReality(),
+      category: bill.category || undefined,
+      publishedDate: bill.published_date || undefined,
+      url: bill.url || undefined,
     }));
   }
 
@@ -79,15 +68,18 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
         .select();
 
       if (insertedBills && !insertError) {
-        return insertedBills.map((bill) => ({
+        return insertedBills.map((bill: SupabaseBill) => ({
           id: bill.id,
           title: bill.title,
           summary: bill.summary || "",
-          rawText: bill.raw_text,
-          parliamentId: bill.parliament_id,
+          rawText: bill.raw_text || undefined,
+          parliamentId: bill.parliament_id || undefined,
           status: bill.status as Bill["status"],
           citizenPulse: generateMockCitizenPulse({ title: bill.title, abstract: bill.summary || "" }),
           politicalReality: generateMockPoliticalReality(),
+          category: bill.category || undefined,
+          publishedDate: bill.published_date || undefined,
+          url: bill.url || undefined,
         }));
       }
     }

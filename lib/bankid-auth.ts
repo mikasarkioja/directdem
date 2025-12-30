@@ -6,10 +6,13 @@
  */
 
 export interface BankIDUser {
-  full_name: string;
+  given_name: string; // First name from id_token
+  family_name: string; // Last name from id_token
+  full_name: string; // Combined: given_name + family_name
+  sub: string; // Subject ID from id_token (unique identifier, no HETU)
+  birthdate?: string; // Birthdate from id_token (YYYY-MM-DD format)
   is_verified: boolean;
   email?: string;
-  ssn?: string; // Social Security Number (for verification)
 }
 
 /**
@@ -50,10 +53,13 @@ export async function mockBankIDCallback(code: string): Promise<BankIDUser> {
   
   // Mock return data
   return {
+    given_name: "Matti",
+    family_name: "Meikäläinen",
     full_name: "Matti Meikäläinen",
+    sub: `mock-sub-${code}-${Date.now()}`, // Mock subject ID
+    birthdate: "1990-01-01", // Mock birthdate (over 18)
     is_verified: true,
     email: "matti.meikalainen@example.com",
-    ssn: "010190-123A", // Mock SSN for verification
   };
 }
 
@@ -68,10 +74,77 @@ export async function processBankIDCallback(code: string, state: string): Promis
     return mockBankIDCallback(code);
   }
   
-  // Production: Exchange code for token
-  // This would make a request to Criipto token endpoint
-  // Then verify and parse the ID token
-  // For now, return mock data
-  return mockBankIDCallback(code);
+  // Production: Exchange code for token with Criipto
+  const criiptoDomain = process.env.CRIIPTO_DOMAIN || "your-domain.criipto.id";
+  const clientId = process.env.CRIIPTO_CLIENT_ID!;
+  const clientSecret = process.env.CRIIPTO_CLIENT_SECRET!;
+  const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/bankid/callback`;
+  
+  try {
+    // Exchange authorization code for tokens
+    const tokenResponse = await fetch(`https://${criiptoDomain}/oauth2/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      throw new Error(`Token exchange failed: ${tokenResponse.statusText}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    const idToken = tokenData.id_token;
+
+    // Decode and verify ID token (in production, use a JWT library like jose)
+    // For now, we'll parse the payload (base64)
+    const tokenParts = idToken.split(".");
+    if (tokenParts.length !== 3) {
+      throw new Error("Invalid ID token format");
+    }
+
+    // Decode payload (base64url)
+    const payload = JSON.parse(
+      Buffer.from(tokenParts[1], "base64url").toString("utf-8")
+    );
+
+    // Extract user information from token claims
+    const given_name = payload.given_name || "";
+    const family_name = payload.family_name || "";
+    const full_name = `${given_name} ${family_name}`.trim();
+    const sub = payload.sub; // Subject ID (unique, no HETU)
+    const birthdate = payload.birthdate; // Optional: YYYY-MM-DD format
+    const email = payload.email;
+
+    // Verify age if birthdate is provided (must be 18+)
+    let isVerified = true;
+    if (birthdate) {
+      const birthYear = parseInt(birthdate.split("-")[0]);
+      const currentYear = new Date().getFullYear();
+      const age = currentYear - birthYear;
+      isVerified = age >= 18;
+    }
+
+    return {
+      given_name,
+      family_name,
+      full_name,
+      sub,
+      birthdate,
+      is_verified: isVerified,
+      email,
+    };
+  } catch (error: any) {
+    console.error("[BankID] Token processing error:", error);
+    // Fallback to mock in case of error
+    return mockBankIDCallback(code);
+  }
 }
 

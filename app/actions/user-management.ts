@@ -20,7 +20,22 @@ export async function deleteUserAccount(): Promise<{ success: boolean; error?: s
   }
 
   try {
-    // Delete user profile (this will cascade delete votes due to foreign key constraints)
+    // Anonymize votes: Set user_id to NULL instead of deleting
+    // This preserves historical data while removing personal connection
+    const { error: votesError } = await supabase
+      .from("votes")
+      .update({ user_id: null })
+      .eq("user_id", user.id);
+
+    if (votesError) {
+      console.error("[deleteUserAccount] Failed to anonymize votes:", votesError);
+      return {
+        success: false,
+        error: `Äänestysten anonymisointi epäonnistui: ${votesError.message}`,
+      };
+    }
+
+    // Delete user profile (votes are already anonymized, so no cascade issues)
     const { error: profileError } = await supabase
       .from("profiles")
       .delete()
@@ -32,17 +47,6 @@ export async function deleteUserAccount(): Promise<{ success: boolean; error?: s
         success: false,
         error: `Profiilin poistaminen epäonnistui: ${profileError.message}`,
       };
-    }
-
-    // Delete all user votes (explicit delete for safety, though CASCADE should handle it)
-    const { error: votesError } = await supabase
-      .from("votes")
-      .delete()
-      .eq("user_id", user.id);
-
-    if (votesError) {
-      console.error("[deleteUserAccount] Failed to delete votes:", votesError);
-      // Continue anyway - CASCADE should have handled it
     }
 
     // Delete the auth user (this requires admin privileges or user action)

@@ -40,10 +40,14 @@ export async function GET(request: NextRequest) {
       options: {
         emailRedirectTo: `${requestUrl.origin}/auth/callback`,
         data: {
+          given_name: bankIDUser.given_name,
+          family_name: bankIDUser.family_name,
           full_name: bankIDUser.full_name,
+          sub: bankIDUser.sub, // Store subject ID for future reference
+          birthdate: bankIDUser.birthdate,
           is_verified: bankIDUser.is_verified,
           auth_provider: "bankid",
-          accepted_terms: false, // Will show GDPR screen
+          gdpr_consent: false, // Will show GDPR screen
         },
       },
     });

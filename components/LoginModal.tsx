@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Mail, CreditCard, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
+import PrivacySummary from "./PrivacySummary";
 
 interface LoginModalProps {
   onClose: () => void;
@@ -16,7 +16,43 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [activeTab, setActiveTab] = useState<"email" | "bankid">("email");
+  const [showPrivacySummary, setShowPrivacySummary] = useState(false);
+  const [hasSeenPrivacy, setHasSeenPrivacy] = useState(false);
   const supabase = createClient();
+
+  // Check if user has already accepted GDPR (for returning users)
+  useEffect(() => {
+    async function checkGDPRConsent() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("gdpr_consent")
+          .eq("id", user.id)
+          .single();
+        
+        if (profile?.gdpr_consent) {
+          setHasSeenPrivacy(true);
+        } else {
+          setShowPrivacySummary(true);
+        }
+      } else {
+        // First-time user, show privacy summary
+        setShowPrivacySummary(true);
+      }
+    }
+    checkGDPRConsent();
+  }, [supabase]);
+
+  const handlePrivacyAccept = () => {
+    setAcceptedTerms(true);
+    setShowPrivacySummary(false);
+    setHasSeenPrivacy(true);
+  };
+
+  const handlePrivacyDecline = () => {
+    onClose();
+  };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +74,8 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            accepted_terms: true,
-            terms_accepted_at: new Date().toISOString(),
+            gdpr_consent: true,
+            gdpr_consent_date: new Date().toISOString(),
           },
         },
       });
@@ -110,11 +146,11 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-nordic-deep rounded-2xl max-w-md w-full shadow-xl">
+      <div className="bg-white dark:bg-nordic-deep rounded-2xl max-w-md w-full shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-nordic-gray dark:border-nordic-darker">
           <h2 className="text-xl font-bold text-nordic-darker dark:text-nordic-white">
-            Kirjaudu sisään
+            {showPrivacySummary ? "Tietosuoja" : "Kirjaudu sisään"}
           </h2>
           <button
             onClick={onClose}
@@ -124,8 +160,18 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-nordic-gray dark:border-nordic-darker">
+        {/* Privacy Summary - shown before first login */}
+        {showPrivacySummary && !hasSeenPrivacy ? (
+          <div className="p-6">
+            <PrivacySummary
+              onAccept={handlePrivacyAccept}
+              onDecline={handlePrivacyDecline}
+            />
+          </div>
+        ) : (
+          <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+            {/* Tabs */}
+            <div className="flex border-b border-nordic-gray dark:border-nordic-darker">
           <button
             onClick={() => {
               setActiveTab("email");
@@ -178,32 +224,26 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
                 />
               </div>
 
-              {/* GDPR Checkbox */}
-              <div className="flex items-start gap-2">
-                <input
-                  id="accept-terms"
-                  type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  required
-                  className="mt-1 w-4 h-4 text-nordic-blue border-nordic-gray rounded focus:ring-nordic-blue"
-                />
-                <label
-                  htmlFor="accept-terms"
-                  className="text-sm text-nordic-dark dark:text-nordic-gray"
-                >
-                  Hyväksyn{" "}
-                  <Link
-                    href="/privacy-policy"
-                    target="_blank"
-                    className="text-nordic-blue hover:underline"
-                    onClick={(e) => e.stopPropagation()}
+              {/* GDPR Checkbox - only show if privacy summary was already shown */}
+              {hasSeenPrivacy && (
+                <div className="flex items-start gap-2">
+                  <input
+                    id="accept-terms"
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    required
+                    className="mt-1 w-4 h-4 text-nordic-blue border-nordic-gray rounded focus:ring-nordic-blue"
+                  />
+                  <label
+                    htmlFor="accept-terms"
+                    className="text-sm text-nordic-dark dark:text-nordic-gray"
                   >
-                    käyttöehdot ja tietosuojaselosteen
-                  </Link>
-                  <span className="text-red-600">*</span>
-                </label>
-              </div>
+                    Olen lukenut tietosuojaselosteen ja ymmärrän, miten tietojani käsitellään
+                    <span className="text-red-600 ml-1">*</span>
+                  </label>
+                </div>
+              )}
 
               {/* Message */}
               {message && (
@@ -225,7 +265,7 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
 
               <button
                 type="submit"
-                disabled={loading || !acceptedTerms}
+                disabled={loading || (!acceptedTerms && hasSeenPrivacy)}
                 className="w-full px-4 py-3 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
               >
                 {loading ? (
@@ -247,32 +287,26 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             </form>
           ) : (
             <div className="space-y-4">
-              {/* GDPR Checkbox for BankID too */}
-              <div className="flex items-start gap-2">
-                <input
-                  id="accept-terms-bankid"
-                  type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  required
-                  className="mt-1 w-4 h-4 text-nordic-blue border-nordic-gray rounded focus:ring-nordic-blue"
-                />
-                <label
-                  htmlFor="accept-terms-bankid"
-                  className="text-sm text-nordic-dark dark:text-nordic-gray"
-                >
-                  Hyväksyn{" "}
-                  <Link
-                    href="/privacy-policy"
-                    target="_blank"
-                    className="text-nordic-blue hover:underline"
-                    onClick={(e) => e.stopPropagation()}
+              {/* GDPR Checkbox for BankID - only show if privacy summary was already shown */}
+              {hasSeenPrivacy && (
+                <div className="flex items-start gap-2">
+                  <input
+                    id="accept-terms-bankid"
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    required
+                    className="mt-1 w-4 h-4 text-nordic-blue border-nordic-gray rounded focus:ring-nordic-blue"
+                  />
+                  <label
+                    htmlFor="accept-terms-bankid"
+                    className="text-sm text-nordic-dark dark:text-nordic-gray"
                   >
-                    käyttöehdot ja tietosuojaselosteen
-                  </Link>
-                  <span className="text-red-600">*</span>
-                </label>
-              </div>
+                    Olen lukenut tietosuojaselosteen ja ymmärrän, miten tietojani käsitellään
+                    <span className="text-red-600 ml-1">*</span>
+                  </label>
+                </div>
+              )}
 
               {process.env.NODE_ENV === "development" && (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
@@ -284,7 +318,7 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
 
               <button
                 onClick={handleBankIDLogin}
-                disabled={loading || !acceptedTerms || (process.env.NODE_ENV === "development" && !process.env.CRIIPTO_CLIENT_ID)}
+                disabled={loading || (!acceptedTerms && hasSeenPrivacy) || (process.env.NODE_ENV === "development" && !process.env.CRIIPTO_CLIENT_ID)}
                 className="w-full px-4 py-3 bg-nordic-deep text-white rounded-lg hover:bg-nordic-darker transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
               >
                 {loading ? (
@@ -306,6 +340,8 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             </div>
           )}
         </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -54,10 +54,21 @@ export async function upsertUserProfile(userId: string, metadata?: any) {
     last_login: new Date().toISOString(),
   };
 
-  // If metadata contains accepted_terms, update it
+  // If metadata contains GDPR consent, update it
+  if (metadata?.gdpr_consent) {
+    profileData.gdpr_consent = true;
+    profileData.gdpr_consent_date = metadata.gdpr_consent_date || new Date().toISOString();
+  }
+  
+  // Legacy support: also update accepted_terms if provided
   if (metadata?.accepted_terms) {
     profileData.accepted_terms = true;
     profileData.terms_accepted_at = metadata.terms_accepted_at || new Date().toISOString();
+    // Also set GDPR consent if not already set
+    if (!profileData.gdpr_consent) {
+      profileData.gdpr_consent = true;
+      profileData.gdpr_consent_date = metadata.terms_accepted_at || new Date().toISOString();
+    }
   }
 
   // If metadata contains full_name, update it

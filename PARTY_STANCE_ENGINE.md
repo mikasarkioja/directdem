@@ -108,3 +108,4 @@ The component will:
 - Historical stance tracking
 - Party logo images instead of colored dots
 
+

@@ -4,6 +4,8 @@ import BottomNav from "@/components/BottomNav";
 import FirstTimeGDPR from "@/components/FirstTimeGDPR";
 import { getUser } from "@/app/actions/auth";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   // Server-side user fetch using Next.js 15 cookies()
   // This ensures user data is available immediately without flash

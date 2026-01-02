@@ -3,9 +3,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { VoteStats, VotePosition } from "@/lib/types";
 
-// Re-export for backward compatibility
-export type { VoteStats };
-
 export async function submitVote(billId: string, position: VotePosition) {
   const supabase = await createClient();
   const {

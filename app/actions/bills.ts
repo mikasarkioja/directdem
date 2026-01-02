@@ -4,9 +4,6 @@ import { getLatestBills, type EduskuntaIssue } from "@/lib/eduskunta-api";
 import { generateMockCitizenPulse, generateMockPoliticalReality } from "@/lib/bill-helpers";
 import type { Bill } from "@/lib/types";
 
-// Re-export Bill type for backward compatibility
-export type { Bill };
-
 /**
  * Fetches bills from Eduskunta API and converts them to our Bill format.
  * Falls back to mock data if API fails.
@@ -151,7 +148,7 @@ function convertEduskuntaToBill(issue: EduskuntaIssue): Bill {
   const mockCitizenPulse = generateMockCitizenPulse(issue);
   
   // Generate mock political reality (in production, this would come from voting records)
-  const mockPoliticalReality = generateMockPoliticalReality();
+  const mockPoliticalReality = generateMockPoliticalReality(issue);
 
   return {
     id: issue.id,

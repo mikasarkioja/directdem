@@ -1,5 +1,3 @@
-"use server";
-
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 
@@ -294,4 +292,5 @@ export async function analyzePartyStances(
 
   return result;
 }
+
 

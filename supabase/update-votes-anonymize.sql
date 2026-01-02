@@ -37,3 +37,4 @@ CREATE UNIQUE INDEX votes_bill_id_user_id_unique
 -- For anonymized votes (user_id IS NULL), we can have multiple per bill
 -- This is intentional - they're anonymous contributions to statistics
 
+

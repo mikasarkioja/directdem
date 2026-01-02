@@ -5,9 +5,6 @@ import { getLatestBills } from "@/lib/eduskunta-api";
 import { generateMockCitizenPulse, generateMockPoliticalReality } from "@/lib/bill-helpers";
 import type { Bill, SupabaseBill } from "@/lib/types";
 
-// Re-export Bill type for backward compatibility
-export type { Bill };
-
 /**
  * Fetches bills from Supabase, or syncs from Eduskunta API if needed
  */
@@ -19,7 +16,7 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
     .from("bills")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(50);
 
   // If we have bills in Supabase, use them
   if (billsData && billsData.length > 0 && !error) {
@@ -33,9 +30,10 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
       // For MVP, use mock data for citizen pulse and political reality
       // In production, these would come from actual voting data
       citizenPulse: generateMockCitizenPulse({ title: bill.title, abstract: bill.summary || "" }),
-      politicalReality: generateMockPoliticalReality(),
+      politicalReality: generateMockPoliticalReality({ title: bill.title }),
       category: bill.category || undefined,
       publishedDate: bill.published_date || undefined,
+      processingDate: (bill as any).processing_date || undefined,
       url: bill.url || undefined,
     }));
   }
@@ -43,7 +41,7 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
   // If no bills in Supabase, try to fetch from Eduskunta API and sync
   // Note: Eduskunta API endpoint may change, so this might fail
   try {
-    const eduskuntaIssues = await getLatestBills(10);
+    const eduskuntaIssues = await getLatestBills(50);
     
     if (eduskuntaIssues.length > 0) {
       // Insert into Supabase
@@ -76,9 +74,10 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
           parliamentId: bill.parliament_id || undefined,
           status: bill.status as Bill["status"],
           citizenPulse: generateMockCitizenPulse({ title: bill.title, abstract: bill.summary || "" }),
-          politicalReality: generateMockPoliticalReality(),
+          politicalReality: generateMockPoliticalReality({ title: bill.title }),
           category: bill.category || undefined,
           publishedDate: bill.published_date || undefined,
+          processingDate: (bill as any).processing_date || undefined,
           url: bill.url || undefined,
         }));
       }

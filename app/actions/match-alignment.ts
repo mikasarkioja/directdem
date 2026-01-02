@@ -1,6 +1,7 @@
 "use server";
 
-import { calculateAlignment, type AlignmentResult } from "@/lib/match-engine";
+import { calculateAlignment } from "@/lib/match-engine";
+import type { AlignmentResult } from "@/lib/match-engine";
 
 /**
  * Server action wrapper for calculating party alignment
@@ -8,4 +9,5 @@ import { calculateAlignment, type AlignmentResult } from "@/lib/match-engine";
 export async function getPartyAlignment(userId: string): Promise<AlignmentResult[]> {
   return calculateAlignment(userId);
 }
+
 

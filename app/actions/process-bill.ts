@@ -5,6 +5,7 @@ import { getBillContent } from "@/lib/eduskunta-api";
 import { generateCitizenSummary } from "@/lib/ai-summary";
 import { prepareBillTextForAI } from "@/lib/text-cleaner";
 import { parseSummary } from "@/lib/summary-parser";
+import type { Bill } from "@/lib/types";
 
 /**
  * Processes a bill to generate a citizen-friendly summary (selkokieli)
@@ -62,10 +63,11 @@ async function processBillToSelkokieliInternal(
     console.log(`[processBillToSelkokieli] Step 2: Checking if summary exists...`);
     console.log(`[processBillToSelkokieli] Bill summary length: ${bill.summary?.length || 0}, forceRegenerate: ${forceRegenerate}`);
     
-    // For now, we'll check if raw_text exists and is substantial
-    // In the future, you might want to add a separate 'ai_summary' column
-    if (!forceRegenerate && bill.summary && bill.summary.length > 100) {
-      console.log(`[processBillToSelkokieli] Found existing summary (${bill.summary.length} chars), using cached version`);
+    // Check if it's a "real" AI summary (usually contains markdown headers and is long)
+    const isRealSummary = bill.summary && bill.summary.length > 800 && bill.summary.includes("###");
+    
+    if (!forceRegenerate && isRealSummary) {
+      console.log(`[processBillToSelkokieli] Found existing substantial summary (${bill.summary.length} chars), using cached version`);
       // Try to parse existing summary
       try {
         const parsed = parseSummary(bill.summary);

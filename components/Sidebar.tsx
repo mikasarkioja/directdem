@@ -17,7 +17,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
   ];
 
   return (
-    <aside className="w-64 bg-nordic-deep text-nordic-white flex flex-col">
+    <aside className="hidden md:flex w-64 bg-nordic-deep text-nordic-white flex-col">
       <div className="p-6 border-b border-nordic-darker">
         <h1 className="text-2xl font-bold">DirectDem</h1>
         <p className="text-sm text-nordic-gray mt-1">Finnish Democracy Dashboard</p>

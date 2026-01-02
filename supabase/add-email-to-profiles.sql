@@ -54,3 +54,4 @@ CREATE TRIGGER sync_profile_email_on_insert_trigger
   FOR EACH ROW
   EXECUTE FUNCTION sync_profile_email_on_insert();
 
+

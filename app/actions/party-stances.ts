@@ -1,6 +1,7 @@
 "use server";
 
-import { analyzePartyStances, type PartyStanceResult } from "@/lib/party-stances";
+import { analyzePartyStances } from "@/lib/party-stances";
+import type { PartyStanceResult } from "@/lib/party-stances";
 
 /**
  * Server action to analyze party stances for a bill
@@ -16,4 +17,5 @@ export async function getPartyStances(
     return null;
   }
 }
+
 

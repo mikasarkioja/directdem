@@ -11,6 +11,8 @@ interface StreamingSummaryProps {
   existingSummary?: string | null;
   billParliamentId?: string;
   billTitle?: string;
+  publishedDate?: string;
+  processingDate?: string;
   onSummaryComplete?: (summary: string) => void;
 }
 
@@ -19,6 +21,8 @@ export default function StreamingSummary({
   existingSummary,
   billParliamentId,
   billTitle,
+  publishedDate,
+  processingDate,
   onSummaryComplete,
 }: StreamingSummaryProps) {
   const [finalSummary, setFinalSummary] = useState<string | null>(
@@ -130,12 +134,20 @@ export default function StreamingSummary({
     }
   };
 
+  // Check if summary is a real, high-quality AI summary
+  const isRealSummary = (text: string | null | undefined) => {
+    if (!text) return false;
+    // Real summaries are long, have markdown headers, and aren't just raw text
+    return text.length > 800 && text.includes("###") && text.length < 50000;
+  };
+
   const parsedSummary = finalSummary || completion ? parseSummary(finalSummary || completion) : null;
+  const showGenerateButton = (!finalSummary && !completion) && !isRealSummary(existingSummary);
 
   return (
     <div className="space-y-4">
       {/* Existing Summary or Streaming Summary */}
-      {(finalSummary || completion) && (
+      {(finalSummary || completion || isRealSummary(existingSummary)) && (
         <>
           {/* Bulletin Board */}
           {parsedSummary && (
@@ -144,6 +156,8 @@ export default function StreamingSummary({
                 summary={parsedSummary}
                 billId={billParliamentId || billId}
                 billTitle={billTitle}
+                givenDate={publishedDate}
+                processingDate={processingDate}
               />
             </div>
           )}
@@ -179,10 +193,89 @@ export default function StreamingSummary({
               </div>
             )}
             
-            <div className="text-base text-nordic-darker whitespace-pre-line leading-relaxed">
-              {finalSummary || completion}
+            <div className="text-base text-nordic-darker leading-relaxed space-y-8">
+              {(finalSummary || completion)?.split("\n").reduce((acc: any[], line) => {
+                const trimmedLine = line.trim();
+                if (!trimmedLine && acc.length > 0) {
+                  const last = acc[acc.length - 1];
+                  if (last.type === 'paragraph') last.content += '\n';
+                  return acc;
+                }
+                
+                if (trimmedLine.startsWith("###")) {
+                  const content = trimmedLine.replace("###", "").trim();
+                  const isFinancial = content.toLowerCase().includes("lompakko") || content.toLowerCase().includes("taloudelliset");
+                  acc.push({ 
+                    type: 'header', 
+                    content,
+                    isFinancial 
+                  });
+                } else if (trimmedLine === "---") {
+                  acc.push({ type: 'divider' });
+                } else if (trimmedLine.startsWith("- ")) {
+                  acc.push({ type: 'bullet', content: trimmedLine.substring(2) });
+                } else {
+                  if (acc.length > 0 && acc[acc.length - 1].type === 'paragraph' && !acc[acc.length - 1].content.endsWith('\n\n')) {
+                    acc[acc.length - 1].content += ' ' + trimmedLine;
+                  } else {
+                    acc.push({ type: 'paragraph', content: trimmedLine });
+                  }
+                }
+                return acc;
+              }, []).map((item, i) => {
+                switch (item.type) {
+                  case 'header':
+                    return (
+                      <div key={i} className={`pt-4 border-b-2 pb-2 mb-4 ${item.isFinancial ? 'border-amber-400' : 'border-nordic-blue/20'}`}>
+                        <h4 className={`text-xl font-bold flex items-center gap-3 ${item.isFinancial ? 'text-amber-700' : 'text-nordic-blue'}`}>
+                          <span className={`${item.isFinancial ? 'bg-amber-500' : 'bg-nordic-blue'} text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-sm`}>
+                            {item.content.match(/^\d+/) ? item.content.match(/^\d+/)?.[0] : i}
+                          </span>
+                          {item.content.replace(/^\d+\.\s*/, '')}
+                          {item.isFinancial && (
+                            <span className="ml-auto text-[10px] bg-amber-100 text-amber-700 px-2 py-1 rounded uppercase tracking-wider font-black">
+                              Tärkeä Analyysi
+                            </span>
+                          )}
+                        </h4>
+                      </div>
+                    );
+                  case 'divider':
+                    return <hr key={i} className="my-12 border-nordic-gray border-t-2" />;
+                  case 'bullet':
+                    return (
+                      <div key={i} className="flex gap-3 ml-4 my-2 group">
+                        <span className="text-nordic-blue font-bold group-hover:scale-125 transition-transform">•</span>
+                        <span className="text-nordic-darker flex-1">
+                          {item.content.split(/(\*\*.*?\*\*)/).map((part: string, index: number) => 
+                            part.startsWith('**') && part.endsWith('**') 
+                              ? <strong key={index} className="font-extrabold text-nordic-darker">{part.slice(2, -2)}</strong>
+                              : part
+                          )}
+                        </span>
+                      </div>
+                    );
+                  case 'paragraph':
+                    return (
+                      <p key={i} className="whitespace-pre-line text-nordic-dark mb-4 leading-relaxed">
+                        {item.content.split(/(\*\*.*?\*\*)/).map((part: string, index: number) => 
+                          part.startsWith('**') && part.endsWith('**') 
+                            ? <strong key={index} className="font-extrabold text-nordic-darker">{part.slice(2, -2)}</strong>
+                            : part
+                        )}
+                      </p>
+                    );
+                  default:
+                    return null;
+                }
+              })}
               {isLoading && (
-                <span className="inline-block w-2 h-4 bg-nordic-blue ml-1 animate-pulse" />
+                <div className="flex items-center gap-2 text-nordic-blue animate-pulse pt-4">
+                  <div className="w-2 h-2 bg-nordic-blue rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-nordic-blue rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-2 h-2 bg-nordic-blue rounded-full animate-bounce [animation-delay:0.4s]" />
+                  <span className="text-sm font-medium ml-2">AI kirjoittaa tiivistelmää...</span>
+                </div>
               )}
             </div>
           </div>
@@ -190,7 +283,7 @@ export default function StreamingSummary({
       )}
 
       {/* Generate Button (if no summary exists, or if existingSummary is too long = raw text) */}
-      {(!finalSummary && !completion) && (!existingSummary || (existingSummary && existingSummary.length > 50000)) && (
+      {showGenerateButton && (
         <div className="bg-nordic-light rounded-2xl p-6 border-2 border-nordic-blue text-center">
           <p className="text-base text-nordic-dark mb-4">
             {existingSummary && existingSummary.length > 50000 

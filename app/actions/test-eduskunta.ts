@@ -1,21 +1,11 @@
 "use server";
 
+import type { TestResult } from "@/lib/types";
+
 /**
  * Server-side test for Eduskunta API
  * This bypasses CORS restrictions
  */
-
-export interface TestResult {
-  name: string;
-  url: string;
-  status: number;
-  statusText: string;
-  success: boolean;
-  data?: any;
-  error?: string;
-  contentType?: string;
-}
-
 export async function testEduskuntaAPI(): Promise<TestResult[]> {
   const endpoints = [
     {
@@ -89,4 +79,3 @@ export async function testEduskuntaAPI(): Promise<TestResult[]> {
 
   return results;
 }
-

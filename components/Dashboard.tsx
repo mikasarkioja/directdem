@@ -6,7 +6,6 @@ import ActiveBills from "./ActiveBills";
 import ConsensusMap from "./ConsensusMap";
 import MyProfile from "./MyProfile";
 import BottomNav from "./BottomNav";
-import Auth from "./Auth";
 import type { DashboardView, UserProfile } from "@/lib/types";
 
 interface DashboardProps {
@@ -21,14 +20,12 @@ export default function Dashboard({ user }: DashboardProps) {
       <div className="flex h-screen bg-nordic-white">
         <Sidebar activeView={activeView} setActiveView={setActiveView} user={user} />
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
-          {activeView === "bills" && <ActiveBills />}
+          {activeView === "bills" && <ActiveBills user={user} />}
           {activeView === "consensus" && <ConsensusMap />}
-          {activeView === "profile" && <MyProfile />}
+          {activeView === "profile" && <MyProfile user={user} />}
         </main>
       </div>
       <BottomNav activeView={activeView} onViewChange={setActiveView} />
     </>
   );
 }
-
-

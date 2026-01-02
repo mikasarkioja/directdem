@@ -25,3 +25,4 @@ SET gdpr_consent = accepted_terms,
     gdpr_consent_date = terms_accepted_at
 WHERE accepted_terms = true AND gdpr_consent = false;
 
+

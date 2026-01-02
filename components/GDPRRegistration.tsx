@@ -146,3 +146,4 @@ export default function GDPRRegistration({ onAccept, onDecline }: GDPRRegistrati
   );
 }
 
+

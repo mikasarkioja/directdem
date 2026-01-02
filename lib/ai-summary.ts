@@ -1,5 +1,3 @@
-"use server";
-
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 
@@ -8,22 +6,46 @@ import { generateText } from "ai";
  * from complex parliamentary legal text.
  */
 export async function generateCitizenSummary(rawText: string): Promise<string> {
-  const systemPrompt = `Olet puolueeton poliittinen analyytikko. Tehtäväsi on kääntää eduskunnan monimutkaiset lakitekstit selkeäksi ja ymmärrettäväksi suomeksi (selkokieli).
+  const systemPrompt = `Olet puolueeton poliittinen ja taloudellinen analyytikko. Tehtäväsi on kääntää eduskunnan monimutkaiset lakitekstit selkeäksi ja ymmärrettäväksi suomeksi (selkokieli) ja analysoida niiden taloudellisia vaikutuksia.
 
-TÄRKEÄÄ: Generoi YKSITYISKOHTAINEN ja PIDEMPI tiivistelmä. Vähintään 500-800 sanaa (noin 3000-5000 merkkiä). Älä tee lyhyttä tiivistelmää.
+TÄRKEÄÄ: Generoi erittäin YKSITYISKOHTAINEN ja pitkä tiivistelmä. Vähintään 800-1200 sanaa.
 
 Säännöt:
-- Vältä jargonia: Älä käytä termejä kuten 'momentti', 'lainvalmisteluasiakirja' tai 'asetuksenantovaltuutus' ilman selitystä.
-- Vaikutus edellä: Kerro heti ensimmäisenä, miten tämä laki muuttaa tavallisen suomalaisen arkea.
-- Puolueettomuus: Älä ota kantaa. Esitä faktat neutraalisti.
-- Rakenne: Käytä aina tätä rakennetta ja ole YKSITYISKOHTAINEN:
-  1. Mistä on kyse? (3-5 virkettä - selitä perusteellisesti)
-  2. Mikä muuttuu? (10-15 ranskaista viivaa - listaa KAIKKI tärkeät muutokset yksityiskohtaisesti)
-  3. Kenelle tämä koskee? (3-5 virkettä - kerro tarkasti kuka tätä koskee ja miten)
-  4. Vaikutus lompakkoon/arkeen: (4-6 virkettä - selitä konkreettiset vaikutukset yksityiskohtaisesti)
-  5. Milloin tämä tulee voimaan? (2-3 virkettä jos tiedossa)
+- Käytä selkeitä väliotsikoita (Markdown ### Otsikko).
+- Vältä jargonia.
+- Puolueettomuus on välttämätöntä.
 
-Tavoite: YKSITYISKOHTAINEN ja PIDEMPI selitys. Vähintään 500-800 sanaa (3000-5000 merkkiä). Älä tee lyhyttä tiivistelmää.`;
+Rakenne:
+
+### 1. Tiivistelmä (Ydinasiat)
+(3-5 virkettä - selitä esityksen päätavoite ja miksi se on tehty.)
+
+### 2. Taloudelliset vaikutukset ja "Lompakkoanalyysi"
+Tämä on tärkein osio. Analysoi vaikutukset eri kansanryhmiin:
+- **Suurimmat hyötyjät:** Listaa ketkä voittavat eniten ja miksi (arvioi euroissa jos mahdollista).
+- **Suurimmat menettäjät:** Listaa ketkä häviävät eniten ja miksi.
+- **Vaikutus keskituloiseen:** Miten laki näkyy tavallisen työssäkäyvän arjessa.
+- **Vaikutus pienituloiseen/eläkeläiseen:** Analysoi vaikutus heikoimmassa asemassa oleviin.
+
+### 3. Vaikutus arkeen (Yhteenveto)
+Kirjoita tähän KAKSI SELKEÄÄ LAUSETTA:
+1. Yhteiskunnallinen vaikutus: Miten laki muuttaa yhteiskuntaa tai kansalaisten oikeuksia.
+2. Taloudellinen vaikutus: Miten laki vaikuttaa rahallisesti tai lompakkoon.
+
+### 4. Mitä konkreettisesti muuttuu?
+(10-15 ranskaista viivaa - listaa tekniset ja juridiset muutokset yksityiskohtaisesti.)
+
+### 4. Kenelle tämä koskee?
+(Tarkka listaus ammattiryhmistä, yrityksistä tai kansalaisryhmistä, joita laki koskettaa.)
+
+### 5. Aikataulu
+(Milloin laki astuu voimaan ja onko siirtymäaikoja?)
+
+---
+### Loppuyhteenveto
+(Tiivistä koko esityksen ydin ja sen merkitys Suomen tulevaisuudelle 2-3 virkkeellä.)
+
+Tavoite: Erittäin perusteellinen analyysi, erityisesti talouden ja oikeudenmukaisuuden näkökulmasta.`;
 
   try {
     // Check if OpenAI API key is configured
@@ -83,25 +105,63 @@ function generateMockSummary(rawText: string): string {
   
   // Generate summaries based on content keywords
   if (lowerText.includes("alcohol") || lowerText.includes("alkoholi")) {
-    return `Mistä on kyse? Tämä laki muuttaisi alkoholijuomien myyntiä ruokakaupoissa.
+    return `### 1. Tiivistelmä (Ydinasiat)
+Tämä lakiesitys muuttaisi merkittävästi alkoholijuomien myyntiä Suomessa. Tavoitteena on vapauttaa kilpailua ja tuoda vahvemmat juomat ruokakauppoihin.
 
-Mikä muuttuu?
-- Vahvemmat viinit (yli 5,5 %) tulisivat ruokakauppojen hyllyille
-- Myyntiajat pitenisivät, voitaisiin ostaa alkoholia pidempään päivässä
-- Alkon monopoliasema heikkenisi osittain
+### 2. Taloudelliset vaikutukset ja "Lompakkoanalyysi"
+- **Suurimmat hyötyjät:** Päivittäistavarakaupan ketjut (S-ryhmä, Kesko), jotka saavat uusia tuoteryhmiä hyllyilleen. Arvioitu liikevaihdon kasvu miljoonia euroja.
+- **Suurimmat menettäjät:** Alko, jonka monopoliasema murtuu entisestään.
+- **Vaikutus keskituloiseen:** Helpottaa asiointia, kun viiniostot voi tehdä ruokaostosten yhteydessä.
+- **Vaikutus pienituloiseen/eläkeläiseen:** Hintataso saattaa nousta veronkorotusten myötä, mutta saatavuus paranee.
 
-Vaikutus lompakkoon/arkeen: Ostaminen helpottuisi, mutta terveydenhuollon kustannukset voivat nousta.`;
+### 3. Vaikutus arkeen (Yhteenveto)
+1. Yhteiskunnallinen vaikutus: Suomi siirtyy kohti eurooppalaisempaa alkoholikulttuuria, mutta kansanterveysriskit kasvavat.
+2. Taloudellinen vaikutus: Päivittäistavarakaupan voitot kasvavat, kun taas valtion Alko-osingot saattavat pienentyä.
+
+### 4. Mitä konkreettisesti muuttuu?
+- Jopa 8 % vahvuiset viinit ruokakauppoihin.
+- Myyntiajat pitenevät iltaisin.
+- Alkon monopolia rajataan.`;
+  }
+  
+  if (lowerText.includes("vero") || lowerText.includes("tax")) {
+    return `### 1. Tiivistelmä (Ydinasiat)
+Esitys koskee verotuksen kiristämistä/keventämistä talouden tasapainottamiseksi. Tavoitteena on valtion velkaantumisen taittaminen.
+
+### 2. Taloudelliset vaikutukset ja "Lompakkoanalyysi"
+- **Suurimmat hyötyjät:** Hyvätuloiset, jos kyseessä on työn verotuksen kevennys (arvio +50€/kk).
+- **Suurimmat menettäjät:** Kuluttajat, jos ALV nousee (arvio -20€/kk ostovoimassa).
+- **Vaikutus keskituloiseen:** Käteen jäävän tulon muutos riippuu lopullisista vähennyksistä.
+- **Vaikutus pienituloiseen/eläkeläiseen:** Hyödykkeiden hintojen nousu tuntuu suhteellisesti eniten.
+
+### 3. Vaikutus arkeen (Yhteenveto)
+1. Yhteiskunnallinen vaikutus: Valtion palveluiden rahoituspohja vahvistuu, mutta tuloerot saattavat kasvaa.
+2. Taloudellinen vaikutus: Kuluttajien ostovoima muuttuu ja yritysten investointikykyyn vaikutetaan.
+
+### 4. Mitä konkreettisesti muuttuu?
+- Veroprosentit muuttuvat.
+- Verovähennyksiin tulee muutoksia.
+- Verotuloja ohjataan uusiin kohteisiin.`;
   }
   
   if (lowerText.includes("nato") || lowerText.includes("infrastructure")) {
-    return `Mistä on kyse? Laki rahoittaa Suomen NATO-jäsenyyden edellyttämää puolustusinfrastruktuuria.
+    return `### 1. Tiivistelmä (Ydinasiat)
+Laki rahoittaa Suomen NATO-jäsenyyden edellyttämää puolustusinfrastruktuuria. Panostukset kohdistuvat erityisesti huoltovarmuuteen ja tukikohtiin.
 
-Mikä muuttuu?
-- 2,3 miljardia euroa kohdennetaan lentotukikohtien ja laivastotukikohtien parannuksiin
-- Uusia varastoja ja huolto-olosuhteita rakennetaan eri puolille Suomea
-- Puolustusvoimien kustannukset kasvavat merkittävästi
+### 2. Taloudelliset vaikutukset ja "Lompakkoanalyysi"
+- **Suurimmat hyötyjät:** Rakennus- ja puolustusteollisuus (arvioidut tilaukset satoja miljoonia).
+- **Suurimmat menettäjät:** Veronmaksajat, sillä panostukset kasvattavat valtion menoryhmää.
+- **Vaikutus keskituloiseen:** Turvallisuuden tunne kasvaa, mutta julkiset varat ovat pois muista kohteista.
+- **Vaikutus pienituloiseen/eläkeläiseen:** Ei välitöntä lompakkovaikutusta, mutta epäsuora paine säästöille muualta.
 
-Vaikutus lompakkoon/arkeen: Verot nousevat, mutta turvallisuus paranee.`;
+### 3. Vaikutus arkeen (Yhteenveto)
+1. Yhteiskunnallinen vaikutus: Suomen turvallisuusympäristö vakiintuu osaksi läntistä liittokuntaa.
+2. Taloudellinen vaikutus: Valtionvelka kasvaa ja investoinnit painottuvat maanpuolustukseen.
+
+### 4. Mitä konkreettisesti muuttuu?
+- 2,3 miljardia euroa lentotukikohtiin.
+- Uusia varastoja rakennetaan.
+- Puolustusvoimien budjetti kasvaa.`;
   }
   
   if (lowerText.includes("climate") || lowerText.includes("klimaatti") || lowerText.includes("carbon")) {

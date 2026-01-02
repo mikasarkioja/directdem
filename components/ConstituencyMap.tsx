@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { AlertTriangle, MapPin } from "lucide-react";
 import { getFinnishDistrictsGeoJSON } from "@/lib/finnish-districts-geo";
-import { type Bill } from "@/app/actions/bills-supabase";
+import type { Bill } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 
 interface ConstituencyMapProps {

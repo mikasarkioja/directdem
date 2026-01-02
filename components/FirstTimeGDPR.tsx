@@ -58,3 +58,4 @@ export default function FirstTimeGDPR({ userId }: FirstTimeGDPRProps) {
   return <GDPRRegistration onAccept={handleAccept} onDecline={handleDecline} />;
 }
 
+

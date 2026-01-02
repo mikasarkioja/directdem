@@ -45,3 +45,4 @@ declare module 'react-simple-maps' {
   export const Marker: React.FC<MarkerProps>;
 }
 
+

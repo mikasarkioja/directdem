@@ -7,6 +7,8 @@ export interface ParsedSummary {
   topic: string;
   changes: string[];
   impact: string;
+  socialImpact?: string;
+  economicImpact?: string;
 }
 
 /**
@@ -40,7 +42,8 @@ export function parseSummary(summaryText: string): ParsedSummary {
 
     if (line.toLowerCase().includes("vaikutus")) {
       currentSection = "impact";
-      impact = line.replace(/^vaikutus[^:]*:\s*/i, "").trim();
+      // Try to clean up header prefixes like "### 4. Vaikutus lompakkoon ja arkeen"
+      impact = line.replace(/^[#\s\d.]*vaikutus[^:]*:\s*/i, "").trim();
       continue;
     }
 
@@ -53,32 +56,36 @@ export function parseSummary(summaryText: string): ParsedSummary {
       if (cleanLine) {
         changes.push(cleanLine);
       }
-    } else if (currentSection === "impact" && !impact) {
-      impact = line.replace(/^vaikutus[^:]*:\s*/i, "").trim();
+    } else if (currentSection === "impact") {
+      const cleanLine = line.replace(/^[#\s\d.]*vaikutus[^:]*:\s*/i, "").trim();
+      if (cleanLine) {
+        if (!impact) {
+          impact = cleanLine;
+        } else {
+          impact += " " + cleanLine;
+        }
+      }
     }
   }
 
-  // Fallback: if parsing failed, try to extract from raw text
-  if (!topic && !changes.length && !impact) {
-    const topicMatch = summaryText.match(/mistä on kyse\?\s*(.+?)(?:\n|$)/i);
-    if (topicMatch) {
-      topic = topicMatch[1].trim();
-    }
+  // Final cleanup and sentence splitting for social/economic impact
+  let socialImpact = "";
+  let economicImpact = "";
 
-    const changesMatch = summaryText.match(/mikä muuttuu\?\s*([\s\S]+?)(?:\nvaikutus|$)/i);
-    if (changesMatch) {
-      const changesText = changesMatch[1];
-      changes.push(
-        ...changesText
-          .split("\n")
-          .map((line) => line.replace(/^[-•]\s*/, "").trim())
-          .filter((line) => line.length > 0)
-      );
-    }
+  if (impact) {
+    // Try to split by common markers or just take first two sentences
+    const sentences = impact.split(/[.!?]\s+/).filter(s => s.length > 0);
+    
+    // Look for keywords
+    const socialKeywords = ["yhteiskun", "kansala", "ihmis", "arjen", "palvelu"];
+    const economicKeywords = ["lompakko", "euro", "raha", "talou", "kustan", "hinta", "vero"];
 
-    const impactMatch = summaryText.match(/vaikutus[^:]*:\s*(.+?)(?:\n|$)/i);
-    if (impactMatch) {
-      impact = impactMatch[1].trim();
+    socialImpact = sentences.find(s => socialKeywords.some(k => s.toLowerCase().includes(k))) || sentences[0] || "";
+    economicImpact = sentences.find(s => economicKeywords.some(k => s.toLowerCase().includes(k))) || sentences[1] || "";
+    
+    // Fallback if we couldn't find distinct ones
+    if (socialImpact === economicImpact && sentences.length > 1) {
+      economicImpact = sentences[1];
     }
   }
 
@@ -93,6 +100,12 @@ export function parseSummary(summaryText: string): ParsedSummary {
     impact = "Vaikutukset riippuvat lain sisällöstä.";
   }
 
-  return { topic, changes, impact };
+  return { 
+    topic, 
+    changes, 
+    impact,
+    socialImpact: socialImpact.trim() + (socialImpact.endsWith(".") ? "" : "."),
+    economicImpact: economicImpact.trim() + (economicImpact.endsWith(".") ? "" : ".")
+  };
 }
 

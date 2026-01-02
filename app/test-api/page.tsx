@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Loader2, CheckCircle, XCircle, ExternalLink } from "lucide-react";
-import { testEduskuntaAPI, type TestResult } from "@/app/actions/test-eduskunta";
+import { testEduskuntaAPI } from "@/app/actions/test-eduskunta";
+import type { TestResult } from "@/lib/types";
 
 export default function TestAPIPage() {
   const [testing, setTesting] = useState(false);

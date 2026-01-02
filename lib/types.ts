@@ -23,6 +23,7 @@ export interface Bill {
   }[];
   category?: string;
   publishedDate?: string;
+  processingDate?: string;
   url?: string;
 }
 
@@ -104,4 +105,17 @@ export interface SupabaseProfile {
 
 // Dashboard view types
 export type DashboardView = "bills" | "consensus" | "profile";
+
+// API Test types
+export interface TestResult {
+  name: string;
+  url: string;
+  status: number;
+  statusText: string;
+  success: boolean;
+  data?: any;
+  error?: string;
+  contentType?: string;
+}
+
 

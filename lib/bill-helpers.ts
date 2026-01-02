@@ -3,7 +3,7 @@
  * These are not server actions, just utility functions
  */
 
-import type { Bill } from "@/app/actions/bills";
+import type { Bill } from "@/lib/types";
 
 /**
  * Generates mock citizen pulse data based on issue content.
@@ -35,16 +35,23 @@ export function generateMockCitizenPulse(issue: { title: string; abstract?: stri
  * Generates mock political reality data.
  * In production, this would come from actual voting records or party statements.
  */
-export function generateMockPoliticalReality(): Bill["politicalReality"] {
+export function generateMockPoliticalReality(issue?: { title: string }): Bill["politicalReality"] {
+  const text = issue?.title.toLowerCase() || "";
+  
+  // Create different "coalition" scenarios
+  const isLeftIssue = text.includes("sosiaali") || text.includes("palkka") || text.includes("työ");
+  const isRightIssue = text.includes("vero") || text.includes("yritys") || text.includes("leikkaus");
+  const isGreenIssue = text.includes("ympäristö") || text.includes("luonto") || text.includes("ilmasto");
+
   return [
-    { party: "Kokoomus", position: "for", seats: 48 },
-    { party: "Perussuomalaiset", position: "for", seats: 46 },
-    { party: "SDP", position: "for", seats: 43 },
-    { party: "Keskusta", position: "for", seats: 23 },
-    { party: "Vihreät", position: "for", seats: 13 },
-    { party: "Vasemmistoliitto", position: "against", seats: 11 },
+    { party: "Kokoomus", position: isLeftIssue ? "against" : "for", seats: 48 },
+    { party: "Perussuomalaiset", position: isLeftIssue ? "against" : "for", seats: 46 },
+    { party: "SDP", position: isRightIssue ? "against" : "for", seats: 43 },
+    { party: "Keskusta", position: isGreenIssue ? "against" : "for", seats: 23 },
+    { party: "Vihreät", position: isRightIssue ? "against" : "for", seats: 13 },
+    { party: "Vasemmistoliitto", position: isRightIssue ? "against" : "for", seats: 11 },
     { party: "RKP", position: "for", seats: 9 },
-    { party: "Kristillisdemokraatit", position: "abstain", seats: 5 },
+    { party: "Kristillisdemokraatit", position: "for", seats: 5 },
   ];
 }
 

@@ -1,7 +1,6 @@
-"use server";
-
 import { createClient } from "@/lib/supabase/server";
-import { analyzePartyStances, type PartyStanceData } from "@/lib/party-stances";
+import { analyzePartyStances } from "@/lib/party-stances";
+import type { PartyStanceData } from "@/lib/party-stances";
 
 export interface UserVote {
   billId: string;

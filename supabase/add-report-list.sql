@@ -10,3 +10,4 @@ CREATE INDEX IF NOT EXISTS idx_profiles_join_report_list ON profiles(join_report
 -- Update comment
 COMMENT ON COLUMN profiles.join_report_list IS 'User has opted in to weekly anonymous voting reports sent to parliament';
 
+

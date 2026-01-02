@@ -7,12 +7,16 @@ interface BulletinBoardProps {
   summary: ParsedSummary;
   billId: string;
   billTitle?: string;
+  givenDate?: string;
+  processingDate?: string;
 }
 
 export default function BulletinBoard({
   summary,
   billId,
   billTitle,
+  givenDate,
+  processingDate,
 }: BulletinBoardProps) {
   const handleShare = async () => {
     if (navigator.share) {
@@ -73,9 +77,16 @@ export default function BulletinBoard({
 
         {/* Changes */}
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-nordic-dark uppercase tracking-tight">
-            Mitä tapahtuu?
-          </p>
+          <div className="flex justify-between items-baseline mb-1">
+            <p className="text-sm font-semibold text-nordic-dark uppercase tracking-tight">
+              Mitä tapahtuu?
+            </p>
+            {givenDate && (
+              <span className="text-[10px] font-medium text-nordic-dark opacity-70">
+                Annettu: {new Date(givenDate).toLocaleDateString('fi-FI')}
+              </span>
+            )}
+          </div>
           <ul className="space-y-1.5">
             {summary.changes.map((item, i) => (
               <li key={i} className="flex gap-2 text-sm text-nordic-darker">
@@ -83,15 +94,38 @@ export default function BulletinBoard({
                 <span>{item}</span>
               </li>
             ))}
+            <li className="flex gap-2 text-sm text-nordic-darker font-medium italic">
+              <span className="text-nordic-blue font-bold flex-shrink-0">•</span>
+              <span>
+                {processingDate 
+                  ? `Käsitellään eduskunnassa: ${new Date(processingDate).toLocaleDateString('fi-FI')}`
+                  : "Esitys on parhaillaan eduskunnan käsiteltävänä."}
+              </span>
+            </li>
           </ul>
         </div>
 
         {/* Impact */}
-        <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-nordic-blue">
-          <p className="text-xs font-bold text-nordic-blue uppercase mb-1">
+        <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-nordic-blue space-y-3">
+          <p className="text-xs font-bold text-nordic-blue uppercase">
             Vaikutus Arkeen:
           </p>
-          <p className="text-sm font-medium text-nordic-darker">{summary.impact}</p>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <span className="text-nordic-blue font-bold text-sm">1.</span>
+              <p className="text-sm font-medium text-nordic-darker">
+                <span className="text-[10px] text-nordic-dark block opacity-70 uppercase font-bold">Yhteiskunta</span>
+                {summary.socialImpact || summary.impact}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-amber-500 font-bold text-sm">2.</span>
+              <p className="text-sm font-medium text-nordic-darker">
+                <span className="text-[10px] text-amber-600 block opacity-70 uppercase font-bold">Talous</span>
+                {summary.economicImpact || summary.impact}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}

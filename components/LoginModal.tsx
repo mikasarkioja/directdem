@@ -6,14 +6,16 @@ import { createClient } from "@/lib/supabase/client";
 import PrivacySummary from "./PrivacySummary";
 
 interface LoginModalProps {
-  onClose: () => void;
+  onClose?: () => void;
   onSuccess: () => void;
+  isPage?: boolean;
+  initialMessage?: { type: "success" | "error"; text: string } | null;
 }
 
-export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
+export default function LoginModal({ onClose, onSuccess, isPage = false, initialMessage = null }: LoginModalProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(initialMessage);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [joinReportList, setJoinReportList] = useState(false);
   const [activeTab, setActiveTab] = useState<"email" | "bankid">("email");
@@ -146,21 +148,36 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-nordic-deep rounded-2xl max-w-md w-full shadow-xl overflow-hidden">
+  const content = (
+    <div className={`bg-white dark:bg-nordic-deep rounded-2xl max-w-md w-full ${isPage ? 'mx-auto' : 'shadow-xl overflow-hidden'}`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-nordic-gray dark:border-nordic-darker">
-          <h2 className="text-xl font-bold text-nordic-darker dark:text-nordic-white">
-            {showPrivacySummary ? "Tietosuoja" : "Kirjaudu sisään"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors"
-          >
-            <X size={24} />
-          </button>
-        </div>
+        {!isPage && (
+          <div className="flex items-center justify-between p-6 border-b border-nordic-gray dark:border-nordic-darker">
+            <h2 className="text-xl font-bold text-nordic-darker dark:text-nordic-white">
+              {showPrivacySummary ? "Tietosuoja" : "Kirjaudu sisään"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+        )}
+
+        {isPage && showPrivacySummary && !hasSeenPrivacy && (
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-nordic-darker dark:text-nordic-white mb-2">Tietosuoja</h1>
+            <p className="text-nordic-dark dark:text-nordic-gray">Lue ja hyväksy ehdot jatkaaksesi.</p>
+          </div>
+        )}
+
+        {isPage && (!showPrivacySummary || hasSeenPrivacy) && (
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-nordic-darker dark:text-nordic-white mb-2">Kirjaudu sisään</h1>
+            <p className="text-nordic-dark dark:text-nordic-gray">Valitse kirjautumistapa alta.</p>
+          </div>
+        )}
 
         {/* Privacy Summary - shown before first login */}
         {showPrivacySummary && !hasSeenPrivacy ? (
@@ -363,7 +380,16 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
         </div>
           </div>
         )}
-      </div>
+    </div>
+  );
+
+  if (isPage) {
+    return <div className="py-12 px-4 bg-nordic-white min-h-screen flex items-center">{content}</div>;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      {content}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Sparkles, RefreshCw, AlertCircle, CheckCircle } from "lucide-react";
-import { type Bill } from "@/app/actions/bills";
+import type { Bill, VoteStats } from "@/lib/types";
 import { parseSummary } from "@/lib/summary-parser";
 import { processBillToSelkokieli, regenerateBillSummary } from "@/app/actions/process-bill";
 import StreamingSummary from "./StreamingSummary";
@@ -49,9 +49,9 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
         }
       }, 3000);
       
-      console.log(`[BillDetail] About to call processBillToSelkokieli with billId: ${bill.id}`);
-      const result = await processBillToSelkokieli(bill.id);
-      console.log(`[BillDetail] processBillToSelkokieli returned`);
+      console.log(`[BillDetail] About to call regenerateBillSummary (force) with billId: ${bill.id}`);
+      const result = await regenerateBillSummary(bill.id);
+      console.log(`[BillDetail] regenerateBillSummary returned`);
       
       // Clear the progress timer if it's still running
       clearTimeout(progressTimer);
@@ -162,7 +162,11 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                   </span>
                 )}
               </div>
-              <p className="text-sm md:text-base text-nordic-dark">{bill.summary}</p>
+              <p className="text-sm md:text-base text-nordic-dark line-clamp-2 md:line-clamp-none">
+                {bill.summary && (bill.summary.includes("###") || bill.summary.length > 500)
+                  ? "Tämä lakiesitys on tiivistetty selkokielelle tekoälyn avulla. Lue alta tarkempi analyysi muutoksista ja vaikutuksista."
+                  : bill.summary}
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -172,256 +176,231 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
             </button>
           </div>
 
-          {/* Content - Mobile: Single column, Desktop: Scrollable */}
-          <div className="p-6 space-y-6 md:space-y-8 pb-24 md:pb-8">
-            {/* Comparison Mirror - First on Mobile, Second on Desktop */}
-                <div className="order-1 md:order-2">
-                  <ComparisonMirror
-                    parliamentVote={politicalForPercent}
-                    citizenVote={voteStats ? voteStats.for_percent : bill.citizenPulse.for}
-                    billName={bill.title}
-                    billId={bill.id}
-                    parliamentId={bill.parliamentId}
-                    partyData={bill.politicalReality}
-                  />
-                </div>
-            {/* Streaming Summary Component - Second on Mobile, First on Desktop */}
-            <div className="order-2 md:order-1">
+          {/* Content - Summary is now topmost */}
+          <div className="p-6 space-y-6 md:space-y-10 pb-24 md:pb-8">
+            {/* 1. Main AI Summary & Financial Analysis */}
+            <div className="order-1">
                 <StreamingSummary
                   billId={bill.id}
                   existingSummary={savedSummary || bill.summary || null}
                   billParliamentId={bill.parliamentId}
                   billTitle={bill.title}
+                  publishedDate={bill.publishedDate}
                   onSummaryComplete={(summary) => {
                     setSavedSummary(summary);
                   }}
                 />
             </div>
 
-            {/* Fetch Full Text Button */}
-            <div className="bg-nordic-light rounded-2xl p-4 border border-nordic-gray md:order-3">
-              <div className="flex gap-2">
-                <button
-                  onClick={handleProcessFullText}
-                  disabled={processingFullText}
-                  className="flex-1 px-4 py-3 text-sm md:text-base bg-nordic-blue text-white rounded-xl hover:bg-nordic-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  title="Hae täydellinen teksti Eduskunta API:sta"
-                >
-                  {processingFullText ? (
-                    <>
-                      <RefreshCw size={18} className="animate-spin" />
-                      <span>{progressMessage || "Käsitellään..."}</span>
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw size={18} />
-                      <span>Hae täydellinen teksti</span>
-                    </>
-                  )}
-                </button>
-                {(savedSummary || bill.summary) && (
-                  <button
-                    onClick={async () => {
-                      setProcessingFullText(true);
-                      setProgressMessage("Uudelleengeneroidaan pidempi tiivistelmä...");
-                      try {
-                        const result = await regenerateBillSummary(bill.id); // Force regenerate
-                        if (result.success && result.summary) {
-                          setSavedSummary(result.summary);
-                          setProgressMessage("✅ Uusi pidempi tiivistelmä valmis!");
-                          setTimeout(() => setProgressMessage(null), 3000);
-                        } else {
-                          setProgressMessage(null);
-                          alert(result.error || "Uudelleengenerointi epäonnistui");
-                        }
-                      } catch (error: any) {
-                        setProgressMessage(null);
-                        alert(`Virhe: ${error.message || "Tuntematon virhe"}`);
-                      } finally {
-                        setProcessingFullText(false);
-                      }
-                    }}
-                    disabled={processingFullText}
-                    className="px-4 py-3 text-sm md:text-base bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    title="Uudelleengeneroi pidempi tiivistelmä"
-                  >
-                    <RefreshCw size={18} />
-                    <span className="hidden md:inline">Uudelleengeneroi</span>
-                    <span className="md:hidden">Uusi</span>
-                  </button>
-                )}
-              </div>
-              
-              {/* Progress Message Display */}
-              {processingFullText && progressMessage && (
-                <div className="mt-3 p-3 bg-white dark:bg-nordic-deep rounded-lg border border-nordic-gray dark:border-nordic-darker">
-                  <div className="flex items-start gap-2 text-sm">
-                    {progressMessage.startsWith("✅") ? (
-                      <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
-                    ) : progressMessage.startsWith("⚠️") ? (
-                      <AlertCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-                    ) : (
-                      <RefreshCw size={16} className="text-nordic-blue animate-spin mt-0.5 flex-shrink-0" />
+            {/* 2. Interactive Data & Comparison */}
+            <div className="order-2 space-y-8">
+                {/* Comparison Mirror */}
+                <ComparisonMirror
+                  parliamentVote={politicalForPercent}
+                  citizenVote={voteStats ? voteStats.for_percent : bill.citizenPulse.for}
+                  billName={bill.title}
+                  billId={bill.id}
+                  parliamentId={bill.parliamentId}
+                  partyData={bill.politicalReality}
+                />
+
+                {/* Fetch Full Text Button - Moved here to not distract from main summary */}
+                <div className="bg-nordic-light rounded-2xl p-4 border border-nordic-gray">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleProcessFullText}
+                      disabled={processingFullText}
+                      className="flex-1 px-4 py-3 text-sm md:text-base bg-nordic-blue text-white rounded-xl hover:bg-nordic-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      title="Hae täydellinen teksti Eduskunta API:sta"
+                    >
+                      {processingFullText ? (
+                        <>
+                          <RefreshCw size={18} className="animate-spin" />
+                          <span>{progressMessage || "Käsitellään..."}</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw size={18} />
+                          <span>Päivitä syvällinen analyysi (AI)</span>
+                        </>
+                      )}
+                    </button>
+                    {(savedSummary || bill.summary) && (
+                      <button
+                        onClick={async () => {
+                          setProcessingFullText(true);
+                          setProgressMessage("Analysoidaan taloudellisia vaikutuksia...");
+                          try {
+                            const result = await regenerateBillSummary(bill.id);
+                            if (result.success && result.summary) {
+                              setSavedSummary(result.summary);
+                              setProgressMessage("✅ Uusi analyysi valmis!");
+                              setTimeout(() => setProgressMessage(null), 3000);
+                            } else {
+                              setProgressMessage(null);
+                              alert(result.error || "Uudelleengenerointi epäonnistui");
+                            }
+                          } catch (error: any) {
+                            setProgressMessage(null);
+                            alert(`Virhe: ${error.message || "Tuntematon virhe"}`);
+                          } finally {
+                            setProcessingFullText(false);
+                          }
+                        }}
+                        disabled={processingFullText}
+                        className="px-4 py-3 text-sm md:text-base bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        title="Uudelleengeneroi syvällinen talousanalyysi"
+                      >
+                        <RefreshCw size={18} />
+                        <span className="hidden md:inline">Uudelleengeneroi</span>
+                        <span className="md:hidden">Uusi</span>
+                      </button>
                     )}
-                    <span className={`flex-1 ${
-                      progressMessage.startsWith("✅") 
-                        ? "text-green-700 dark:text-green-400" 
-                        : progressMessage.startsWith("⚠️")
-                        ? "text-amber-700 dark:text-amber-400"
-                        : "text-nordic-dark dark:text-nordic-gray"
-                    }`}>
-                      {progressMessage}
-                    </span>
                   </div>
+                  
+                  {processingFullText && progressMessage && (
+                    <div className="mt-3 p-3 bg-white dark:bg-nordic-deep rounded-lg border border-nordic-gray dark:border-nordic-darker">
+                      <div className="flex items-start gap-2 text-sm">
+                        {progressMessage.startsWith("✅") ? (
+                          <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                        ) : progressMessage.startsWith("⚠️") ? (
+                          <AlertCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                        ) : (
+                          <RefreshCw size={16} className="text-nordic-blue animate-spin mt-0.5 flex-shrink-0" />
+                        )}
+                        <span className={`flex-1 ${
+                          progressMessage.startsWith("✅") 
+                            ? "text-green-700 dark:text-green-400" 
+                            : progressMessage.startsWith("⚠️")
+                            ? "text-amber-700 dark:text-amber-400"
+                            : "text-nordic-dark dark:text-nordic-gray"
+                        }`}>
+                          {progressMessage}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-              
-              {!processingFullText && (
-                <p className="text-xs text-nordic-dark dark:text-nordic-gray mt-2 text-center">
-                  Tämä hakee koko lakitekstin, jotta AI voi generoida tarkemman tiivistelmän
-                </p>
-              )}
             </div>
 
-            {/* Voting Section - Hidden on Mobile (using StickyVotingBar instead) */}
-            <div className="hidden md:block bg-white rounded-2xl p-6 border-2 border-nordic-blue md:order-4">
+            {/* 3. Voting Section - High visibility but below main summary */}
+            <div className="bg-white rounded-2xl p-6 border-2 border-nordic-blue order-3">
               <h3 className="text-lg font-semibold text-nordic-darker mb-4 tracking-tight">
-                Äänestä
+                Mitä mieltä olet tästä esityksestä?
               </h3>
               <VoteButton
                 billId={bill.id}
                 onVoteChange={() => {
-                  // Reload vote stats when vote changes
                   getVoteStats(bill.id).then(setVoteStats);
                 }}
               />
               {voteStats && voteStats.total_count > 0 && (
                 <div className="mt-4 pt-4 border-t border-nordic-gray">
                   <p className="text-xs text-nordic-dark mb-2">
-                    Yhteensä {voteStats.total_count} ääntä:
+                    Yhteensä {voteStats.total_count} annettua ääntä:
                   </p>
                   <div className="flex gap-4 text-sm">
                     <span className="text-green-600">
-                      Puolesta: {voteStats.for_percent}% ({voteStats.for_count})
+                      Puolesta: {voteStats.for_percent}%
                     </span>
                     <span className="text-red-600">
-                      Vastaan: {voteStats.against_percent}% ({voteStats.against_count})
+                      Vastaan: {voteStats.against_percent}%
                     </span>
                     <span className="text-gray-600">
-                      Neutraali: {voteStats.neutral_percent}% ({voteStats.neutral_count})
+                      Tyhjää: {voteStats.neutral_percent}%
                     </span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Citizen Pulse Section */}
-            <div className="md:order-5">
-              <h3 className="text-lg font-semibold text-nordic-darker mb-4 tracking-tight">
-                Citizen Pulse
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm text-nordic-dark mb-1">
-                    <span>For</span>
-                    <span className="font-semibold">{bill.citizenPulse.for}%</span>
-                  </div>
-                  <div className="h-6 bg-nordic-light rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-nordic-blue transition-all duration-500"
-                      style={{ width: `${bill.citizenPulse.for}%` }}
-                    />
+            {/* 4. Detailed Stats & Sentiment */}
+            <div className="grid md:grid-cols-2 gap-6 order-4">
+                {/* Citizen Pulse Section */}
+                <div className="bg-nordic-light rounded-2xl p-6 border border-nordic-gray">
+                  <h3 className="text-lg font-semibold text-nordic-darker mb-4 tracking-tight">
+                    Kansalaisten mielipide
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-sm text-nordic-dark mb-1">
+                        <span>Puolesta</span>
+                        <span className="font-semibold">{bill.citizenPulse.for}%</span>
+                      </div>
+                      <div className="h-6 bg-white rounded-full overflow-hidden border border-nordic-gray">
+                        <div
+                          className="h-full bg-nordic-blue transition-all duration-500"
+                          style={{ width: `${bill.citizenPulse.for}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm text-nordic-dark mb-1">
+                        <span>Vastaan</span>
+                        <span className="font-semibold">{bill.citizenPulse.against}%</span>
+                      </div>
+                      <div className="h-6 bg-white rounded-full overflow-hidden border border-nordic-gray">
+                        <div
+                          className="h-full bg-red-400 transition-all duration-500"
+                          style={{ width: `${bill.citizenPulse.against}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="flex justify-between text-sm text-nordic-dark mb-1">
-                    <span>Against</span>
-                    <span className="font-semibold">{bill.citizenPulse.against}%</span>
-                  </div>
-                  <div className="h-6 bg-nordic-light rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-red-400 transition-all duration-500"
-                      style={{ width: `${bill.citizenPulse.against}%` }}
-                    />
+
+                {/* Political Reality Section */}
+                <div className="bg-nordic-light rounded-2xl p-6 border border-nordic-gray">
+                  <h3 className="text-lg font-semibold text-nordic-darker mb-4 tracking-tight">
+                    Eduskunnan voimasuhteet
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-sm text-nordic-dark mb-1">
+                        <span>Puolesta (Hallitus+)</span>
+                        <span className="font-semibold">{politicalForPercent}%</span>
+                      </div>
+                      <div className="h-6 bg-white rounded-full overflow-hidden border border-nordic-gray">
+                        <div
+                          className="h-full bg-nordic-deep transition-all duration-500"
+                          style={{ width: `${politicalForPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm text-nordic-dark mb-1">
+                        <span>Vastaan (Oppositio-)</span>
+                        <span className="font-semibold">{politicalAgainstPercent}%</span>
+                      </div>
+                      <div className="h-6 bg-white rounded-full overflow-hidden border border-nordic-gray">
+                        <div
+                          className="h-full bg-red-600 transition-all duration-500"
+                          style={{ width: `${politicalAgainstPercent}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
             </div>
 
-            {/* Political Reality Section */}
-            <div className="md:order-6">
-              <h3 className="text-lg font-semibold text-nordic-darker mb-4 tracking-tight">
-                Political Reality
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm text-nordic-dark mb-1">
-                    <span>For</span>
-                    <span className="font-semibold">{politicalForPercent}%</span>
-                  </div>
-                  <div className="h-6 bg-nordic-light rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-nordic-blue transition-all duration-500"
-                      style={{ width: `${politicalForPercent}%` }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm text-nordic-dark mb-1">
-                    <span>Against</span>
-                    <span className="font-semibold">{politicalAgainstPercent}%</span>
-                  </div>
-                  <div className="h-6 bg-nordic-light rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-red-400 transition-all duration-500"
-                      style={{ width: `${politicalAgainstPercent}%` }}
-                    />
-                  </div>
-                </div>
+            {/* 5. Party Breakdown */}
+            <div className="order-5 bg-white rounded-2xl border border-nordic-gray overflow-hidden">
+              <div className="bg-nordic-darker p-4">
+                <h3 className="text-lg font-semibold text-white tracking-tight">
+                  Puolueiden kannat
+                </h3>
               </div>
-            </div>
-
-            {/* Discrepancy Gap */}
-            <div
-              className={`p-4 rounded-2xl border-2 md:order-7 ${
-                hasDiscrepancy
-                  ? "bg-red-50 border-red-400"
-                  : "bg-nordic-light border-nordic-gray"
-              }`}
-            >
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-nordic-darker">Discrepancy Gap</span>
-                <span
-                  className={`text-2xl font-bold ${
-                    hasDiscrepancy ? "text-red-600" : "text-nordic-dark"
-                  }`}
-                >
-                  {discrepancyGap}%
-                </span>
-              </div>
-              <p className="text-sm text-nordic-dark mt-2">
-                {hasDiscrepancy
-                  ? "⚠️ Significant gap detected between citizen sentiment and political reality"
-                  : "Citizen sentiment aligns with political reality"}
-              </p>
-            </div>
-
-            {/* Party Breakdown */}
-            <div className="md:order-8">
-              <h3 className="text-lg font-semibold text-nordic-darker mb-4 tracking-tight">
-                Party Positions
-              </h3>
-              <div className="space-y-2">
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {bill.politicalReality.map((party, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-3 bg-nordic-light rounded-lg"
+                    className="flex items-center justify-between p-3 bg-nordic-light rounded-lg border border-nordic-gray/50"
                   >
-                    <span className="font-medium text-nordic-darker">{party.party}</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-nordic-dark">{party.seats} seats</span>
+                    <span className="font-bold text-nordic-darker">{party.party}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-nordic-dark">{party.seats} paikkaa</span>
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           party.position === "for"
                             ? "bg-green-100 text-green-800"
                             : party.position === "against"
@@ -429,7 +408,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {party.position.toUpperCase()}
+                        {party.position === "for" ? "KYLLÄ" : party.position === "against" ? "EI" : "EOS"}
                       </span>
                     </div>
                   </div>

@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { fetchBillsFromSupabase, type Bill } from "@/app/actions/bills-supabase";
-import ConstituencyMap from "./ConstituencyMap";
-import { createClient } from "@/lib/supabase/client";
+import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
+import type { Bill, UserProfile } from "@/lib/types";
+import MinecraftFinlandMap from "./MinecraftFinlandMap";
+import { getUser } from "@/app/actions/auth";
 
 export default function ConsensusMap() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
-  const [userDistrict, setUserDistrict] = useState<string | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,17 +25,12 @@ export default function ConsensusMap() {
         console.error("Failed to load bills:", error);
       }
 
-      // Load user district from profile (if set)
+      // Load user profile
       try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // In the future, this would come from user profile
-          // For now, we'll leave it null or allow user to set it
-          // setUserDistrict(user.user_metadata?.district || null);
-        }
+        const userData = await getUser();
+        setUser(userData);
       } catch (error) {
-        console.error("Failed to load user district:", error);
+        console.error("Failed to load user profile:", error);
       }
 
       setLoading(false);
@@ -83,10 +79,10 @@ export default function ConsensusMap() {
           </div>
         )}
 
-        {/* Constituency Map */}
-        <ConstituencyMap
+        {/* Minecraft Finland Map */}
+        <MinecraftFinlandMap
           selectedBill={selectedBill}
-          userDistrict={userDistrict}
+          user={user}
         />
       </div>
     </div>

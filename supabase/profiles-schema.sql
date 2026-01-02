@@ -59,3 +59,4 @@ CREATE INDEX IF NOT EXISTS idx_profiles_vaalipiiri ON profiles(vaalipiiri);
 -- Grant permissions
 GRANT SELECT, INSERT, UPDATE ON profiles TO authenticated;
 
+

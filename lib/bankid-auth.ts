@@ -1,5 +1,3 @@
-"use server";
-
 /**
  * BankID Authentication using Criipto OIDC
  * This is a placeholder implementation for FTN BankID integration

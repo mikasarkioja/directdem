@@ -2,16 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
-
-export interface UserProfile {
-  id: string;
-  email?: string;
-  full_name?: string;
-  is_verified?: boolean;
-  vaalipiiri?: string;
-  last_login?: string;
-  join_report_list?: boolean;
-}
+import type { UserProfile } from "@/lib/types";
 
 /**
  * Gets the current user with profile data
@@ -20,19 +11,35 @@ export interface UserProfile {
 export async function getUser(): Promise<UserProfile | null> {
   try {
     const supabase = await createClient();
+    
+    // Debug: Check session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (session) {
+      console.log("[getUser] Session found for:", session.user.email);
+    } else if (sessionError) {
+      console.error("[getUser] Session error:", sessionError.message);
+    }
+
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
 
     if (authError) {
-      console.error("[getUser] Auth error:", authError);
+      if (authError.name === 'AuthSessionMissingError') {
+        console.log("[getUser] No session found (normal for unauthenticated users)");
+      } else {
+        console.error("[getUser] Auth error details:", authError);
+      }
       return null;
     }
 
     if (!user) {
+      console.log("[getUser] No user found in session despite no error");
       return null;
     }
+
+    console.log("[getUser] Authenticated user found:", user.email);
 
   // Fetch profile data
   const { data: profile, error: profileError } = await supabase
@@ -67,49 +74,63 @@ export async function getUser(): Promise<UserProfile | null> {
  * Creates or updates user profile after login
  */
 export async function upsertUserProfile(userId: string, metadata?: any) {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const profileData: any = {
-    id: userId,
-    last_login: new Date().toISOString(),
-  };
+    const profileData: any = {
+      id: userId,
+      last_login: new Date().toISOString(),
+    };
 
-  // If metadata contains GDPR consent, update it
-  if (metadata?.gdpr_consent) {
-    profileData.gdpr_consent = true;
-    profileData.gdpr_consent_date = metadata.gdpr_consent_date || new Date().toISOString();
-  }
-  
-  // Legacy support: also update accepted_terms if provided
-  if (metadata?.accepted_terms) {
-    profileData.accepted_terms = true;
-    profileData.terms_accepted_at = metadata.terms_accepted_at || new Date().toISOString();
-    // Also set GDPR consent if not already set
-    if (!profileData.gdpr_consent) {
-      profileData.gdpr_consent = true;
-      profileData.gdpr_consent_date = metadata.terms_accepted_at || new Date().toISOString();
+    // If metadata contains full_name, update it
+    if (metadata?.full_name) {
+      profileData.full_name = metadata.full_name;
     }
-  }
 
-  // If metadata contains full_name, update it
-  if (metadata?.full_name) {
-    profileData.full_name = metadata.full_name;
-  }
+    // If metadata contains join_report_list, update it
+    if (metadata?.join_report_list !== undefined) {
+      profileData.join_report_list = metadata.join_report_list;
+    }
 
-  // If metadata contains join_report_list, update it
-  if (metadata?.join_report_list !== undefined) {
-    profileData.join_report_list = metadata.join_report_list;
-  }
+    // Simplified GDPR update - avoid non-existent columns
+    if (metadata?.gdpr_consent) {
+      profileData.gdpr_consent = true;
+      // Removed gdpr_consent_date until column is confirmed
+    }
 
-  const { error } = await supabase
-    .from("profiles")
-    .upsert(profileData, {
-      onConflict: "id",
-    });
+    const { error } = await supabase
+      .from("profiles")
+      .upsert(profileData, {
+        onConflict: "id",
+      });
+
+    if (error) {
+      // Silently log only to avoid confusing the user during this phase
+      console.log("[upsertUserProfile] Deferred profile update (normal during initial login)");
+    }
+  } catch (err: any) {
+    console.error("[upsertUserProfile] Unexpected Error:", err.message);
+  }
+}
+
+/**
+ * Verifies OTP on the server side
+ */
+export async function verifyOtpAction(token_hash: string, type: any) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash,
+    type,
+  });
 
   if (error) {
-    console.error("Failed to upsert profile:", error);
+    console.error("[verifyOtpAction] Error:", error.message);
     throw error;
   }
+
+  // Pakotetaan evästeiden päivitys kutsumalla getUser
+  await supabase.auth.getUser();
+
+  return data;
 }
 

@@ -65,3 +65,4 @@ Or use an online tool to generate from a logo/image.
 
 ⏳ Icons need to be created (placeholder files exist)
 
+

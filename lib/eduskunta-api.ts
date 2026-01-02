@@ -50,13 +50,19 @@ function mapStatus(eduskuntaStatus: string): "pending" | "active" | "passed" | "
 function extractTextFromXML(xmlString: string): string {
   if (!xmlString) return "";
   
-  // Remove XML tags and extract text content
-  const textMatch = xmlString.match(/>([^<]+)</);
-  if (textMatch) {
-    return textMatch[1].trim();
+  // Check if it looks like XML/HTML
+  if (xmlString.includes("<") && xmlString.includes(">")) {
+    // Robust way to remove all HTML/XML tags
+    // 1. Try to find content between tags first (often most accurate for single-wrapped values)
+    const textMatch = xmlString.match(/>([^<]+)</);
+    if (textMatch && textMatch[1].trim()) {
+      return textMatch[1].trim();
+    }
+    
+    // 2. Fallback: Strip all tags
+    return xmlString.replace(/<[^>]*>/g, '').trim();
   }
   
-  // If no XML tags, return as is
   return xmlString.trim();
 }
 
@@ -66,18 +72,33 @@ function extractTextFromXML(xmlString: string): string {
 function extractUrl(urlString: string): string {
   if (!urlString) return "";
   
+  // Clean string from whitespace
+  const input = urlString.trim();
+  
   // Check if it's already a URL
-  if (urlString.startsWith("http")) {
-    return urlString;
+  if (input.startsWith("http")) {
+    return input;
   }
   
-  // Try to extract from XML
-  const urlMatch = urlString.match(/href=["']([^"']+)["']/);
-  if (urlMatch) {
-    return urlMatch[1];
+  // Try to extract from XML href attribute
+  // Handles: href="url", href='url', href=url
+  const urlMatch = input.match(/href=["']?([^"'\s>]+)["']?/i);
+  if (urlMatch && urlMatch[1]) {
+    const extracted = urlMatch[1].trim();
+    // Only return if it looks like a valid URL or path
+    if (extracted && (extracted.startsWith("http") || extracted.length > 5)) {
+      return extracted;
+    }
   }
   
-  return urlString;
+  // If it's a naked URL inside tags like <url>http://...</url>
+  const tagMatch = input.match(/>(https?:\/\/[^<]+)</i);
+  if (tagMatch && tagMatch[1]) {
+    return tagMatch[1].trim();
+  }
+  
+  // Return empty string if no valid URL found, rather than returning invalid HTML
+  return "";
 }
 
 export async function getLatestBills(limit: number = 10): Promise<EduskuntaIssue[]> {
@@ -123,7 +144,7 @@ export async function getLatestBills(limit: number = 10): Promise<EduskuntaIssue
       if (!Array.isArray(row) || row.length === 0) continue;
 
       const id = row[idIndex] || "";
-      const parliamentId = row[tunnusIndex] || "";
+      const parliamentIdRaw = row[tunnusIndex] || "";
       const date = row[dateIndex] || "";
       const titleXml = row[titleIndex] || "";
       const urlXml = row[urlIndex] || "";
@@ -131,12 +152,13 @@ export async function getLatestBills(limit: number = 10): Promise<EduskuntaIssue
       // Extract clean text from XML
       const title = extractTextFromXML(titleXml);
       const url = extractUrl(urlXml);
+      const cleanParliamentIdRaw = extractTextFromXML(parliamentIdRaw);
 
       // Skip if we don't have essential data
-      if (!title && !parliamentId) continue;
+      if (!title && !cleanParliamentIdRaw) continue;
 
       // Parse parliament ID (e.g., "HE 196/2025 vp" -> "HE 196/2025")
-      const cleanParliamentId = parliamentId.split(",")[0].trim();
+      const cleanParliamentId = cleanParliamentIdRaw.split(",")[0].trim();
 
       issues.push({
         id: id || cleanParliamentId || `he-${Date.now()}-${Math.random()}`,
@@ -188,10 +210,28 @@ function constructS3Url(parliamentId: string): string {
 /**
  * Fetches the full content/document of a bill by its document ID or URL
  * 
- * @param documentIdOrUrl - The document ID from Eduskunta API (e.g., "HE 193/2025 vp") or a direct URL
+ * @param documentIdOrUrlRaw - The document ID from Eduskunta API (e.g., "HE 193/2025 vp") or a direct URL
  * @returns The full HTML/XML/PDF content of the bill or null if not found
  */
-export async function getBillContent(documentIdOrUrl: string): Promise<string | null> {
+export async function getBillContent(documentIdOrUrlRaw: string): Promise<string | null> {
+  if (!documentIdOrUrlRaw) return null;
+
+  // Clean input - if it's HTML, try to get a URL first, then fall back to text content
+  let documentIdOrUrl = documentIdOrUrlRaw.trim();
+  if (documentIdOrUrl.includes("<") && documentIdOrUrl.includes(">")) {
+    const extractedUrl = extractUrl(documentIdOrUrl);
+    if (extractedUrl) {
+      documentIdOrUrl = extractedUrl;
+    } else {
+      documentIdOrUrl = extractTextFromXML(documentIdOrUrl);
+    }
+  }
+  
+  if (!documentIdOrUrl) {
+    console.warn(`[getBillContent] Could not extract valid ID or URL from: ${documentIdOrUrlRaw}`);
+    return null;
+  }
+
   console.log(`[getBillContent] Starting fetch for: ${documentIdOrUrl}`);
   
   try {
@@ -510,14 +550,14 @@ export async function getBillById(parliamentId: string): Promise<EduskuntaIssue 
     const item = await response.json();
 
     return {
-      id: item.id || parliamentId,
-      parliamentId: item.documentId || parliamentId,
-      title: item.titleFi || item.title || "Nimetön esitys",
-      abstract: item.abstractFi || item.abstract || "Tiivistelmä ei saatavilla.",
-      status: mapStatus(item.stage || item.status || ""),
-      category: item.subjectArea || "Yleinen",
-      publishedDate: item.publishedDate || "",
-      url: item.url || "",
+      id: extractTextFromXML(item.id || parliamentId),
+      parliamentId: extractTextFromXML(item.documentId || parliamentId),
+      title: extractTextFromXML(item.titleFi || item.title || "Nimetön esitys"),
+      abstract: extractTextFromXML(item.abstractFi || item.abstract || "Tiivistelmä ei saatavilla."),
+      status: mapStatus(extractTextFromXML(item.stage || item.status || "")),
+      category: extractTextFromXML(item.subjectArea || "Yleinen"),
+      publishedDate: extractTextFromXML(item.publishedDate || ""),
+      url: extractUrl(item.url || ""),
     };
   } catch (error) {
     console.error(`Failed to fetch bill ${parliamentId}:`, error);

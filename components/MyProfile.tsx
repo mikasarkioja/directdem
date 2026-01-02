@@ -10,9 +10,13 @@ import { useRouter } from "next/navigation";
 import { FINNISH_DISTRICTS } from "@/lib/finnish-districts-geo";
 import type { UserProfile } from "@/lib/types";
 
-export default function MyProfile() {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+interface MyProfileProps {
+  user: UserProfile | null;
+}
+
+export default function MyProfile({ user: initialUser }: MyProfileProps) {
+  const [user, setUser] = useState<UserProfile | null>(initialUser);
+  const [loading, setLoading] = useState(!initialUser);
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -26,15 +30,22 @@ export default function MyProfile() {
   const router = useRouter();
 
   useEffect(() => {
-    async function loadUser() {
-      const userData = await getUser();
-      setUser(userData);
-      setSelectedVaalipiiri(userData?.vaalipiiri || "");
-      setJoinReportList(userData?.join_report_list || false);
+    if (initialUser) {
+      setUser(initialUser);
+      setSelectedVaalipiiri(initialUser.vaalipiiri || "");
+      setJoinReportList(initialUser.join_report_list || false);
       setLoading(false);
+    } else {
+      async function loadUser() {
+        const userData = await getUser();
+        setUser(userData);
+        setSelectedVaalipiiri(userData?.vaalipiiri || "");
+        setJoinReportList(userData?.join_report_list || false);
+        setLoading(false);
+      }
+      loadUser();
     }
-    loadUser();
-  }, []);
+  }, [initialUser]);
 
   const handleDownloadData = async () => {
     setDownloading(true);

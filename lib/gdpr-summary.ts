@@ -1,5 +1,3 @@
-"use server";
-
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 
@@ -94,4 +92,5 @@ Keräämme sähköpostiosoitteesi ja äänestyksesi. Emme jaa tietojasi muille.
 Voit poistaa tilisi milloin tahansa asetuksista.`;
   }
 }
+
 

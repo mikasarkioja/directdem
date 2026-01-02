@@ -12,7 +12,7 @@ export async function syncBillsFromEduskunta(): Promise<{ success: boolean; coun
 
   try {
     // Fetch latest bills from Eduskunta API
-    const eduskuntaIssues = await getLatestBills(20);
+    const eduskuntaIssues = await getLatestBills(50);
     
     if (eduskuntaIssues.length === 0) {
       return { success: false, count: 0, error: "No bills found from Eduskunta API" };

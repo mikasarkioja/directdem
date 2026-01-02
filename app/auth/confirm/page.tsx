@@ -2,8 +2,9 @@
 
 import { useSearchParams } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
+import { Suspense } from 'react';
 
-export default function ConfirmPage() {
+function ConfirmContent() {
   const searchParams = useSearchParams();
   const token_hash = searchParams.get('token_hash');
   const type = searchParams.get('type') || 'magiclink';
@@ -30,5 +31,17 @@ export default function ConfirmPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function ConfirmPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nordic-blue"></div>
+      </div>
+    }>
+      <ConfirmContent />
+    </Suspense>
   );
 }

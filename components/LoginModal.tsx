@@ -54,7 +54,7 @@ export default function LoginModal({ onClose, onSuccess, isPage = false, initial
   };
 
   const handlePrivacyDecline = () => {
-    onClose();
+    onClose?.();
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -157,7 +157,7 @@ export default function LoginModal({ onClose, onSuccess, isPage = false, initial
               {showPrivacySummary ? "Tietosuoja" : "Kirjaudu sisään"}
             </h2>
             <button
-              onClick={onClose}
+              onClick={() => onClose?.()}
               className="text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors"
             >
               <X size={24} />

@@ -48,13 +48,13 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
     if (items.length > 0) {
       const casesToInsert = items.map(item => ({
         municipality: item.municipality,
-        external_id: item.id,
+        external_id: item.url || item.id, // RSS-linkkiä käytetään uniikkina tunnisteena
         title: item.title,
         summary: item.summary || item.title,
         raw_text: item.content || "",
         status: item.status || "agenda",
         meeting_date: item.meetingDate || new Date().toISOString(),
-        org_name: item.orgName || "",
+        org_name: item.orgName || "Kaupunginvaltuusto",
         url: item.url || ""
       }));
 

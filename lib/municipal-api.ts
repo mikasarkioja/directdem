@@ -1,8 +1,10 @@
+import Parser from "rss-parser";
+
 /**
  * Municipal API Fetcher
  * 
  * Fetches agenda items and decisions from Finnish municipalities.
- * Default implementation: Espoo (paatokset.espoo.fi)
+ * Integration: Espoo Dynasty RSS, Helsinki Ahjo, Kuntalaisaloite.
  */
 
 export interface MunicipalAgendaItem {
@@ -17,8 +19,10 @@ export interface MunicipalAgendaItem {
   municipality: string;
 }
 
+const parser = new Parser();
+
 /**
- * Base class for municipal APIs to allow easy expansion to other cities
+ * Base class for municipal APIs
  */
 export abstract class MunicipalAPI {
   abstract municipalityName: string;
@@ -26,57 +30,51 @@ export abstract class MunicipalAPI {
 }
 
 /**
- * Espoo implementation using the Open Decisions (6Aika) API
+ * Espoo implementation using Dynasty RSS feeds (Official Kuntavahti)
  */
 export class EspooAPI extends MunicipalAPI {
   municipalityName = "Espoo";
-  private baseUrl = "https://paatokset.espoo.fi/api/v1";
-
+  private meetingItemsRss = "https://espoo.oncloudos.com/cgi/DREQUEST.PHP?page=rss/meetingitems&show=30";
+  
   async fetchLatestItems(limit: number = 10): Promise<MunicipalAgendaItem[]> {
-    console.log(`[EspooAPI] Fetching latest items from Espoo, limit: ${limit}`);
-    
-    // Yritetään kahta eri mahdollista rajapintaa
-    const endpoints = [
-      `${this.baseUrl}/agenda_item/?limit=${limit}`,
-      `https://paatokset.espoo.fi/rest/v1/agendas?limit=${limit}`
-    ];
+    console.log(`[EspooAPI] Fetching items from Espoo Dynasty RSS...`);
+    try {
+      const feed = await parser.parseURL(this.meetingItemsRss);
+      
+      // SUODATUS-logiikka: Poimi vain kohteet, joiden otsikossa tai kuvauksessa on "Kaupunginvaltuusto"
+      const filteredItems = feed.items.filter(item => {
+        const title = (item.title || "").toLowerCase();
+        const snippet = (item.contentSnippet || "").toLowerCase();
+        const content = (item.content || "").toLowerCase();
+        
+        return title.includes("kaupunginvaltuusto") || 
+               snippet.includes("kaupunginvaltuusto") || 
+               content.includes("kaupunginvaltuusto");
+      });
 
-    for (const url of endpoints) {
-      try {
-        console.log(`[EspooAPI] Trying endpoint: ${url}`);
-        const response = await fetch(url, {
-          next: { revalidate: 3600 },
-          headers: { "Accept": "application/json" },
-          signal: AbortSignal.timeout(8000)
-        });
+      console.log(`[EspooAPI] RSS sync: Found ${filteredItems.length} council items out of ${feed.items.length}`);
 
-        if (response.ok) {
-          const data = await response.json();
-          // Käsitellään eri vastausmuodot (Open Decisions vs Rest API)
-          const objects = data.objects || data.items || (Array.isArray(data) ? data : []);
-          
-          if (objects.length > 0) {
-            console.log(`[EspooAPI] Successfully fetched ${objects.length} items from ${url}`);
-            return objects.map((item: any) => ({
-              id: (item.id || item.native_id || Math.random()).toString(),
-              title: item.title || item.subject || "Nimetön asia",
-              summary: item.preamble || item.abstract || item.title || item.subject,
-              content: item.resolution || item.content || item.text,
-              status: item.decision_status || item.status || "agenda",
-              meetingDate: item.meeting?.date || item.meeting_date || item.date,
-              orgName: item.organization?.name || item.council_name || "Espoon kaupunki",
-              url: item.origin_url || item.html_url || item.pdf_url,
-              municipality: this.municipalityName
-            }));
-          }
-        }
-      } catch (error: any) {
-        console.warn(`[EspooAPI] Endpoint ${url} failed:`, error.message);
+      if (filteredItems.length === 0) {
+        // If no fresh items found, try to return mock data for development
+        return this.getMockItems();
       }
-    }
 
-    console.error("[EspooAPI] All endpoints failed, using mock data");
-    return this.getMockItems();
+      return filteredItems.slice(0, limit).map(item => ({
+        // RSS-linkkiä käytetään uniikkina tunnisteena duplikaattien estämiseksi
+        id: item.link || Math.random().toString(),
+        title: item.title || "Nimetön asia",
+        summary: item.contentSnippet || item.title,
+        content: item.content || item.contentSnippet,
+        status: "agenda",
+        meetingDate: item.pubDate,
+        orgName: "Kaupunginvaltuusto",
+        url: item.link,
+        municipality: this.municipalityName
+      }));
+    } catch (error: any) {
+      console.error("[EspooAPI] RSS fetch failed:", error.message);
+      return this.getMockItems();
+    }
   }
 
   private getMockItems(): MunicipalAgendaItem[] {
@@ -84,42 +82,22 @@ export class EspooAPI extends MunicipalAPI {
     return [
       {
         id: "mock-espoo-1",
-        title: "Keskuspuhdistamon laajennus ja modernisointi",
+        title: "Keskuspuhdistamon laajennus ja modernisointi (Kaupunginvaltuusto)",
         summary: "Päätös Blominmäen jätevedenpuhdistamon kapasiteetin nostamisesta vastaamaan kasvavaa asukasmäärää.",
-        content: "Kaupunginhallitus päätti hyväksyä suunnitelman laajentaa puhdistamoa...",
+        content: "Kaupunginvaltuusto päätti hyväksyä suunnitelman laajentaa puhdistamoa...",
         status: "decided",
         meetingDate: "2026-01-03T10:00:00Z",
-        orgName: "Kaupunginhallitus",
+        orgName: "Kaupunginvaltuusto",
         municipality: "Espoo"
       },
       {
         id: "mock-espoo-2",
-        title: "Länsiväylän ympäristövaikutusten arviointi (YVA)",
+        title: "Länsiväylän meluaitojen toteuttaminen (Kaupunginvaltuusto)",
         summary: "Espoon kaupunki antaa lausunnon Länsiväylän parantamisen ympäristövaikutuksista Tapiolan kohdalla.",
-        content: "Hankkeella on merkittäviä vaikutuksia kaupunkikuvaan ja melutasoon...",
+        content: "Kaupunginvaltuusto käsittelee hankkeen toteutussuunnitelmaa...",
         status: "agenda",
         meetingDate: "2026-01-15T17:00:00Z",
-        orgName: "Kaupunkisuunnittelulautakunta",
-        municipality: "Espoo"
-      },
-      {
-        id: "mock-espoo-3",
-        title: "Kiviruukin uuden asuinalueen kaavoitus",
-        summary: "Kaavaehdotus mahdollistaa asuinkerrostalojen ja palvelujen rakentamisen Finnoon metropysäkin läheisyyteen.",
-        content: "Alueelle tavoitellaan hiilineutraalia rakentamista...",
-        status: "agenda",
-        meetingDate: "2026-01-20T16:00:00Z",
-        orgName: "Kaupunginhallitus",
-        municipality: "Espoo"
-      },
-      {
-        id: "mock-espoo-4",
-        title: "Maksuton joukkoliikenne alle 18-vuotiaille",
-        summary: "Aloite maksuttoman HSL-liikenteen tarjoamisesta kaikille espoolaisille nuorille.",
-        content: "Kustannusarvio on noin 12 miljoonaa euroa vuodessa...",
-        status: "agenda",
-        meetingDate: "2026-02-01T18:00:00Z",
-        orgName: "Valtuusto",
+        orgName: "Kaupunginvaltuusto",
         municipality: "Espoo"
       }
     ];

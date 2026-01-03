@@ -81,6 +81,14 @@ export default function MunicipalCaseDetail({ item, onClose }: MunicipalCaseDeta
             onSummaryComplete={setSavedSummary}
           />
 
+          {/* Comparison Mirror for Municipal Context */}
+          <ComparisonMirror
+            parliamentVote={item.councilReality ? Math.round((item.councilReality.filter(p => p.position === 'for').reduce((s, p) => s + p.seats, 0) / item.councilReality.reduce((s, p) => s + p.seats, 0)) * 100) : 55}
+            citizenVote={item.citizenPulse.for}
+            billName={item.title}
+            isMunicipal={true}
+          />
+
           {/* Voting Section */}
           <div className="bg-white rounded-2xl p-6 border-2 border-nordic-blue">
             <h3 className="text-lg font-semibold text-nordic-darker mb-4">Mitä mieltä olet?</h3>

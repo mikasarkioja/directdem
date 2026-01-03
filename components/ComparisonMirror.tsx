@@ -15,7 +15,8 @@ interface ComparisonMirrorProps {
     position: "for" | "against" | "abstain";
     seats: number;
   }[];
-  partyStances?: PartyStanceData[]; // New prop for AI-analyzed stances
+  partyStances?: PartyStanceData[];
+  isMunicipal?: boolean; // New prop to handle municipal context
 }
 
 export default function ComparisonMirror({
@@ -26,14 +27,15 @@ export default function ComparisonMirror({
   parliamentId,
   partyData,
   partyStances,
+  isMunicipal = false,
 }: ComparisonMirrorProps) {
   const [isPartyBreakdownOpen, setIsPartyBreakdownOpen] = useState(false);
   const [loadingStances, setLoadingStances] = useState(false);
   const [analyzedStances, setAnalyzedStances] = useState<PartyStanceData[] | null>(partyStances || null);
 
-  // Load party stances if billId and parliamentId are provided
+  // Load party stances if not municipal and billId/parliamentId are provided
   useEffect(() => {
-    if (billId && parliamentId && !analyzedStances && !loadingStances) {
+    if (!isMunicipal && billId && parliamentId && !analyzedStances && !loadingStances) {
       setLoadingStances(true);
       import("@/app/actions/party-stances")
         .then(({ getPartyStances }) => getPartyStances(billId, parliamentId))
@@ -48,7 +50,7 @@ export default function ComparisonMirror({
           setLoadingStances(false);
         });
     }
-  }, [billId, parliamentId, analyzedStances, loadingStances]);
+  }, [billId, parliamentId, analyzedStances, loadingStances, isMunicipal]);
 
   const gap = Math.abs(parliamentVote - citizenVote);
   const isHighDiscrepancy = gap > 20;
@@ -60,16 +62,16 @@ export default function ComparisonMirror({
   return (
     <div className="p-6 bg-nordic-light rounded-2xl md:rounded-3xl border-2 border-nordic-gray shadow-sm">
       <h3 className="text-lg md:text-xl font-bold mb-6 text-nordic-darker tracking-tight">
-        Demokratia-peili: {billName}
+        {isMunicipal ? "Päätös-peili" : "Demokratia-peili"}: {billName}
       </h3>
 
       <div className="space-y-8">
-        {/* Parliament Side - Formal/Traditional Style */}
+        {/* Formal Side (Parliament or Council) */}
         <div className="space-y-3">
           <div className="flex justify-between items-center text-sm font-medium text-nordic-dark">
             <span className="flex items-center gap-2">
               <Building2 size={16} className="text-nordic-deep" />
-              Eduskunnan kanta
+              {isMunicipal ? "Valtuuston kanta" : "Eduskunnan kanta"}
             </span>
             <span className="font-semibold text-nordic-darker">
               {parliamentVote}% puolesta

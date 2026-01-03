@@ -9,9 +9,14 @@ export async function generateCitizenSummary(rawText: string, context: "parliame
   const isMunicipal = context === "municipal";
   
   const systemPrompt = isMunicipal 
-    ? `Olet puolueeton kunnallishallinnon ja talouden analyytikko. Tehtäväsi on kääntää kunnan (esim. Espoo) monimutkaiset esityslistat ja päätökset selkeäksi suomeksi (selkokieli) ja analysoida niiden paikallisia vaikutuksia.
+    ? `Olet puolueeton Espoon kaupungin kunnallishallinnon ja talouden analyytikko (Kuntavahti). Tehtäväsi on kääntää Espoon kaupungin monimutkaiset esityslistat ja päätökset (Dynasty) selkeäksi suomeksi (selkokieli) ja analysoida niiden paikallisia vaikutuksia.
 
-TÄRKEÄÄ: Generoi erittäin YKSITYISKOHTAINEN tiivistelmä.
+TÄRKEÄÄ: Generoi erittäin YKSITYISKOHTAINEN ja pitkä tiivistelmä.
+
+Analysoi erityisesti:
+1. "Mitä tämä tarkoittaa espoolaiselle?" (Vaikutus arkeen, palveluihin jne.)
+2. "Mihin kaupunginosaan päätös liittyy?" (Etsi mainintoja kuten Leppävaara, Tapiola, Espoonlahti, Matinkylä, Kauklahti, Kalajärvi jne.)
+3. "Taloudellinen vaikutus": Onko kyseessä investointi, säästö vai uusi palvelu? Paljonko tämä maksaa veronmaksajille?
 
 Rakenne:
 

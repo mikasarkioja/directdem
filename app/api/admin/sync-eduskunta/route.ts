@@ -4,7 +4,7 @@ import axios from "axios";
 const API_BASE = 'https://avoindata.eduskunta.fi/api/v1/tables';
 
 export async function POST() {
-  const encoder = new TextDecoder();
+  const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       const log = (msg: string) => {
@@ -20,22 +20,22 @@ export async function POST() {
         log("🚀 Käynnistetään Admin-synkronointi...");
 
         // 1. MPs
-        log("--- Vaihe 1: Kansanedustajat ---");
-        const mpsRes = await axios.get(`${API_BASE}/Kansanedustaja/rows`);
+        log("--- Vaihe 1: Kansanedustajat (MemberOfParliament) ---");
+        const mpsRes = await axios.get(`${API_BASE}/MemberOfParliament/rows?perPage=500`);
         const colNames = mpsRes.data.columnNames || [];
         const rows = mpsRes.data.rowData || [];
         
         const mps = rows.map((row: any) => {
-          const getVal = (col: string) => Array.isArray(row) ? row[colNames.indexOf(col)] : row[col];
+          const getVal = (col: string) => row[colNames.indexOf(col)];
           const personId = getVal('personId');
           return {
             id: parseInt(personId),
-            first_name: getVal('firstNames'),
-            last_name: getVal('surname'),
-            party: getVal('party'),
-            constituency: getVal('constituency'),
+            first_name: getVal('firstname')?.trim(),
+            last_name: getVal('lastname')?.trim(),
+            party: getVal('party')?.trim() || 'Tuntematon',
+            constituency: '',
             image_url: `https://www.eduskunta.fi/FI/kansanedustajat/Images/${personId}.jpg`,
-            is_active: getVal('currentMp') === 'true'
+            is_active: true
           };
         }).filter((m: any) => !isNaN(m.id));
 
@@ -44,23 +44,27 @@ export async function POST() {
         if (mpErr) throw new Error(`MP-virhe: ${mpErr.message}`);
         log("✅ Kansanedustajat tallennettu.");
 
-        // 2. Voting Events (Limited for test)
-        log("--- Vaihe 2: Äänestystapahtumat (100 kpl) ---");
-        const vRes = await axios.get(`${API_BASE}/Aanestys/rows`, { params: { '$top': 100, '$orderby': 'AanestysPvm desc' } });
+        // 2. Voting Events
+        log("--- Vaihe 2: Äänestystapahtumat (SaliDBAanestys) ---");
+        const vRes = await axios.get(`${API_BASE}/SaliDBAanestys/rows?perPage=50`);
         const vCols = vRes.data.columnNames || [];
         const vRows = vRes.data.rowData || [];
         
         const events = vRows.map((row: any) => {
-          const getVal = (col: string) => Array.isArray(row) ? row[vCols.indexOf(col)] : row[col];
+          const getVal = (col: string) => row[vCols.indexOf(col)];
+          const heRaw = getVal('AanestysValtiopaivaasia') || '';
+          const heMatch = heRaw.match(/HE\s+\d+\/\d+/i);
+          const heId = heMatch ? heMatch[0] : null;
+
           return {
-            id: getVal('aanestysId')?.toString(),
-            title_fi: getVal('kohtaOtsikko') || 'Ei otsikkoa',
-            voting_date: getVal('aanestysPvm'),
-            he_id: getVal('heTunnus'),
-            ayes: parseInt(getVal('jaa')) || 0,
-            noes: parseInt(getVal('ei')) || 0,
-            blanks: parseInt(getVal('tyhjaa')) || 0,
-            absent: parseInt(getVal('poissa')) || 0
+            id: getVal('AanestysId')?.toString(),
+            title_fi: getVal('KohtaOtsikko') || getVal('AanestysOtsikko') || 'Ei otsikkoa',
+            voting_date: getVal('IstuntoPvm'),
+            he_id: heId,
+            ayes: parseInt(getVal('AanestysTulosJaa')) || 0,
+            noes: parseInt(getVal('AanestysTulosEi')) || 0,
+            blanks: parseInt(getVal('AanestysTulosTyhjia')) || 0,
+            absent: parseInt(getVal('AanestysTulosPoissa')) || 0
           };
         }).filter((e: any) => e.id);
 
@@ -84,4 +88,3 @@ export async function POST() {
     },
   });
 }
-

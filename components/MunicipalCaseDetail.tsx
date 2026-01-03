@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Sparkles, RefreshCw, AlertCircle, CheckCircle, MapPin, Wallet } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Sparkles, RefreshCw, Building2, MapPin, Wallet } from "lucide-react";
 import type { MunicipalCase } from "@/lib/types";
+import { processMunicipalCaseToSelkokieli } from "@/app/actions/process-municipal";
 import StreamingSummary from "./StreamingSummary";
 import ComparisonMirror from "./ComparisonMirror";
 import VoteButton from "./VoteButton";
-import { processMunicipalCaseToSelkokieli } from "@/app/actions/process-municipal";
 
 interface MunicipalCaseDetailProps {
   item: MunicipalCase;
@@ -14,105 +15,115 @@ interface MunicipalCaseDetailProps {
 }
 
 export default function MunicipalCaseDetail({ item, onClose }: MunicipalCaseDetailProps) {
-  const [processing, setProcessing] = useState(false);
   const [savedSummary, setSavedSummary] = useState<string | null>(item.summary || null);
-  const [progressMessage, setProgressMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSavedSummary(item.summary || null);
-  }, [item]);
+  const [processing, setProcessing] = useState(false);
 
   const handleProcess = async () => {
     setProcessing(true);
-    setProgressMessage("Analysoidaan paikallisia vaikutuksia...");
-    
     try {
       const result = await processMunicipalCaseToSelkokieli(item.id);
-      
-      if (result.success && result.summary) {
-        setSavedSummary(result.summary);
-        setProgressMessage("✅ Analyysi valmis!");
-        setTimeout(() => setProgressMessage(null), 3000);
-      } else {
-        setProgressMessage(`⚠️ Virhe: ${result.error}`);
-        setTimeout(() => setProgressMessage(null), 3000);
-      }
-    } catch (error: any) {
-      setProgressMessage("⚠️ Odottamaton virhe.");
-      setTimeout(() => setProgressMessage(null), 3000);
+      if (result.success && result.summary) setSavedSummary(result.summary);
+    } catch (e) {
+      console.error(e);
     } finally {
       setProcessing(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
-      <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] md:max-h-[95vh] overflow-y-auto flex flex-col">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-nordic-gray p-6 rounded-t-3xl flex justify-between items-start z-10">
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2">
-              <span className="px-2 py-1 bg-nordic-blue text-white text-[10px] font-bold rounded uppercase self-start">
-                {item.municipality}
-              </span>
-              <h2 className="text-xl md:text-2xl font-bold text-nordic-darker tracking-tight">{item.title}</h2>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-command-bg/90 backdrop-blur-md flex items-center justify-center z-50 p-2 md:p-4 overflow-y-auto"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        className="bg-command-card border border-white/10 rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative custom-scrollbar"
+      >
+        <div className="sticky top-0 bg-command-card/80 backdrop-blur-md border-b border-white/5 p-6 flex justify-between items-center z-20">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-command-emerald/10 rounded-xl flex items-center justify-center text-command-emerald">
+              <Building2 size={20} />
             </div>
-            <div className="flex flex-wrap gap-4 text-xs text-nordic-dark">
-              {item.orgName && <span className="font-bold">{item.orgName}</span>}
-              {item.neighborhood && <span className="flex items-center gap-1"><MapPin size={12} /> {item.neighborhood}</span>}
-              {item.costEstimate && <span className="flex items-center gap-1"><Wallet size={12} /> {item.costEstimate.toLocaleString()} €</span>}
+            <div>
+              <h2 className="text-xl font-black uppercase tracking-tight text-white">{item.title}</h2>
+              <p className="text-command-gray text-[10px] font-bold uppercase tracking-widest">{item.municipality} Kuntavahti</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-nordic-dark hover:text-nordic-darker ml-4">
+          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors text-command-gray">
             <X size={24} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-8 pb-24 md:pb-8">
-          {/* AI Summary */}
-          <StreamingSummary
-            billId={item.id}
-            existingSummary={savedSummary}
-            billParliamentId={item.externalId}
-            billTitle={item.title}
-            publishedDate={item.meetingDate}
-            context="municipal"
-            onSummaryComplete={setSavedSummary}
-          />
-
-          {/* Comparison Mirror for Municipal Context */}
-          <ComparisonMirror
-            parliamentVote={item.councilReality ? Math.round((item.councilReality.filter(p => p.position === 'for').reduce((s, p) => s + p.seats, 0) / item.councilReality.reduce((s, p) => s + p.seats, 0)) * 100) : 55}
-            citizenVote={item.citizenPulse.for}
-            billName={item.title}
-            isMunicipal={true}
-          />
-
-          {/* Voting Section */}
-          <div className="bg-white rounded-2xl p-6 border-2 border-nordic-blue">
-            <h3 className="text-lg font-semibold text-nordic-darker mb-4">Mitä mieltä olet?</h3>
-            <VoteButton
-              billId={item.id}
-              // Note: Reuse VoteButton, might need to adapt for municipal_votes table later
-              onVoteChange={() => {}} 
-            />
+        <div className="p-6 md:p-10 space-y-12">
+          {/* Metadata Sector */}
+          <div className="flex flex-wrap gap-6">
+            {item.neighborhood && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-command-bg rounded-xl border border-white/5">
+                <MapPin size={14} className="text-command-rose" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white">{item.neighborhood}</span>
+              </div>
+            )}
+            {item.costEstimate && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-command-bg rounded-xl border border-white/5">
+                <Wallet size={14} className="text-command-emerald" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white">{item.costEstimate.toLocaleString()} €</span>
+              </div>
+            )}
           </div>
 
-          {/* Actions */}
-          <div className="bg-nordic-light rounded-2xl p-4 border border-nordic-gray">
-            <button
+          {/* AI Sector */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 text-command-emerald neon-text">
+              <Sparkles size={18} />
+              <h3 className="text-xs font-black uppercase tracking-widest">Local AI Intelligence</h3>
+            </div>
+            <StreamingSummary
+              billId={item.id}
+              existingSummary={savedSummary}
+              billTitle={item.title}
+              publishedDate={item.meetingDate}
+              context="municipal"
+              onSummaryComplete={setSavedSummary}
+            />
+            <button 
               onClick={handleProcess}
               disabled={processing}
-              className="w-full px-4 py-3 bg-nordic-blue text-white rounded-xl hover:bg-nordic-deep transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5 text-command-gray"
             >
-              {processing ? <RefreshCw size={18} className="animate-spin" /> : <Sparkles size={18} />}
-              <span>{progressMessage || "Päivitä AI-Analyysi (Paikalliset vaikutukset)"}</span>
+              {processing ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+              Päivitä paikallinen analyysi
             </button>
           </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 text-command-rose neon-text">
+                <RefreshCw size={18} />
+                <h3 className="text-xs font-black uppercase tracking-widest">Decision Mirror</h3>
+              </div>
+              <ComparisonMirror
+                parliamentVote={55} // Mock council vote
+                citizenVote={item.citizenPulse.for}
+                billName={item.title}
+                isMunicipal={true}
+              />
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 text-command-neon neon-text">
+                <Building2 size={18} />
+                <h3 className="text-xs font-black uppercase tracking-widest">The Arena</h3>
+              </div>
+              <div className="bg-command-bg border border-white/5 p-8 rounded-3xl shadow-inner">
+                <VoteButton billId={item.id} isMunicipal={true} />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
-

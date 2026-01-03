@@ -10,6 +10,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        command: {
+          bg: "#050B15",
+          card: "#0A1220",
+          neon: "#00F5FF",
+          emerald: "#10B981",
+          rose: "#F43F5E",
+          gray: "#94A3B8",
+        },
         nordic: {
           white: "#ECEFF4",
           light: "#E5E9F0",

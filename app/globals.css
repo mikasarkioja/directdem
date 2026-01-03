@@ -3,16 +3,33 @@
 @tailwind utilities;
 
 :root {
-  --background: #ECEFF4;
-  --foreground: #2E3440;
+  --background: #050B15;
+  --foreground: #F8FAFC;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: system-ui, -apple-system, sans-serif;
-  /* Prevent text selection on buttons and interactive elements */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Neon Glow Utilities */
+.neon-border {
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.3), inset 0 0 5px rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.5);
+}
+
+.neon-text {
+  text-shadow: 0 0 8px rgba(0, 245, 255, 0.5);
+}
+
+.emerald-glow {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.rose-glow {
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
 }
 
 /* Touch-friendly button styles */

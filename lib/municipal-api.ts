@@ -210,6 +210,43 @@ export class HelsinkiAPI extends MunicipalAPI {
 }
 
 /**
+ * Kuntalaisaloite.fi implementation (Always live and real data)
+ */
+export class KuntalaisaloiteAPI extends MunicipalAPI {
+  municipalityName = "Aloitteet";
+  private baseUrl = "https://www.kuntalaisaloite.fi/api/v1";
+
+  async fetchLatestItems(limit: number = 10): Promise<MunicipalAgendaItem[]> {
+    try {
+      const url = `${this.baseUrl}/initiatives?limit=${limit}`;
+      const response = await fetch(url, {
+        next: { revalidate: 3600 },
+        headers: { "Accept": "application/json" }
+      });
+
+      if (!response.ok) throw new Error(`Kuntalaisaloite API error: ${response.status}`);
+
+      const data = await response.json();
+      
+      return data.map((item: any) => ({
+        id: `aloite-${item.id.split('/').pop()}`,
+        title: item.name,
+        summary: `Kuntalaisaloite: ${item.name}. ${item.participantCount} osallistujaa.`,
+        content: `Tämä on kuntalaisaloite, joka on jätetty ${item.municipality.nameFi}n kunnalle.`,
+        status: "agenda",
+        meetingDate: item.publishDate,
+        orgName: `Kuntalaisaloite: ${item.municipality.nameFi}`,
+        url: item.url.fi,
+        municipality: item.municipality.nameFi
+      }));
+    } catch (error) {
+      console.error("Failed to fetch from Kuntalaisaloite API:", error);
+      return [];
+    }
+  }
+}
+
+/**
  * Helper to get the correct API implementation for a municipality
  */
 export function getMunicipalAPI(municipality: string): MunicipalAPI {
@@ -218,8 +255,9 @@ export function getMunicipalAPI(municipality: string): MunicipalAPI {
       return new EspooAPI();
     case "helsinki":
       return new HelsinkiAPI();
+    case "aloitteet":
+      return new KuntalaisaloiteAPI();
     default:
-      // Fallback to Espoo API which handles its own mock data
       return new EspooAPI();
   }
 }

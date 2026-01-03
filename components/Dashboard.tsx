@@ -42,7 +42,7 @@ export default function Dashboard({ user }: DashboardProps) {
               
               {viewContext === "municipal" && (
                 <div className="flex gap-2">
-                  {["Espoo", "Helsinki"].map(muni => (
+                  {["Espoo", "Helsinki", "Aloitteet"].map(muni => (
                     <button
                       key={muni}
                       onClick={() => setSelectedMunicipality(muni)}
@@ -52,7 +52,7 @@ export default function Dashboard({ user }: DashboardProps) {
                           : "bg-white text-nordic-dark border-nordic-gray/20"
                       }`}
                     >
-                      {muni}
+                      {muni === "Aloitteet" ? "🔥 Aloitteet (Live)" : muni}
                     </button>
                   ))}
                 </div>

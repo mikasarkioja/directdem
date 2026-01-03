@@ -25,7 +25,12 @@ const MunicipalityLogo = ({ municipality }: { municipality: string }) => {
       </div>
     );
   }
-  return <Building2 className="w-8 h-8 text-nordic-blue" />;
+  // Generic logo for others or Aloitteet
+  return (
+    <div className="w-8 h-8 flex-shrink-0 bg-nordic-blue rounded-md flex items-center justify-center text-white shadow-sm overflow-hidden">
+      <Building2 size={18} />
+    </div>
+  );
 };
 
 export default function MunicipalDecisionCard({ item, onClick }: MunicipalDecisionCardProps) {
@@ -63,8 +68,11 @@ export default function MunicipalDecisionCard({ item, onClick }: MunicipalDecisi
           <div className="flex items-center gap-3">
             <MunicipalityLogo municipality={item.municipality} />
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-nordic-darker uppercase tracking-widest leading-none mb-1">
+              <span className="text-[10px] font-black text-nordic-darker uppercase tracking-widest leading-none mb-1 flex items-center gap-1">
                 {item.municipality}
+                {item.id.startsWith('aloite-') && (
+                  <span className="ml-1 px-1 bg-red-500 text-white rounded-[2px] text-[8px] animate-pulse">LIVE</span>
+                )}
               </span>
               <span className={`inline-block w-fit px-1.5 py-0.5 rounded text-[9px] font-bold uppercase leading-none ${
                 item.status === 'agenda' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'

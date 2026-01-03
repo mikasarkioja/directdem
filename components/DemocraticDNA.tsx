@@ -77,7 +77,7 @@ export default function DemocraticDNA() {
               <PolarGrid stroke="#e2e8f0" />
               <PolarAngleAxis 
                 dataKey="subject" 
-                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900, textTransform: 'uppercase' }} 
+                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} 
               />
               <Radar
                 name="DNA"

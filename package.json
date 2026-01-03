@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "fetch-mps": "tsx scripts/fetch-mps.ts",
-    "fetch-eduskunta-data": "tsx scripts/fetch-eduskunta-data.ts"
+    "fetch-eduskunta-data": "tsx scripts/fetch-eduskunta-data.ts",
+    "analyze-mp-dna": "tsx scripts/analyze-mp-dna.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.24",

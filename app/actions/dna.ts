@@ -2,14 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { addPartyXP } from "./parties";
-
-export type ArchetypePoints = {
-  active: number;
-  fact_checker: number;
-  mediator: number;
-  reformer: number;
-  local_hero: number;
-};
+import type { ArchetypePoints } from "@/lib/types";
 
 export async function getDNAPoints() {
   const supabase = await createClient();

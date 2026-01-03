@@ -64,6 +64,14 @@ export interface VoteStats {
 }
 
 // User profile types
+export interface ArchetypePoints {
+  active: number;
+  fact_checker: number;
+  mediator: number;
+  reformer: number;
+  local_hero: number;
+}
+
 export interface UserProfile {
   id: string;
   email?: string;
@@ -157,7 +165,7 @@ export interface VirtualParty {
   created_by: string;
   total_xp: number;
   level: number;
-  dna_profile_avg: Record<string, number>;
+  dna_profile_avg: ArchetypePoints;
   memberCount?: number;
   matchScore?: number;
 }

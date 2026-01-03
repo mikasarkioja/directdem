@@ -62,7 +62,7 @@ export async function createParty(name: string) {
   return { success: true, partyId: party.id };
 }
 
-async function generatePartyManifesto(partyName: string, dnaProfile: any) {
+async function generatePartyManifesto(partyName: string, dnaProfile: ArchetypePoints) {
   try {
     const { text } = await generateText({
       model: openai("gpt-4o-mini") as any,
@@ -104,7 +104,7 @@ export async function getPartiesWithMatches() {
   }).sort((a, b) => b.matchScore - a.matchScore);
 }
 
-function calculateMatchScore(myPoints: ArchetypePoints, partyAvg: any): number {
+function calculateMatchScore(myPoints: ArchetypePoints, partyAvg: ArchetypePoints): number {
   // Simple cosine similarity or Euclidean distance inverse
   let diff = 0;
   const keys: (keyof ArchetypePoints)[] = ['active', 'fact_checker', 'mediator', 'reformer', 'local_hero'];

@@ -8,6 +8,7 @@ import { processMunicipalCaseToSelkokieli } from "@/app/actions/process-municipa
 import StreamingSummary from "./StreamingSummary";
 import ComparisonMirror from "./ComparisonMirror";
 import VoteButton from "./VoteButton";
+import { addDNAPoints, trackEngagement } from "@/app/actions/dna";
 
 interface MunicipalCaseDetailProps {
   item: MunicipalCase;
@@ -17,6 +18,19 @@ interface MunicipalCaseDetailProps {
 export default function MunicipalCaseDetail({ item, onClose }: MunicipalCaseDetailProps) {
   const [savedSummary, setSavedSummary] = useState<string | null>(item.summary || null);
   const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    // Track engagement and add local_hero points
+    const startTime = Date.now();
+    addDNAPoints("local_hero", 1); // Opening a municipal case gives 1 point
+
+    return () => {
+      const durationSeconds = (Date.now() - startTime) / 1000;
+      if (durationSeconds > 30) {
+        addDNAPoints("local_hero", 2);
+      }
+    };
+  }, [item.id]);
 
   const handleProcess = async () => {
     setProcessing(true);

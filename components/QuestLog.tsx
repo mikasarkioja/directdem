@@ -50,42 +50,46 @@ export default function QuestLog() {
   };
 
   return (
-    <div className="bg-command-card rounded-2xl border border-white/5 p-6 shadow-xl">
-      <div className="flex items-center gap-2 mb-6 text-command-neon neon-text">
-        <Sparkles size={20} />
-        <h3 className="text-lg font-black uppercase tracking-tighter">Tehtävälista (Quest Log)</h3>
+    <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+          <Sparkles size={20} className="text-command-neon" />
+        </div>
+        <h3 className="text-sm font-black uppercase tracking-widest text-command-dark">Mission Log</h3>
       </div>
 
       <div className="space-y-4">
         {quests.map((quest, index) => (
           <motion.div
             key={quest.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+            className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
               quest.isCompleted 
-                ? "bg-command-emerald/5 border-command-emerald/20 opacity-60" 
-                : "bg-command-bg border-white/5 hover:border-command-neon/30 cursor-pointer group"
+                ? "bg-slate-50 border-slate-100 opacity-60" 
+                : "bg-white border-slate-100 hover:border-command-neon/30 cursor-pointer shadow-sm hover:shadow-md"
             }`}
           >
             <div className="flex-shrink-0">
               {quest.isCompleted ? (
-                <CheckCircle2 size={24} className="text-command-emerald" />
+                <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+                  <CheckCircle2 size={20} className="text-command-emerald" />
+                </div>
               ) : (
-                <div className="group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center">
                   {getIcon(quest.type)}
                 </div>
               )}
             </div>
             <div className="flex-1">
-              <h4 className={`text-sm font-bold ${quest.isCompleted ? "line-through text-command-gray" : "text-white"}`}>
+              <h4 className={`text-sm font-bold ${quest.isCompleted ? "text-slate-400" : "text-command-dark"}`}>
                 {quest.title}
               </h4>
-              <p className="text-[10px] text-command-gray uppercase font-bold tracking-widest">{quest.description}</p>
+              <p className="text-[10px] text-command-gray font-medium uppercase tracking-tight">{quest.description}</p>
             </div>
             <div className="text-right">
-              <span className={`text-xs font-black ${quest.isCompleted ? "text-command-emerald" : "text-command-neon"}`}>
+              <span className={`text-[10px] font-black uppercase ${quest.isCompleted ? "text-command-emerald" : "text-command-neon"}`}>
                 +{quest.xpReward} XP
               </span>
             </div>
@@ -95,4 +99,3 @@ export default function QuestLog() {
     </div>
   );
 }
-

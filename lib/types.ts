@@ -76,6 +76,8 @@ export interface UserProfile {
   gdpr_consent_date?: string;
   join_report_list?: boolean;
   is_admin?: boolean;
+  current_archetype?: string;
+  dna_level?: number;
 }
 
 // Party stance types
@@ -146,8 +148,34 @@ export interface SupabaseMunicipalCase {
   updated_at: string;
 }
 
+// Virtual Party types
+export interface VirtualParty {
+  id: string;
+  name: string;
+  manifesto: string | null;
+  logo_url: string | null;
+  created_by: string;
+  total_xp: number;
+  level: number;
+  dna_profile_avg: Record<string, number>;
+  memberCount?: number;
+  matchScore?: number;
+}
+
+export interface PartyMember {
+  party_id: string;
+  user_id: string;
+  role: 'founder' | 'member';
+  joined_at: string;
+}
+
+export interface DebateParticipant {
+  party: VirtualParty;
+  representativeName: string;
+}
+
 // Dashboard view types
-export type DashboardView = "bills" | "municipal" | "consensus" | "profile";
+export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate";
 
 // API Test types
 export interface TestResult {

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { VoteStats, VotePosition } from "@/lib/types";
+import { addDNAPoints } from "./dna";
 
 export async function submitVote(billId: string, position: VotePosition) {
   const supabase = await createClient();
@@ -12,6 +13,14 @@ export async function submitVote(billId: string, position: VotePosition) {
   if (!user) {
     throw new Error("Sinun täytyy olla kirjautunut äänestääksesi");
   }
+
+  // Get previous vote to check for mediator logic (changing stance)
+  const { data: previousVote } = await supabase
+    .from("votes")
+    .select("position")
+    .eq("bill_id", billId)
+    .eq("user_id", user.id)
+    .single();
 
   // Upsert vote (insert or update)
   const { error } = await supabase
@@ -29,6 +38,29 @@ export async function submitVote(billId: string, position: VotePosition) {
 
   if (error) {
     throw new Error(`Äänestys epäonnistui: ${error.message}`);
+  }
+
+  // --- DNA Points Logic ---
+  
+  // 1. Active: +1 for every vote
+  await addDNAPoints("active", 1);
+
+  // 2. Mediator: +2 for 'neutral' or changing stance
+  if (position === "neutral" || (previousVote && previousVote.position !== position)) {
+    await addDNAPoints("mediator", 2);
+  }
+
+  // 3. Reformer: +2 if vote deviates significantly from majority
+  try {
+    const stats = await getVoteStats(billId);
+    if (stats.total_count > 5) { // Only check if there's enough data
+      const majorityPosition = stats.for_percent > 60 ? "for" : stats.against_percent > 60 ? "against" : null;
+      if (majorityPosition && position !== majorityPosition && position !== "neutral") {
+        await addDNAPoints("reformer", 2);
+      }
+    }
+  } catch (e) {
+    console.warn("Could not calculate reformer points:", e);
   }
 
   return { success: true };

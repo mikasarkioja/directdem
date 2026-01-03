@@ -1,7 +1,8 @@
 "use client";
 
-import { Home, Vote, Map as MapIcon, User } from "lucide-react";
+import { LayoutGrid, FileText, Map as MapIcon, User, Users, Radio } from "lucide-react";
 import type { DashboardView } from "@/lib/types";
+import Link from "next/link";
 
 interface BottomNavProps {
   activeView: DashboardView;
@@ -10,33 +11,55 @@ interface BottomNavProps {
 
 export default function BottomNav({ activeView, onViewChange }: BottomNavProps) {
   const navItems = [
-    { label: "Aloitus", view: "bills" as const, icon: Home },
-    { label: "Äänestä", view: "bills" as const, icon: Vote },
-    { label: "Kartta", view: "consensus" as const, icon: MapIcon },
-    { label: "Profiili", view: "profile" as const, icon: User },
+    { label: "Overview", view: "overview" as const, icon: LayoutGrid },
+    { label: "Bills", view: "bills" as const, icon: FileText },
+    { label: "Agora", view: "debate" as const, icon: Radio, href: "/vaittely/demo" },
+    { label: "Profile", view: "profile" as const, icon: User },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-nordic-deep border-t border-nordic-gray dark:border-nordic-darker shadow-lg md:hidden z-50 safe-area-bottom">
-      <div className="flex justify-around items-center h-16 px-2">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-xl md:hidden z-50 safe-area-bottom">
+      <div className="flex justify-around items-center h-16 px-4">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.view;
+
+          const content = (
+            <>
+              <Icon size={20} className={isActive ? "scale-110" : "scale-100"} />
+              <span className="text-[9px] font-black uppercase tracking-tight leading-tight">{item.label}</span>
+            </>
+          );
+
+          if (item.href) {
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 transition-all touch-manipulation select-none ${
+                  isActive
+                    ? "text-command-neon"
+                    : "text-slate-400"
+                }`}
+              >
+                {content}
+              </Link>
+            );
+          }
 
           return (
             <button
               key={item.label}
               onClick={() => onViewChange(item.view)}
-              className={`flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 transition-colors touch-manipulation select-none ${
+              className={`flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 transition-all touch-manipulation select-none ${
                 isActive
-                  ? "text-nordic-blue dark:text-nordic-blue"
-                  : "text-nordic-dark dark:text-nordic-gray"
+                  ? "text-command-neon"
+                  : "text-slate-400"
               }`}
               style={{ userSelect: "none", WebkitUserSelect: "none" }}
               aria-label={item.label}
             >
-              <Icon size={24} className={isActive ? "text-nordic-blue" : ""} />
-              <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+              {content}
             </button>
           );
         })}
@@ -44,4 +67,3 @@ export default function BottomNav({ activeView, onViewChange }: BottomNavProps) 
     </nav>
   );
 }
-

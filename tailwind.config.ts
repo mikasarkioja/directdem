@@ -11,12 +11,13 @@ const config: Config = {
     extend: {
       colors: {
         command: {
-          bg: "#050B15",
-          card: "#0A1220",
-          neon: "#00F5FF",
-          emerald: "#10B981",
-          rose: "#F43F5E",
-          gray: "#94A3B8",
+          bg: "#F8FAFC",
+          card: "#FFFFFF",
+          neon: "#005EB8", // Nordic Blue
+          emerald: "#059669",
+          rose: "#E11D48",
+          gray: "#64748B",
+          dark: "#1E293B",
         },
         nordic: {
           white: "#ECEFF4",

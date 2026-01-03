@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Calendar, MapPin, Wallet, Info, Building2 } from "lucide-react";
+import { Sparkles, Calendar, MapPin, Wallet, Info, Building2, ChevronRight } from "lucide-react";
 import type { MunicipalCase } from "@/lib/types";
 
 interface MunicipalDecisionCardProps {
@@ -11,12 +11,11 @@ interface MunicipalDecisionCardProps {
 const MunicipalityLogo = ({ municipality }: { municipality: string }) => {
   if (municipality.toLowerCase() === "espoo") {
     return (
-      <div className="w-8 h-8 flex-shrink-0 bg-[#005eb8] rounded-md flex items-center justify-center text-white shadow-sm overflow-hidden" title="Espoo">
+      <div className="w-10 h-10 flex-shrink-0 bg-[#005eb8] rounded-xl flex items-center justify-center text-white shadow-sm overflow-hidden" title="Espoo">
         <svg viewBox="0 0 100 120" className="w-6 h-6 fill-[#ffd700]">
-          {/* Espoo Coat of Arms: Horseshoe and Crown */}
-          <path d="M50,10 L30,20 L30,30 L70,30 L70,20 Z" /> {/* Simplified Crown base */}
-          <path d="M50,5 L40,15 L60,15 Z" /> {/* Crown top */}
-          <path d="M25,50 C25,30 75,30 75,50 C75,75 55,95 50,100 C45,95 25,75 25,50" fill="none" stroke="#ffd700" strokeWidth="8" /> {/* Horseshoe shape */}
+          <path d="M50,10 L30,20 L30,30 L70,30 L70,20 Z" />
+          <path d="M50,5 L40,15 L60,15 Z" />
+          <path d="M25,50 C25,30 75,30 75,50 C75,75 55,95 50,100 C45,95 25,75 25,50" fill="none" stroke="#ffd700" strokeWidth="8" />
           <circle cx="35" cy="55" r="3" />
           <circle cx="65" cy="55" r="3" />
           <circle cx="40" cy="75" r="3" />
@@ -27,20 +26,18 @@ const MunicipalityLogo = ({ municipality }: { municipality: string }) => {
   }
   if (municipality.toLowerCase() === "helsinki") {
     return (
-      <div className="w-8 h-8 flex-shrink-0 bg-[#0000bf] rounded-md flex items-center justify-center text-white shadow-sm overflow-hidden" title="Helsinki">
+      <div className="w-10 h-10 flex-shrink-0 bg-[#0000bf] rounded-xl flex items-center justify-center text-white shadow-sm overflow-hidden" title="Helsinki">
         <svg viewBox="0 0 100 120" className="w-6 h-6">
-          {/* Helsinki Coat of Arms: Boat and Crown */}
-          <path d="M50,10 L35,25 L65,25 Z" fill="#ffd700" /> {/* Crown simplified */}
-          <path d="M20,70 L80,70 L75,90 L25,90 Z" fill="#ffd700" /> {/* Boat body */}
-          <path d="M10,95 C30,85 70,85 90,95" fill="none" stroke="white" strokeWidth="4" /> {/* Waves */}
+          <path d="M50,10 L35,25 L65,25 Z" fill="#ffd700" />
+          <path d="M20,70 L80,70 L75,90 L25,90 Z" fill="#ffd700" />
+          <path d="M10,95 C30,85 70,85 90,95" fill="none" stroke="white" strokeWidth="4" />
         </svg>
       </div>
     );
   }
-  // Generic logo for others or Aloitteet
   return (
-    <div className="w-8 h-8 flex-shrink-0 bg-nordic-blue rounded-md flex items-center justify-center text-white shadow-sm overflow-hidden">
-      <Building2 size={18} />
+    <div className="w-10 h-10 flex-shrink-0 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 shadow-sm overflow-hidden">
+      <Building2 size={20} />
     </div>
   );
 };
@@ -64,30 +61,30 @@ export default function MunicipalDecisionCard({ item, onClick }: MunicipalDecisi
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-2xl p-6 shadow-sm border border-nordic-gray cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group"
+      className="bg-white rounded-3xl p-8 border border-slate-100 cursor-pointer hover:border-command-neon/30 hover:shadow-lg transition-all relative group"
     >
       {isAI && (
         <div className="absolute top-0 right-0 p-2">
-          <div className="flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-bl-lg uppercase tracking-wider">
+          <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-command-neon text-[8px] font-black rounded-bl-xl uppercase tracking-widest border-l border-b border-blue-100">
             <Sparkles size={10} />
-            <span>AI-Analyysi</span>
+            <span>AI ANALYSIS</span>
           </div>
         </div>
       )}
 
       <div className="flex flex-col h-full">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex items-center gap-4">
             <MunicipalityLogo municipality={item.municipality} />
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-nordic-darker uppercase tracking-widest leading-none mb-1 flex items-center gap-1">
+              <span className="text-[10px] font-black text-command-dark uppercase tracking-widest leading-none mb-1.5 flex items-center gap-2">
                 {item.municipality}
                 {item.id.startsWith('aloite-') && (
-                  <span className="ml-1 px-1 bg-red-500 text-white rounded-[2px] text-[8px] animate-pulse">LIVE</span>
+                  <span className="px-1.5 py-0.5 bg-rose-500 text-white rounded-md text-[8px] animate-pulse">LIVE</span>
                 )}
               </span>
-              <span className={`inline-block w-fit px-1.5 py-0.5 rounded text-[9px] font-bold uppercase leading-none ${
-                item.status === 'agenda' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+              <span className={`inline-block w-fit px-2 py-0.5 rounded-md text-[9px] font-bold uppercase leading-none ${
+                item.status === 'agenda' ? 'bg-blue-50 text-command-neon' : 'bg-emerald-50 text-command-emerald'
               }`}>
                 {getStatusLabel(item.status)}
               </span>
@@ -95,48 +92,47 @@ export default function MunicipalDecisionCard({ item, onClick }: MunicipalDecisi
           </div>
         </div>
 
-        <h3 className="text-lg font-bold text-nordic-darker mb-2 group-hover:text-nordic-blue transition-colors leading-tight">
+        <h3 className="text-lg font-bold text-command-dark mb-4 group-hover:text-command-neon transition-colors leading-tight">
           {item.title}
         </h3>
 
-        <div className="flex flex-wrap gap-4 mb-4 text-xs text-nordic-dark">
-          <div className="flex items-center gap-1">
-            <Calendar size={14} className="text-nordic-blue" />
+        <div className="flex flex-wrap gap-5 mb-6 text-[10px] font-bold uppercase tracking-tight text-slate-400">
+          <div className="flex items-center gap-2">
+            <Calendar size={14} className="text-slate-300" />
             <span>{formatDate(item.meetingDate)}</span>
           </div>
           {item.neighborhood && (
-            <div className="flex items-center gap-1">
-              <MapPin size={14} className="text-red-500" />
+            <div className="flex items-center gap-2">
+              <MapPin size={14} className="text-rose-400" />
               <span>{item.neighborhood}</span>
             </div>
           )}
           {item.costEstimate && (
-            <div className="flex items-center gap-1">
-              <Wallet size={14} className="text-green-600" />
+            <div className="flex items-center gap-2">
+              <Wallet size={14} className="text-emerald-500" />
               <span>{item.costEstimate.toLocaleString()} €</span>
             </div>
           )}
         </div>
 
-        <p className="text-sm text-nordic-dark line-clamp-3 mb-4">
+        <p className="text-sm text-slate-500 font-medium line-clamp-3 mb-6 leading-relaxed">
           {item.summary && item.summary.includes("###") 
             ? item.summary.split("\n").filter(l => l.trim() && !l.startsWith("#") && !l.startsWith("---")).join(" ").substring(0, 150) + "..."
             : item.summary}
         </p>
 
-        <div className="mt-auto pt-4 border-t border-nordic-gray/20 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-nordic-blue" />
-              <span className="text-[10px] font-bold text-nordic-darker">{item.citizenPulse.for}% Puolesta</span>
+        <div className="mt-auto pt-6 border-t border-slate-50 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-command-neon" />
+              <span className="text-[10px] font-black uppercase text-command-dark">{item.citizenPulse.for}% Support</span>
             </div>
           </div>
-          <button className="text-xs font-black text-nordic-blue uppercase tracking-widest group-hover:translate-x-1 transition-transform">
-            Lue lisää →
+          <button className="text-[10px] font-black text-command-neon uppercase tracking-widest group-hover:translate-x-1 transition-transform flex items-center gap-2">
+            Details <ChevronRight size={14} />
           </button>
         </div>
       </div>
     </div>
   );
 }
-

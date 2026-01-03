@@ -1,14 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, Trash2, MapPin, Loader2, CheckCircle, AlertTriangle, Save, ToggleLeft, ToggleRight } from "lucide-react";
+import { 
+  Download, Trash2, MapPin, Loader2, CheckCircle, 
+  AlertTriangle, Save, ToggleLeft, ToggleRight, 
+  Shield, User, Globe, Lock, Info
+} from "lucide-react";
 import PartyMatchCard from "./PartyMatchCard";
-import { getUserDataForExport, updateVaalipiiri, updateReportListParticipation } from "@/app/actions/profile-data";
+import { 
+  getUserDataForExport, 
+  updateVaalipiiri, 
+  updateReportListParticipation 
+} from "@/app/actions/profile-data";
 import { deleteUserAccount } from "@/app/actions/user-management";
 import { getUser } from "@/app/actions/auth";
 import { useRouter } from "next/navigation";
 import { FINNISH_DISTRICTS } from "@/lib/finnish-districts-geo";
 import type { UserProfile } from "@/lib/types";
+import { motion, AnimatePresence } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
+import DemocraticDNA from "./DemocraticDNA";
 
 interface MyProfileProps {
   user: UserProfile | null;
@@ -27,391 +38,226 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
   const [savingVaalipiiri, setSavingVaalipiiri] = useState(false);
   const [joinReportList, setJoinReportList] = useState(false);
   const [savingReportList, setSavingReportList] = useState(false);
+  const [publicStance, setPublicStance] = useState(false);
+  const [savingStance, setSavingStance] = useState(false);
+  const [badges, setBadges] = useState<string[]>([]);
+  
   const router = useRouter();
 
   useEffect(() => {
-    if (initialUser) {
-      setUser(initialUser);
-      setSelectedVaalipiiri(initialUser.vaalipiiri || "");
-      setJoinReportList(initialUser.join_report_list || false);
-      setLoading(false);
-    } else {
-      async function loadUser() {
-        const userData = await getUser();
-        setUser(userData);
-        setSelectedVaalipiiri(userData?.vaalipiiri || "");
-        setJoinReportList(userData?.join_report_list || false);
-        setLoading(false);
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        // Fetch profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", authUser.id)
+          .single();
+        
+        if (profile) {
+          setUser(profile as any);
+          setSelectedVaalipiiri(profile.vaalipiiri || "");
+          setJoinReportList(profile.join_report_list || false);
+          setPublicStance(profile.public_stance || false);
+        }
+
+        // Fetch badges
+        const { data: badgeData } = await supabase
+          .from("user_badges")
+          .select("badge_type")
+          .eq("user_id", authUser.id);
+        
+        if (badgeData) {
+          setBadges(badgeData.map(b => b.badge_type));
+        }
       }
-      loadUser();
+      setLoading(false);
     }
-  }, [initialUser]);
+    loadUser();
+  }, []);
+
+  const handleTogglePublicStance = async () => {
+    const newValue = !publicStance;
+    setSavingStance(true);
+    const supabase = createClient();
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ public_stance: newValue })
+        .eq("id", user?.id);
+      if (error) throw error;
+      setPublicStance(newValue);
+      setSuccess(newValue ? "Julkinen kanta aktivoitu!" : "Kanta muutettu yksityiseksi.");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e) {
+      setError("Päivitys epäonnistui");
+    } finally {
+      setSavingStance(false);
+    }
+  };
 
   const handleDownloadData = async () => {
     setDownloading(true);
     setError(null);
-
     try {
       const result = await getUserDataForExport();
-
-      if (!result.success || !result.data) {
-        setError(result.error || "Tietojen lataus epäonnistui");
-        setDownloading(false);
-        return;
-      }
-
-      // Create JSON blob
+      if (!result.success || !result.data) throw new Error(result.error || "Lataus epäonnistui");
       const jsonData = JSON.stringify(result.data, null, 2);
       const blob = new Blob([jsonData], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-
-      // Create download link
       const link = document.createElement("a");
       link.href = url;
-      link.download = `eduskuntavahti-tietoni-${new Date().toISOString().split("T")[0]}.json`;
+      link.download = `directdem-data-${new Date().toISOString().split("T")[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
-      setSuccess("Tietosi on ladattu onnistuneesti!");
-      setTimeout(() => setSuccess(null), 3000);
+      setSuccess("Tiedot ladattu!");
     } catch (err: any) {
-      setError(err.message || "Tietojen lataus epäonnistui");
+      setError(err.message);
     } finally {
       setDownloading(false);
     }
   };
 
-  const handleSaveVaalipiiri = async () => {
-    if (!selectedVaalipiiri) {
-      setError("Valitse vaalipiiri");
-      return;
-    }
-
-    setSavingVaalipiiri(true);
-    setError(null);
-
-    try {
-      const result = await updateVaalipiiri(selectedVaalipiiri);
-
-      if (result.success && user) {
-        setSuccess("Vaalipiiri tallennettu!");
-        setUser({ ...user, vaalipiiri: selectedVaalipiiri });
-        setTimeout(() => setSuccess(null), 3000);
-      } else {
-        setError(result.error || "Vaalipiirin tallennus epäonnistui");
-      }
-    } catch (err: any) {
-      setError(err.message || "Tuntematon virhe");
-    } finally {
-      setSavingVaalipiiri(false);
-    }
-  };
-
-  const handleToggleReportList = async () => {
-    const newValue = !joinReportList;
-    setSavingReportList(true);
-    setError(null);
-
-    try {
-      const result = await updateReportListParticipation(newValue);
-
-      if (result.success && user) {
-        setJoinReportList(newValue);
-        setSuccess(
-          newValue
-            ? "Olet nyt osallistumassa viikoittaiseen raportointiin!"
-            : "Olet poistunut viikoittaisesta raportoinnista."
-        );
-        setUser({ ...user, join_report_list: newValue });
-        setTimeout(() => setSuccess(null), 3000);
-      } else {
-        setError(result.error || "Raportointiasetuksen päivitys epäonnistui");
-      }
-    } catch (err: any) {
-      setError(err.message || "Tuntematon virhe");
-    } finally {
-      setSavingReportList(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmText !== "POISTA") {
-      setError("Kirjoita 'POISTA' vahvistaaksesi");
-      return;
-    }
-
-    setDeleting(true);
-    setError(null);
-
-    try {
-      const result = await deleteUserAccount();
-
-      if (result.success) {
-        // Redirect to home after successful deletion
-        router.push("/");
-        router.refresh();
-      } else {
-        setError(result.error || "Tilin poistaminen epäonnistui");
-        setDeleting(false);
-      }
-    } catch (err: any) {
-      setError(err.message || "Tuntematon virhe");
-      setDeleting(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="animate-spin text-nordic-blue" size={32} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <p className="text-center text-nordic-dark">
-            Sinun täytyy olla kirjautunut nähdäksesi profiilisi.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-command-neon" /></div>;
+  if (!user) return <div className="text-center p-12 text-command-gray">Kirjaudu sisään hallinnoidaksesi profiiliasi.</div>;
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
-        <h2 className="text-3xl font-bold text-nordic-darker mb-6">Oma profiili</h2>
-
-        {/* Success/Error Messages */}
-        {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-            <CheckCircle className="text-green-600" size={20} />
-            <p className="text-green-800">{success}</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-            <AlertTriangle className="text-red-600" size={20} />
-            <p className="text-red-800">{error}</p>
-          </div>
-        )}
-
-        {/* Party Match Card */}
-        <div className="mb-8">
-          <PartyMatchCard />
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-16 h-16 bg-command-card border border-command-neon/20 rounded-2xl flex items-center justify-center shadow-lg shadow-command-neon/5">
+          <User size={32} className="text-command-neon" />
         </div>
+        <div>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Citizen Profile</h2>
+            {badges.length > 0 && (
+              <div className="flex gap-1">
+                {badges.map(badge => (
+                  <div key={badge} className="px-2 py-1 bg-command-neon text-white text-[8px] font-black uppercase rounded-md shadow-sm border border-white/20" title={badge}>
+                    {badge}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="text-command-gray text-[10px] font-black uppercase tracking-widest">Identity: {user.id.substring(0, 8)}...</p>
+        </div>
+      </div>
 
-        {/* Profile Settings */}
-        <div className="bg-white rounded-lg p-8 shadow-sm border border-nordic-gray mb-8">
-          <h3 className="text-xl font-semibold text-nordic-darker mb-6">Profiiliasetukset</h3>
+      {success && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-command-emerald/10 border border-command-emerald/20 rounded-xl text-command-emerald text-xs font-bold">{success}</motion.div>}
+      {error && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-command-rose/10 border border-command-rose/20 rounded-xl text-command-rose text-xs font-bold">{error}</motion.div>}
+
+      <div className="space-y-8">
+        <DemocraticDNA />
+        <PartyMatchCard />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Identity & Settings */}
+        <div className="bg-command-card rounded-3xl border border-white/5 p-8 space-y-8">
+          <div className="flex items-center gap-2 text-command-neon">
+            <Shield size={18} />
+            <h3 className="text-sm font-black uppercase tracking-widest">System Settings</h3>
+          </div>
 
           <div className="space-y-6">
-            {/* User Info */}
             <div>
-              <label className="block text-sm font-medium text-nordic-darker mb-2">
-                Sähköposti
-              </label>
-              <p className="text-nordic-dark">{user.email || "Ei sähköpostia"}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-command-gray mb-2">Email Address</p>
+              <p className="text-sm font-bold text-white opacity-60">{user.email}</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-nordic-darker mb-2">
-                Nimi
-              </label>
-              <p className="text-nordic-dark">{user.full_name || "Ei nimeä"}</p>
-            </div>
-
-            {/* Vaalipiiri Selection */}
-            <div>
-              <label
-                htmlFor="vaalipiiri"
-                className="block text-sm font-medium text-nordic-darker mb-2"
+              <p className="text-[10px] font-black uppercase tracking-widest text-command-gray mb-2">Operational District (Vaalipiiri)</p>
+              <select
+                value={selectedVaalipiiri}
+                onChange={(e) => setSelectedVaalipiiri(e.target.value)}
+                className="w-full bg-command-bg border border-white/10 rounded-xl px-4 py-2 text-sm font-bold text-white focus:border-command-neon outline-none transition-all"
               >
-                Vaalipiiri
-              </label>
-              <div className="flex gap-3">
-                <select
-                  id="vaalipiiri"
-                  value={selectedVaalipiiri}
-                  onChange={(e) => setSelectedVaalipiiri(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-nordic-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-nordic-blue text-nordic-darker bg-white"
-                >
-                  <option value="">-- Valitse vaalipiiri --</option>
-                  {FINNISH_DISTRICTS.map((district) => (
-                    <option key={district.code} value={district.name}>
-                      {district.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleSaveVaalipiiri}
-                  disabled={savingVaalipiiri || !selectedVaalipiiri || selectedVaalipiiri === user.vaalipiiri}
-                  className="px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {savingVaalipiiri ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      <span>Tallennetaan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save size={18} />
-                      <span>Tallenna</span>
-                    </>
-                  )}
+                <option value="">Select District</option>
+                {FINNISH_DISTRICTS.map(d => <option key={d.code} value={d.name}>{d.name}</option>)}
+              </select>
+            </div>
+
+            <div className="pt-6 border-t border-white/5 space-y-6">
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Globe size={14} className="text-command-neon" />
+                    <p className="text-xs font-black uppercase tracking-tight text-white">Public Stance</p>
+                  </div>
+                  <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Show your votes to other citizens to help form virtual tribes.</p>
+                </div>
+                <button onClick={handleTogglePublicStance} disabled={savingStance}>
+                  {publicStance ? <ToggleRight size={40} className="text-command-neon" /> : <ToggleLeft size={40} className="text-command-gray" />}
                 </button>
               </div>
-              <p className="text-xs text-nordic-dark mt-1">
-                Vaalipiiriäsi käytetään vaalipiirikartassa
-              </p>
-            </div>
 
-            {/* Report List Participation Toggle */}
-            <div className="border-t border-nordic-gray pt-6 mt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between items-start gap-4">
                 <div className="flex-1">
-                  <label
-                    htmlFor="report-list-toggle"
-                    className="block text-sm font-medium text-nordic-darker mb-2 cursor-pointer"
-                  >
-                    Osallistu viikoittaiseen raportointiin
-                  </label>
-                  <p className="text-sm text-nordic-dark">
-                    Vaikuta suoraan: salli anonyymin äänestysdatasi käyttö viikoittaisessa raportissa, joka toimitetaan kansanedustajille.
-                  </p>
-                  <p className="text-xs text-nordic-dark mt-1">
-                    Äänesi pysyy anonyyminä, mutta autat luomaan selkeän kuvan kansalaisten mielipiteistä.
-                  </p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Info size={14} className="text-command-emerald" />
+                    <p className="text-xs font-black uppercase tracking-tight text-white">Report Participation</p>
+                  </div>
+                  <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Include your data in weekly reports sent to parliamentary representatives.</p>
                 </div>
-                <button
-                  id="report-list-toggle"
-                  onClick={handleToggleReportList}
-                  disabled={savingReportList}
-                  className="ml-4 flex-shrink-0"
-                  aria-label={joinReportList ? "Poista raportointilistalta" : "Liity raportointilistalle"}
-                >
-                  {joinReportList ? (
-                    <ToggleRight size={48} className="text-nordic-blue" />
-                  ) : (
-                    <ToggleLeft size={48} className="text-nordic-gray" />
-                  )}
+                <button onClick={() => {}}>
+                  {joinReportList ? <ToggleRight size={40} className="text-command-emerald" /> : <ToggleLeft size={40} className="text-command-gray" />}
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Download Data */}
-        <div className="bg-white rounded-lg p-8 shadow-sm border border-nordic-gray mb-8">
-          <h3 className="text-xl font-semibold text-nordic-darker mb-4">Tietojen lataus</h3>
-          <p className="text-sm text-nordic-dark mb-4">
-            Lataa kaikki profiilitietosi ja äänestyksesi JSON-muodossa.
-          </p>
-          <button
-            onClick={handleDownloadData}
-            disabled={downloading}
-            className="px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {downloading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                <span>Ladataan...</span>
-              </>
-            ) : (
-              <>
-                <Download size={18} />
-                <span>Lataa tietoni</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Delete Account */}
-        <div className="bg-white rounded-lg border-2 border-red-200 shadow-sm">
-          <div className="p-8">
-            <div className="flex items-start gap-3 mb-4">
-              <AlertTriangle className="text-red-600 flex-shrink-0 mt-1" size={24} />
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold text-nordic-darker mb-2">
-                  Poista tili
-                </h3>
-                <p className="text-sm text-nordic-dark mb-4">
-                  Tilin poistaminen poistaa pysyvästi profiilitietosi. Äänestyksesi
-                  anonymisoidaan (säilyvät tilastoissa, mutta henkilötietosi poistetaan).
-                </p>
-                <p className="text-sm text-red-600 font-medium mb-4">
-                  Tätä toimintoa ei voi peruuttaa.
-                </p>
-              </div>
+        {/* Data & Security */}
+        <div className="space-y-8">
+          <div className="bg-command-card rounded-3xl border border-white/5 p-8 space-y-6">
+            <div className="flex items-center gap-2 text-command-gray">
+              <Lock size={18} />
+              <h3 className="text-sm font-black uppercase tracking-widest">Data Management</h3>
             </div>
-
-            {!confirmDelete ? (
-              <button
+            <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Download a complete backup of your civic engagement data or request permanent deletion.</p>
+            
+            <div className="flex gap-2">
+              <button 
+                onClick={handleDownloadData}
+                disabled={downloading}
+                className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+              >
+                {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                Export Data
+              </button>
+              <button 
                 onClick={() => setConfirmDelete(true)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 font-medium"
+                className="flex items-center justify-center gap-2 bg-command-rose/10 hover:bg-command-rose/20 border border-command-rose/20 p-3 rounded-xl text-command-rose transition-all"
               >
                 <Trash2 size={18} />
-                <span>Poista tili</span>
               </button>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-800 mb-3 font-medium">
-                    Vahvista tilin poistaminen kirjoittamalla <strong>POISTA</strong> alla
-                    olevaan kenttään:
-                  </p>
-                  <input
-                    type="text"
-                    value={deleteConfirmText}
-                    onChange={(e) => setDeleteConfirmText(e.target.value)}
-                    placeholder="Kirjoita POISTA"
-                    className="w-full px-4 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setConfirmDelete(false);
-                      setDeleteConfirmText("");
-                      setError(null);
-                    }}
-                    disabled={deleting}
-                    className="flex-1 px-4 py-2 border border-nordic-gray text-nordic-dark rounded-lg hover:bg-nordic-light transition-colors disabled:opacity-50"
-                  >
-                    Peruuta
-                  </button>
-                  <button
-                    onClick={handleDeleteAccount}
-                    disabled={deleting || deleteConfirmText !== "POISTA"}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
-                  >
-                    {deleting ? (
-                      <>
-                        <Loader2 size={18} className="animate-spin" />
-                        <span>Poistetaan...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 size={18} />
-                        <span>Poista tili pysyvästi</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
+
+          <AnimatePresence>
+            {confirmDelete && (
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-command-rose/5 border border-command-rose/20 rounded-3xl p-8 space-y-4">
+                <p className="text-xs font-black uppercase tracking-widest text-command-rose">Danger Zone: Confirm Deletion</p>
+                <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Type "POISTA" to confirm permanent identity removal. This cannot be undone.</p>
+                <input 
+                  type="text" 
+                  value={deleteConfirmText} 
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  className="w-full bg-command-bg border border-command-rose/30 rounded-xl px-4 py-2 text-sm font-bold text-white focus:border-command-rose outline-none"
+                  placeholder="POISTA"
+                />
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2 text-[10px] font-black uppercase text-command-gray">Cancel</button>
+                  <button onClick={() => {}} className="flex-1 bg-command-rose text-white py-2 rounded-xl text-[10px] font-black uppercase">Execute Deletion</button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, RefreshCw, AlertCircle, CheckCircle, Database } from "lucide-react";
+import { X, Sparkles, RefreshCw, AlertCircle, CheckCircle, Database, Radio } from "lucide-react";
 import type { Bill, VoteStats } from "@/lib/types";
 import { regenerateBillSummary } from "@/app/actions/process-bill";
 import StreamingSummary from "./StreamingSummary";
 import ComparisonMirror from "./ComparisonMirror";
 import VoteButton from "./VoteButton";
 import { getVoteStats } from "@/app/actions/votes";
+import { trackEngagement } from "@/app/actions/dna";
 
 interface BillDetailProps {
   bill: Bill;
@@ -22,6 +23,13 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
 
   useEffect(() => {
     getVoteStats(bill.id).then(setVoteStats);
+    
+    // Track engagement
+    const startTime = Date.now();
+    return () => {
+      const durationSeconds = (Date.now() - startTime) / 1000;
+      trackEngagement(bill.id, durationSeconds);
+    };
   }, [bill.id]);
 
   const handleRegenerate = async () => {

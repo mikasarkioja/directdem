@@ -37,7 +37,7 @@ async function categorizeVotes() {
     
     try {
       const { text } = await generateText({
-        model: openai('gpt-4o-mini'),
+        model: openai('gpt-4o-mini') as any,
         system: `Olet poliittinen analyytikko. Tehtäväsi on luokitella Suomen eduskunnan äänestysotsikko kolmeen kategoriaan: 
           1. Talous (weight: -1=Vasen, 1=Oikeisto)
           2. Arvot (weight: -1=Liberaali, 1=Konservatiivi)

@@ -86,7 +86,23 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
     `)
     .neq("mp_id", harkimoMp.id);
 
-  if (!allProfiles) return { harkimo: harkimoProfile, matches: [] };
+  if (!allProfiles) {
+    return {
+      harkimo: {
+        id: harkimoMp.id,
+        full_name: `${harkimoMp.first_name} ${harkimoMp.last_name}`,
+        party: harkimoMp.party,
+        scores: {
+          economic: harkimoProfile.economic_score,
+          liberal: harkimoProfile.liberal_conservative_score,
+          env: harkimoProfile.environmental_score
+        }
+      },
+      topMatches: [],
+      bottomMatches: [],
+      partyAnalysis: []
+    };
+  }
 
   // 4. Calculate Euclidean distance and compatibility
   const matches = allProfiles.map((p: any) => {

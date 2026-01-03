@@ -3,7 +3,8 @@
  * Handles mass data extraction and political DNA analysis
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 export interface MPProfile {
   parliamentId: number;
@@ -27,11 +28,10 @@ const CATEGORIES = {
  * Fetches and analyzes MP votes to build political DNA
  * Note: This is a heavy operation, should be run as a background task.
  */
-export async function scrapeAndProfileMPs(limit: number = 200) {
+export async function scrapeAndProfileMPs(limit: number = 200, client?: SupabaseClient) {
   console.log(`[MP-Profiler] Starting analysis for ${limit} MPs...`);
   
   // 1. Fetch MPs from Eduskunta API (simulated)
-  // In a real app, we'd fetch from https://avoindata.eduskunta.fi/api/v1/data/Henkilo
   const mps = await fetchMPs();
 
   // 2. For each MP, analyze their voting history
@@ -51,7 +51,7 @@ export async function scrapeAndProfileMPs(limit: number = 200) {
   }
 
   // 3. Save to Supabase
-  const supabase = await createClient();
+  const supabase = client || (await createServerClient());
   for (const p of profiles) {
     await supabase.from("mp_profiles").upsert({
       parliament_id: p.parliamentId,
@@ -68,11 +68,7 @@ export async function scrapeAndProfileMPs(limit: number = 200) {
 }
 
 async function analyzeMPVoting(mpId: number) {
-  // Mock analysis logic: 
-  // In reality, we'd fetch all votes for this MP, link them to bill categories,
-  // and see if they voted 'for' or 'against' relative to the axis (e.g. against tax increase = +market)
-  
-  // Generating deterministic mock DNA based on ID for demo purposes
+  // Mock analysis logic deterministic for demo
   const seed = mpId / 1000;
   return {
     economy: Math.sin(seed * 7) * 0.8,
@@ -97,8 +93,8 @@ async function fetchMPs() {
 /**
  * Finds the MP closest to a given DNA profile using Euclidean distance
  */
-export async function findBestMatch(tribeDna: { economy: number, values: number, environment: number }) {
-  const supabase = await createClient();
+export async function findBestMatch(tribeDna: { economy: number, values: number, environment: number }, client?: SupabaseClient) {
+  const supabase = client || (await createServerClient());
   const { data: profiles } = await supabase.from("mp_profiles").select("*");
 
   if (!profiles) return null;
@@ -111,7 +107,6 @@ export async function findBestMatch(tribeDna: { economy: number, values: number,
     );
     
     // Convert distance to compatibility percentage (0-100%)
-    // Max distance in 3D unit cube (-1 to 1) is sqrt(2^2 + 2^2 + 2^2) = sqrt(12) approx 3.46
     const maxDist = 3.46;
     const compatibility = Math.max(0, 100 * (1 - (distance / maxDist)));
 

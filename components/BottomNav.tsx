@@ -25,7 +25,7 @@ export default function BottomNav({ activeView, onViewChange }: BottomNavProps) 
 
           return (
             <button
-              key={item.view}
+              key={item.label}
               onClick={() => onViewChange(item.view)}
               className={`flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 transition-colors touch-manipulation select-none ${
                 isActive

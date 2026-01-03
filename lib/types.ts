@@ -86,6 +86,9 @@ export interface UserProfile {
   is_admin?: boolean;
   current_archetype?: string;
   dna_level?: number;
+  impact_points?: number;
+  xp?: number;
+  level?: number;
 }
 
 // Party stance types

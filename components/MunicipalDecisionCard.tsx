@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Calendar, MapPin, Wallet, Info } from "lucide-react";
+import { Sparkles, Calendar, MapPin, Wallet, Info, Building2 } from "lucide-react";
 import type { MunicipalCase } from "@/lib/types";
 
 interface MunicipalDecisionCardProps {

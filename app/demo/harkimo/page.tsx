@@ -9,7 +9,7 @@ import ComparisonRadarChart from "@/components/ComparisonRadarChart";
 import { 
   Users, Zap, Info, TrendingUp, TrendingDown, 
   ChevronRight, BrainCircuit, BarChart3, Loader2,
-  UserRoundPen, Sparkles
+  User, Sparkles
 } from "lucide-react";
 import { initializeProfileFromMP } from "@/lib/actions/user-profile-actions";
 import { useRouter } from "next/navigation";
@@ -111,7 +111,7 @@ export default function HarkimoDemo() {
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
                   <>
-                    <UserRoundPen size={16} className="group-hover:rotate-12 transition-transform" />
+                    <User size={16} className="group-hover:rotate-12 transition-transform" />
                     <span>Mitä jos sinä olisit Hjallis?</span>
                     <Sparkles size={14} className="text-purple-400 animate-pulse" />
                   </>

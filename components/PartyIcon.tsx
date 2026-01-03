@@ -2,9 +2,10 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import type { ArchetypePoints } from "@/lib/types";
 
 interface PartyIconProps {
-  dnaProfile: Record<string, number>;
+  dnaProfile: ArchetypePoints;
   level: number;
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -21,7 +22,8 @@ export default function PartyIcon({ dnaProfile, level, size = "md", className = 
   };
 
   // Find dominant archetype
-  const dominant = Object.entries(dnaProfile).reduce((a, b) => (a[1] > b[1] ? a : b), ["active", 0])[0];
+  const entries = Object.entries(dnaProfile) as [string, number][];
+  const dominant = entries.reduce((a, b) => (a[1] > b[1] ? a : b), ["active", 0])[0];
   const mainColor = colors[dominant] || "#64748b";
 
   // Determine size

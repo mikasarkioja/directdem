@@ -5,7 +5,8 @@ import {
   Radar, RadarChart, PolarGrid, 
   PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer 
 } from "recharts";
-import { getDNAPoints, type ArchetypePoints } from "@/app/actions/dna";
+import { getDNAPoints } from "@/app/actions/dna";
+import type { ArchetypePoints } from "@/lib/types";
 import { Loader2, Info, Award, Shield, Zap, Search, HelpCircle, User } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -52,7 +53,8 @@ export default function DemocraticDNA() {
   ];
 
   // Find max points
-  const maxKey = Object.entries(points).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+  const entries = Object.entries(points) as [string, number][];
+  const maxKey = entries.reduce((a, b) => a[1] > b[1] ? a : b)[0];
   const dominantRole = roles.find(r => r.key === maxKey) || roles[0];
 
   return (
@@ -111,7 +113,7 @@ export default function DemocraticDNA() {
           <div className="space-y-3">
             <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">DNA-Pisteet</h5>
             <div className="grid grid-cols-2 gap-3">
-              {Object.entries(points).map(([key, val]) => (
+              {(Object.entries(points) as [string, number][]).map(([key, val]) => (
                 <div key={key} className="bg-slate-50 rounded-xl px-4 py-2 border border-slate-100 flex justify-between items-center">
                   <span className="text-[9px] font-bold uppercase text-slate-500">{key.replace('_', ' ')}</span>
                   <span className="text-xs font-black text-command-dark">{val}</span>

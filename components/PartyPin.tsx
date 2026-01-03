@@ -3,9 +3,10 @@
 import React from "react";
 import PartyIcon from "./PartyIcon";
 import { motion } from "framer-motion";
+import type { ArchetypePoints } from "@/lib/types";
 
 interface PartyPinProps {
-  dnaProfile: Record<string, number>;
+  dnaProfile: ArchetypePoints;
   level: number;
   partyName: string;
 }

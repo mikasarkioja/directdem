@@ -8,6 +8,26 @@ interface MunicipalDecisionCardProps {
   onClick: () => void;
 }
 
+const MunicipalityLogo = ({ municipality }: { municipality: string }) => {
+  if (municipality.toLowerCase() === "espoo") {
+    return (
+      <div className="w-8 h-8 flex-shrink-0 bg-[#005eb8] rounded-md flex items-center justify-center text-white font-black text-xl shadow-sm overflow-hidden" title="Espoo">
+        <span className="leading-none transform translate-y-[1px]">E</span>
+      </div>
+    );
+  }
+  if (municipality.toLowerCase() === "helsinki") {
+    return (
+      <div className="w-8 h-8 flex-shrink-0 bg-[#0000bf] rounded-md flex items-center justify-center text-white shadow-sm overflow-hidden" title="Helsinki">
+        <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current">
+          <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z" />
+        </svg>
+      </div>
+    );
+  }
+  return <Building2 className="w-8 h-8 text-nordic-blue" />;
+};
+
 export default function MunicipalDecisionCard({ item, onClick }: MunicipalDecisionCardProps) {
   const isAI = item.summary && (item.summary.length > 500 || item.summary.includes("###"));
 
@@ -39,20 +59,23 @@ export default function MunicipalDecisionCard({ item, onClick }: MunicipalDecisi
       )}
 
       <div className="flex flex-col h-full">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 bg-nordic-light text-nordic-dark text-[10px] font-bold rounded uppercase">
-              {item.municipality}
-            </span>
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-              item.status === 'agenda' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-            }`}>
-              {getStatusLabel(item.status)}
-            </span>
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <MunicipalityLogo municipality={item.municipality} />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-nordic-darker uppercase tracking-widest leading-none mb-1">
+                {item.municipality}
+              </span>
+              <span className={`inline-block w-fit px-1.5 py-0.5 rounded text-[9px] font-bold uppercase leading-none ${
+                item.status === 'agenda' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+              }`}>
+                {getStatusLabel(item.status)}
+              </span>
+            </div>
           </div>
         </div>
 
-        <h3 className="text-lg font-bold text-nordic-darker mb-2 group-hover:text-nordic-blue transition-colors">
+        <h3 className="text-lg font-bold text-nordic-darker mb-2 group-hover:text-nordic-blue transition-colors leading-tight">
           {item.title}
         </h3>
 

@@ -27,6 +27,19 @@ ON municipal_cases FOR SELECT
 TO public 
 USING (true);
 
+-- Allow everyone to insert/update cases (for sync-on-demand)
+-- Note: In production this should be restricted to service_role or admin
+CREATE POLICY "Allow anyone to insert municipal_cases" 
+ON municipal_cases FOR INSERT 
+TO public
+WITH CHECK (true);
+
+CREATE POLICY "Allow anyone to update municipal_cases" 
+ON municipal_cases FOR UPDATE 
+TO public
+USING (true)
+WITH CHECK (true);
+
 -- Municipal votes table
 CREATE TABLE IF NOT EXISTS municipal_votes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

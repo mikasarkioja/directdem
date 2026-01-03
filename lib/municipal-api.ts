@@ -33,31 +33,26 @@ export class EspooAPI extends MunicipalAPI {
   private baseUrl = "https://paatokset.espoo.fi/api/v1";
 
   async fetchLatestItems(limit: number = 10): Promise<MunicipalAgendaItem[]> {
-    console.log(`[EspooAPI] Fetching latest items, limit: ${limit}`);
+    console.log(`[EspooAPI] Fetching latest items from Espoo, limit: ${limit}`);
     try {
-      // Try with a slightly simpler URL first
+      // Espoon rajapinta saattaa vaatia tarkan polun tai olla välillä saavuttamattomissa
       const url = `${this.baseUrl}/agenda_item/?limit=${limit}`;
-      console.log(`[EspooAPI] Fetching from: ${url}`);
       
       const response = await fetch(url, {
         next: { revalidate: 3600 },
-        headers: { "Accept": "application/json" }
+        headers: { "Accept": "application/json" },
+        signal: AbortSignal.timeout(5000) // Katkaistaan haku 5 sekunnin jälkeen
       });
 
-      console.log(`[EspooAPI] Response status: ${response.status}`);
-
       if (!response.ok) {
-        console.warn(`[EspooAPI] API returned error: ${response.status}`);
-        return this.getMockItems(); // Fallback to mock items
+        console.warn(`[EspooAPI] API returned status ${response.status}`);
+        return this.getMockItems();
       }
 
       const data = await response.json();
       const objects = data.objects || [];
-      console.log(`[EspooAPI] Found ${objects.length} items`);
-
-      if (objects.length === 0) {
-        return this.getMockItems(); // Fallback if no items found
-      }
+      
+      if (objects.length === 0) return this.getMockItems();
 
       return objects.map((item: any) => ({
         id: item.id?.toString() || Math.random().toString(),
@@ -70,9 +65,10 @@ export class EspooAPI extends MunicipalAPI {
         url: item.origin_url,
         municipality: this.municipalityName
       }));
-    } catch (error) {
-      console.error("[EspooAPI] Failed to fetch from Espoo API:", error);
-      return this.getMockItems(); // Fallback to mock items
+    } catch (error: any) {
+      // Tunnistetaan DNS-virheet ja muut verkkohäiriöt
+      console.error("[EspooAPI] Network error or DNS fail:", error.message);
+      return this.getMockItems(); // TÄRKEÄÄ: Palautetaan mock-data virhetilanteessa
     }
   }
 

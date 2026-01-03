@@ -43,7 +43,11 @@ export default function DebateDemo() {
         const { data: profile } = await supabase.from("profiles").select("*").eq("id", authUser.id).single();
         setUser(profile as any);
       }
-      const { data: billsData } = await supabase.from("bills").select("*").limit(5);
+      const { data: billsData } = await supabase
+        .from("bills")
+        .select("*")
+        .order('published_date', { ascending: false })
+        .limit(15);
       setBills(billsData || []);
     }
     load();
@@ -175,9 +179,9 @@ export default function DebateDemo() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Topic Selection */}
-                  <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm space-y-6">
+                  <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm space-y-6 flex flex-col h-[500px]">
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">1. Valitse aihe</h3>
-                    <div className="space-y-3">
+                    <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1">
                       {bills.map(bill => (
                         <button
                           key={bill.id}
@@ -195,9 +199,9 @@ export default function DebateDemo() {
                   </div>
 
                   {/* Challenger Selection */}
-                  <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm space-y-6">
+                  <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm space-y-6 h-[500px]">
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">2. Valitse haastaja</h3>
-                    <div className="space-y-3">
+                    <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar">
                       <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl opacity-50">
                         <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Osallistuja 1</p>
                         <p className="text-sm font-black text-command-dark">Liike Nyt</p>

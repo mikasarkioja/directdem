@@ -11,16 +11,28 @@ interface MunicipalDecisionCardProps {
 const MunicipalityLogo = ({ municipality }: { municipality: string }) => {
   if (municipality.toLowerCase() === "espoo") {
     return (
-      <div className="w-8 h-8 flex-shrink-0 bg-[#005eb8] rounded-md flex items-center justify-center text-white font-black text-xl shadow-sm overflow-hidden" title="Espoo">
-        <span className="leading-none transform translate-y-[1px]">E</span>
+      <div className="w-8 h-8 flex-shrink-0 bg-[#005eb8] rounded-md flex items-center justify-center text-white shadow-sm overflow-hidden" title="Espoo">
+        <svg viewBox="0 0 100 120" className="w-6 h-6 fill-[#ffd700]">
+          {/* Espoo Coat of Arms: Horseshoe and Crown */}
+          <path d="M50,10 L30,20 L30,30 L70,30 L70,20 Z" /> {/* Simplified Crown base */}
+          <path d="M50,5 L40,15 L60,15 Z" /> {/* Crown top */}
+          <path d="M25,50 C25,30 75,30 75,50 C75,75 55,95 50,100 C45,95 25,75 25,50" fill="none" stroke="#ffd700" strokeWidth="8" /> {/* Horseshoe shape */}
+          <circle cx="35" cy="55" r="3" />
+          <circle cx="65" cy="55" r="3" />
+          <circle cx="40" cy="75" r="3" />
+          <circle cx="60" cy="75" r="3" />
+        </svg>
       </div>
     );
   }
   if (municipality.toLowerCase() === "helsinki") {
     return (
       <div className="w-8 h-8 flex-shrink-0 bg-[#0000bf] rounded-md flex items-center justify-center text-white shadow-sm overflow-hidden" title="Helsinki">
-        <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current">
-          <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z" />
+        <svg viewBox="0 0 100 120" className="w-6 h-6">
+          {/* Helsinki Coat of Arms: Boat and Crown */}
+          <path d="M50,10 L35,25 L65,25 Z" fill="#ffd700" /> {/* Crown simplified */}
+          <path d="M20,70 L80,70 L75,90 L25,90 Z" fill="#ffd700" /> {/* Boat body */}
+          <path d="M10,95 C30,85 70,85 90,95" fill="none" stroke="white" strokeWidth="4" /> {/* Waves */}
         </svg>
       </div>
     );

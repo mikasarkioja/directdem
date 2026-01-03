@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getHarkimoMatches } from "@/lib/actions/harkimo-match";
+import { getHarkimoMatches, type HarkimoMatchResult, type MPMatch } from "@/lib/actions/harkimo-match";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import ComparisonRadarChart from "@/components/ComparisonRadarChart";
@@ -15,8 +15,8 @@ import { initializeProfileFromMP } from "@/lib/actions/user-profile-actions";
 import { useRouter } from "next/navigation";
 
 export default function HarkimoDemo() {
-  const [data, setData] = useState<any>(null);
-  const [selectedMp, setSelectedMp] = useState<any>(null);
+  const [data, setData] = useState<HarkimoMatchResult | null>(null);
+  const [selectedMp, setSelectedMp] = useState<MPMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [initializing, setInitializing] = useState(false);
   const router = useRouter();
@@ -41,7 +41,7 @@ export default function HarkimoDemo() {
       try {
         const result = await getHarkimoMatches();
         setData(result);
-        if (result.topMatches.length > 0) {
+        if (result && result.topMatches && result.topMatches.length > 0) {
           setSelectedMp(result.topMatches[0]);
         }
       } catch (e) {

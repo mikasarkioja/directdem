@@ -14,7 +14,26 @@ export interface MPMatch {
   };
 }
 
-export async function getHarkimoMatches() {
+export interface HarkimoMatchResult {
+  harkimo: {
+    id: number;
+    full_name: string;
+    party: string;
+    scores: {
+      economic: number;
+      liberal: number;
+      env: number;
+    };
+  };
+  topMatches: MPMatch[];
+  bottomMatches: MPMatch[];
+  partyAnalysis: {
+    name: string;
+    avgCompatibility: number;
+  }[];
+}
+
+export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!

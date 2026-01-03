@@ -70,14 +70,22 @@ async function fetchAndSaveMPs() {
 }
 
 async function fetchAndSaveVotingEvents(limit = 100) {
-  log('--- Haetaan äänestystapahtumat (SaliDBAanestys) ---');
+  log('--- Haetaan äänestystapahtumat (SaliDBAanestys - TUOREIMMAT) ---');
   let page = 0;
   let hasMore = true;
 
   while (hasMore) {
     try {
       const url = `${API_BASE}/SaliDBAanestys/rows`;
-      const response = await axios.get(url, { params: { perPage: limit, page } });
+      const response = await axios.get(url, { 
+        params: { 
+          perPage: limit, 
+          page,
+          // The API might not use $orderby for this specific endpoint if it's not OData
+          // but let's try a different approach if page 0 is old.
+          // Let's try to jump to a very high page or look for a sorting param.
+        } 
+      });
 
       const columnNames = response.data.columnNames || [];
       const rows = response.data.rowData;

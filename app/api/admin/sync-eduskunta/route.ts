@@ -72,6 +72,29 @@ export async function POST() {
         if (vErr) throw new Error(`Äänestys-virhe: ${vErr.message}`);
         log(`✅ ${events.length} äänestystä tallennettu.`);
 
+        // 3. MP Votes (Batch 1 for demo)
+        log("--- Vaihe 3: Yksittäiset äänet (SaliDBAanestysEdustaja) ---");
+        const votesRes = await axios.get(`${API_BASE}/SaliDBAanestysEdustaja/rows?perPage=200`);
+        const vCols2 = votesRes.data.columnNames || [];
+        const vRows2 = votesRes.data.rowData || [];
+
+        const votes = vRows2.map((row: any) => {
+          const getVal = (col: string) => row[vCols2.indexOf(col)];
+          const voteVal = getVal('EdustajaAanestys')?.trim().toLowerCase();
+          return {
+            mp_id: parseInt(getVal('EdustajaHenkiloNumero')),
+            event_id: getVal('AanestysId')?.toString(),
+            vote_type: voteVal === 'jaa' ? 'jaa' : 
+                       voteVal === 'ei' ? 'ei' : 
+                       voteVal === 'tyhjää' ? 'tyhjaa' : 'poissa'
+          };
+        }).filter((v: any) => !isNaN(v.mp_id) && v.event_id);
+
+        log(`Löytyi ${votes.length} ääntä. Tallennetaan...`);
+        const { error: voteErr } = await supabase.from('mp_votes').upsert(votes, { onConflict: 'mp_id,event_id' });
+        if (voteErr) log(`VAROITUS äänitallennuksessa: ${voteErr.message}`);
+        else log(`✅ ${votes.length} ääntä tallennettu.`);
+
         log("🏁 Synkronointi valmis!");
       } catch (error: any) {
         log(`❌ KRIITTINEN VIRHE: ${error.message}`);

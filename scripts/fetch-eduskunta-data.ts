@@ -150,9 +150,9 @@ async function fetchAndSaveMPVotes(limit = 100) {
         };
       }).filter((v: any) => !isNaN(v.mp_id) && v.event_id);
 
-      const { error } = await supabase.from('mp_votes').upsert(votes);
+      const { error } = await supabase.from('mp_votes').upsert(votes, { onConflict: 'mp_id,event_id' });
       if (error) {
-        log('Supabase VAROITUS yksittäisissä äänissä (luultavasti puuttuva MP):', error.message);
+        log('Supabase VIRHE yksittäisissä äänissä:', error.message);
       } else {
         log(`✅ Tallennettu ${votes.length} ääntä (yhteensä: ${(page + 1) * limit}).`);
       }

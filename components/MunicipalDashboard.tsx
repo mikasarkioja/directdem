@@ -5,7 +5,7 @@ import { fetchMunicipalCases } from "@/app/actions/municipal";
 import type { MunicipalCase, UserProfile } from "@/lib/types";
 import MunicipalDecisionCard from "./MunicipalDecisionCard";
 import MunicipalCaseDetail from "./MunicipalCaseDetail";
-import { Loader2, Info, Building2, MapPin } from "lucide-react";
+import { Loader2, Info, Building2, MapPin, RefreshCw } from "lucide-react";
 
 interface MunicipalDashboardProps {
   user: UserProfile | null;
@@ -15,23 +15,34 @@ interface MunicipalDashboardProps {
 export default function MunicipalDashboard({ user, initialMunicipality = "Espoo" }: MunicipalDashboardProps) {
   const [cases, setCases] = useState<MunicipalCase[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [municipality, setMunicipality] = useState(initialMunicipality);
   const [selectedCase, setSelectedCase] = useState<MunicipalCase | null>(null);
 
-  useEffect(() => {
-    async function loadCases() {
-      setLoading(true);
-      try {
-        const data = await fetchMunicipalCases(municipality);
-        setCases(data);
-      } catch (error) {
-        console.error("Failed to load cases:", error);
-      } finally {
-        setLoading(false);
-      }
+  const loadCases = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    try {
+      const data = await fetchMunicipalCases(municipality);
+      setCases(data);
+    } catch (error) {
+      console.error("Failed to load cases:", error);
+    } finally {
+      if (showLoading) setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadCases();
   }, [municipality]);
+
+  const handleManualSync = async () => {
+    setSyncing(true);
+    // The fetchMunicipalCases action already attempts sync if empty, 
+    // but we can add a way to force it if we want.
+    // For now, just reload.
+    await loadCases(false);
+    setSyncing(false);
+  };
 
   if (loading) {
     return (
@@ -54,6 +65,14 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Espoo"
               <MapPin size={14} /> {municipality} — Paikallinen päätöksenteko
             </p>
           </div>
+          <button
+            onClick={handleManualSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 bg-nordic-light hover:bg-nordic-gray/20 text-nordic-darker rounded-xl transition-colors text-sm font-bold uppercase tracking-widest border border-nordic-gray/30"
+          >
+            {syncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+            Päivitä esityslistat
+          </button>
         </div>
 
         {!user && (

@@ -39,28 +39,42 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
 
   // If no data, attempt sync
   try {
+    console.log(`[fetchMunicipalCases] No data in DB, syncing from ${municipality} API...`);
     const api = getMunicipalAPI(municipality);
     const items = await api.fetchLatestItems(10);
+
+    console.log(`[fetchMunicipalCases] Received ${items.length} items from API`);
 
     if (items.length > 0) {
       const casesToInsert = items.map(item => ({
         municipality: item.municipality,
         external_id: item.id,
         title: item.title,
-        summary: item.summary,
-        raw_text: item.content,
-        status: item.status,
-        meeting_date: item.meetingDate,
-        org_name: item.orgName,
-        url: item.url
+        summary: item.summary || item.title,
+        raw_text: item.content || "",
+        status: item.status || "agenda",
+        meeting_date: item.meetingDate || new Date().toISOString(),
+        org_name: item.orgName || "",
+        url: item.url || ""
       }));
 
+      console.log(`[fetchMunicipalCases] Upserting ${casesToInsert.length} cases to Supabase...`);
       const { data: inserted, error: insertError } = await supabase
         .from("municipal_cases")
-        .upsert(casesToInsert, { onConflict: "municipality,external_id" })
+        .upsert(casesToInsert, { 
+          onConflict: "municipality,external_id",
+          ignoreDuplicates: false 
+        })
         .select();
 
-      if (inserted && !insertError) {
+      if (insertError) {
+        console.error("[fetchMunicipalCases] Upsert error:", insertError);
+        throw insertError;
+      }
+
+      console.log(`[fetchMunicipalCases] Successfully upserted ${inserted?.length || 0} cases`);
+
+      if (inserted && inserted.length > 0) {
         return inserted.map((c: SupabaseMunicipalCase) => ({
           id: c.id,
           municipality: c.municipality,
@@ -80,7 +94,7 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
       }
     }
   } catch (syncError) {
-    console.error(`Failed to sync municipal cases for ${municipality}:`, syncError);
+    console.error(`[fetchMunicipalCases] Failed to sync municipal cases for ${municipality}:`, syncError);
   }
 
   return [];

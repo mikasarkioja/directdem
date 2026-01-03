@@ -41,20 +41,31 @@ export default function Dashboard({ user }: DashboardProps) {
               />
               
               {viewContext === "municipal" && (
-                <div className="flex gap-2">
-                  {["Espoo", "Helsinki", "Aloitteet"].map(muni => (
-                    <button
-                      key={muni}
-                      onClick={() => setSelectedMunicipality(muni)}
-                      className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border transition-all ${
-                        selectedMunicipality === muni
-                          ? "bg-nordic-blue text-white border-nordic-blue"
-                          : "bg-white text-nordic-dark border-nordic-gray/20"
-                      }`}
-                    >
-                      {muni === "Aloitteet" ? "🔥 Aloitteet (Live)" : muni}
-                    </button>
-                  ))}
+                <div className="flex gap-3">
+                  {["Espoo", "Helsinki", "Aloitteet"].map(muni => {
+                    const isActive = selectedMunicipality === muni;
+                    return (
+                      <button
+                        key={muni}
+                        onClick={() => setSelectedMunicipality(muni)}
+                        className={`flex items-center gap-2 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border transition-all shadow-sm ${
+                          isActive
+                            ? "bg-white text-nordic-blue border-nordic-blue ring-2 ring-nordic-blue/10"
+                            : "bg-white/50 text-nordic-dark border-nordic-gray/30 hover:bg-white"
+                        }`}
+                      >
+                        {muni === "Espoo" && (
+                          <div className="w-4 h-4 bg-[#005eb8] rounded-sm flex items-center justify-center text-white text-[10px] font-bold">E</div>
+                        )}
+                        {muni === "Helsinki" && (
+                          <div className="w-4 h-4 bg-[#0000bf] rounded-sm flex items-center justify-center text-white">
+                            <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current"><path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z" /></svg>
+                          </div>
+                        )}
+                        {muni === "Aloitteet" ? "🔥 Aloitteet" : muni}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

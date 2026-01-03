@@ -32,7 +32,17 @@ export default function ContextSwitcher({ currentContext, onContextChange, munic
             : "text-nordic-dark hover:text-nordic-darker"
         }`}
       >
-        <Building2 size={14} />
+        {municipality.toLowerCase() === "espoo" && (
+          <div className="w-4 h-4 bg-[#005eb8] rounded-sm flex items-center justify-center text-white text-[10px] font-bold">E</div>
+        )}
+        {municipality.toLowerCase() === "helsinki" && (
+          <div className="w-4 h-4 bg-[#0000bf] rounded-sm flex items-center justify-center text-white">
+            <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current"><path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z" /></svg>
+          </div>
+        )}
+        {municipality.toLowerCase() !== "espoo" && municipality.toLowerCase() !== "helsinki" && (
+          <Building2 size={14} />
+        )}
         {municipality}
       </button>
     </div>

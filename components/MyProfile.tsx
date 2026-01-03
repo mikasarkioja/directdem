@@ -144,7 +144,17 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
               </div>
             )}
           </div>
-          <p className="text-command-gray text-[10px] font-black uppercase tracking-widest">Identity: {user.id.substring(0, 8)}...</p>
+          <div className="flex flex-col gap-1">
+            <p className="text-command-gray text-[10px] font-black uppercase tracking-widest">Identity: {user.id.substring(0, 8)}...</p>
+            {user.initialized_from_mp && (
+              <div className="flex items-center gap-1.5 text-purple-400 bg-purple-400/10 w-fit px-2 py-0.5 rounded-full border border-purple-400/20">
+                <Sparkles size={10} className="animate-pulse" />
+                <p className="text-[9px] font-black uppercase tracking-tight">
+                  {user.initialized_from_mp}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -152,6 +162,20 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
       {error && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-command-rose/10 border border-command-rose/20 rounded-xl text-command-rose text-xs font-bold">{error}</motion.div>}
 
       <div className="space-y-8">
+        {user.initialized_from_mp && (
+          <div className="bg-purple-600/5 border border-purple-600/20 rounded-2xl p-6 flex gap-4">
+            <div className="w-10 h-10 rounded-xl bg-purple-600/10 flex items-center justify-center shrink-0 text-purple-400">
+              <Sparkles size={20} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-black uppercase tracking-widest text-purple-400">Pohjaprofiili aktivoitu</p>
+              <p className="text-xs text-white/70 leading-relaxed font-medium">
+                Pohjaprofiilisi perustuu {user.initialized_from_mp.split(': ')[1]} äänestyskäyttäytymiseen. 
+                Jokainen oma äänesi muokkaa tätä profiilia lähemmäs todellista DNA:tasi.
+              </p>
+            </div>
+          </div>
+        )}
         <DemocraticDNA />
         <PartyMatchCard />
       </div>

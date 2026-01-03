@@ -8,13 +8,33 @@ import BottomNav from "@/components/BottomNav";
 import ComparisonRadarChart from "@/components/ComparisonRadarChart";
 import { 
   Users, Zap, Info, TrendingUp, TrendingDown, 
-  ChevronRight, BrainCircuit, BarChart3, Loader2 
+  ChevronRight, BrainCircuit, BarChart3, Loader2,
+  UserRoundPen, Sparkles
 } from "lucide-react";
+import { initializeProfileFromMP } from "@/lib/actions/user-profile-actions";
+import { useRouter } from "next/navigation";
 
 export default function HarkimoDemo() {
   const [data, setData] = useState<any>(null);
   const [selectedMp, setSelectedMp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(false);
+  const router = useRouter();
+
+  const handleCopyProfile = async () => {
+    if (!data?.harkimo?.id) return;
+    
+    setInitializing(true);
+    try {
+      await initializeProfileFromMP(data.harkimo.id);
+      alert('Profiilisi on nyt alustettu Hjalliksen äänestyshistorian perusteella! Voit nyt lähteä muokkaamaan sitä äänestämällä itse.');
+      router.push('/'); // Redirect to bills area
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setInitializing(false);
+    }
+  };
 
   useEffect(() => {
     async function load() {
@@ -69,15 +89,34 @@ export default function HarkimoDemo() {
               </p>
             </div>
             
-            <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm flex items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-purple-600 flex items-center justify-center text-white text-2xl font-black italic">
-                HH
+            <div className="flex flex-col gap-4">
+              <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm flex items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-purple-600 flex items-center justify-center text-white text-2xl font-black italic">
+                  HH
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Keskiössä</p>
+                  <p className="text-xl font-black uppercase tracking-tight">{data.harkimo.full_name}</p>
+                  <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Keskiössä</p>
-                <p className="text-xl font-black uppercase tracking-tight">{data.harkimo.full_name}</p>
-                <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
-              </div>
+              
+              <button
+                onClick={handleCopyProfile}
+                disabled={initializing}
+                className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-purple-700 transition-all shadow-lg disabled:opacity-50 group overflow-hidden relative"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                {initializing ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    <UserRoundPen size={16} className="group-hover:rotate-12 transition-transform" />
+                    <span>Mitä jos sinä olisit Hjallis?</span>
+                    <Sparkles size={14} className="text-purple-400 animate-pulse" />
+                  </>
+                )}
+              </button>
             </div>
           </div>
 

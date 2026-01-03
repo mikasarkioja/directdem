@@ -6,18 +6,24 @@ import {
   PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer 
 } from "recharts";
 import { getDNAPoints } from "@/app/actions/dna";
-import type { ArchetypePoints } from "@/lib/types";
-import { Loader2, Info, Award, Shield, Zap, Search, HelpCircle, User } from "lucide-react";
+import { getUser } from "@/app/actions/auth";
+import type { ArchetypePoints, UserProfile } from "@/lib/types";
+import { Loader2, Info, Award, Shield, Zap, Search, HelpCircle, User, BrainCircuit, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function DemocraticDNA() {
   const [points, setPoints] = useState<ArchetypePoints | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadDNA() {
-      const dnaData = await getDNAPoints();
+      const [dnaData, profile] = await Promise.all([
+        getDNAPoints(),
+        getUser()
+      ]);
       setPoints(dnaData);
+      setUserProfile(profile);
       setLoading(false);
     }
     loadDNA();
@@ -111,7 +117,7 @@ export default function DemocraticDNA() {
           </motion.div>
 
           <div className="space-y-3">
-            <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">DNA-Pisteet</h5>
+            <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Behavioral DNA</h5>
             <div className="grid grid-cols-2 gap-3">
               {(Object.entries(points) as [string, number][]).map(([key, val]) => (
                 <div key={key} className="bg-slate-50 rounded-xl px-4 py-2 border border-slate-100 flex justify-between items-center">
@@ -121,6 +127,46 @@ export default function DemocraticDNA() {
               ))}
             </div>
           </div>
+
+          {userProfile && (userProfile.economic_score !== 0 || userProfile.liberal_conservative_score !== 0 || userProfile.environmental_score !== 0) && (
+            <div className="space-y-3 pt-4 border-t border-slate-50">
+              <div className="flex items-center gap-2">
+                <BrainCircuit size={14} className="text-purple-600" />
+                <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Political DNA</h5>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { label: 'Talous', val: userProfile.economic_score, left: 'Vasen', right: 'Oikeisto' },
+                  { label: 'Arvot', val: userProfile.liberal_conservative_score, left: 'Konservatiivi', right: 'Liberaali' },
+                  { label: 'Ympäristö', val: userProfile.environmental_score, left: 'Hyödyntäminen', right: 'Suojelu' },
+                ].map((score) => (
+                  <div key={score.label} className="space-y-1">
+                    <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-400">
+                      <span>{score.left}</span>
+                      <span className="text-slate-600">{score.label}</span>
+                      <span>{score.right}</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full relative overflow-hidden border border-slate-200/50">
+                      <div className="absolute top-0 left-1/2 bottom-0 w-0.5 bg-slate-300 z-10" />
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ 
+                          width: `${Math.abs(score.val || 0) * 50}%`,
+                          left: (score.val || 0) >= 0 ? '50%' : `${50 - Math.abs(score.val || 0) * 50}%`
+                        }}
+                        className={`absolute top-0 bottom-0 ${ (score.val || 0) >= 0 ? 'bg-purple-500' : 'bg-blue-500'}`}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {userProfile.initialized_from_mp && (
+                <p className="text-[8px] text-slate-400 italic font-medium">
+                  * {userProfile.initialized_from_mp}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-white border border-blue-100 flex items-center justify-center text-command-neon shrink-0">

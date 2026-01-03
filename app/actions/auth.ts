@@ -44,7 +44,7 @@ export async function getUser(): Promise<UserProfile | null> {
   // Fetch profile data
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("full_name, is_verified, vaalipiiri, municipality, last_login, join_report_list, impact_points, xp, level")
+    .select("full_name, is_verified, vaalipiiri, municipality, last_login, join_report_list, impact_points, xp, level, economic_score, liberal_conservative_score, environmental_score, initialized_from_mp")
     .eq("id", user.id)
     .single();
 
@@ -66,6 +66,10 @@ export async function getUser(): Promise<UserProfile | null> {
     impact_points: profile?.impact_points || 0,
     xp: profile?.xp || 0,
     level: profile?.level || 1,
+    economic_score: profile?.economic_score || 0,
+    liberal_conservative_score: profile?.liberal_conservative_score || 0,
+    environmental_score: profile?.environmental_score || 0,
+    initialized_from_mp: profile?.initialized_from_mp || null,
   };
   } catch (error: any) {
     // Catch any unexpected errors (network issues, etc.)

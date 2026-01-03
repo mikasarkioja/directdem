@@ -89,6 +89,10 @@ export interface UserProfile {
   impact_points?: number;
   xp?: number;
   level?: number;
+  economic_score?: number;
+  liberal_conservative_score?: number;
+  environmental_score?: number;
+  initialized_from_mp?: string;
 }
 
 // Party stance types
@@ -137,6 +141,10 @@ export interface SupabaseProfile {
   join_report_list: boolean;
   email: string | null;
   is_admin: boolean;
+  economic_score: number | null;
+  liberal_conservative_score: number | null;
+  environmental_score: number | null;
+  initialized_from_mp: string | null;
   created_at: string;
   updated_at: string;
 }

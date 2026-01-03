@@ -1,4 +1,4 @@
-// scripts/analyze-mp-dna.ts
+// scripts/analyze-mp-dna.ts - Build trigger
 import { createClient } from '@supabase/supabase-js';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';

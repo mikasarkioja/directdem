@@ -34,42 +34,49 @@ export class EspooAPI extends MunicipalAPI {
 
   async fetchLatestItems(limit: number = 10): Promise<MunicipalAgendaItem[]> {
     console.log(`[EspooAPI] Fetching latest items from Espoo, limit: ${limit}`);
-    try {
-      // Espoon rajapinta saattaa vaatia tarkan polun tai olla välillä saavuttamattomissa
-      const url = `${this.baseUrl}/agenda_item/?limit=${limit}`;
-      
-      const response = await fetch(url, {
-        next: { revalidate: 3600 },
-        headers: { "Accept": "application/json" },
-        signal: AbortSignal.timeout(5000) // Katkaistaan haku 5 sekunnin jälkeen
-      });
+    
+    // Yritetään kahta eri mahdollista rajapintaa
+    const endpoints = [
+      `${this.baseUrl}/agenda_item/?limit=${limit}`,
+      `https://paatokset.espoo.fi/rest/v1/agendas?limit=${limit}`
+    ];
 
-      if (!response.ok) {
-        console.warn(`[EspooAPI] API returned status ${response.status}`);
-        return this.getMockItems();
+    for (const url of endpoints) {
+      try {
+        console.log(`[EspooAPI] Trying endpoint: ${url}`);
+        const response = await fetch(url, {
+          next: { revalidate: 3600 },
+          headers: { "Accept": "application/json" },
+          signal: AbortSignal.timeout(8000)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Käsitellään eri vastausmuodot (Open Decisions vs Rest API)
+          const objects = data.objects || data.items || (Array.isArray(data) ? data : []);
+          
+          if (objects.length > 0) {
+            console.log(`[EspooAPI] Successfully fetched ${objects.length} items from ${url}`);
+            return objects.map((item: any) => ({
+              id: (item.id || item.native_id || Math.random()).toString(),
+              title: item.title || item.subject || "Nimetön asia",
+              summary: item.preamble || item.abstract || item.title || item.subject,
+              content: item.resolution || item.content || item.text,
+              status: item.decision_status || item.status || "agenda",
+              meetingDate: item.meeting?.date || item.meeting_date || item.date,
+              orgName: item.organization?.name || item.council_name || "Espoon kaupunki",
+              url: item.origin_url || item.html_url || item.pdf_url,
+              municipality: this.municipalityName
+            }));
+          }
+        }
+      } catch (error: any) {
+        console.warn(`[EspooAPI] Endpoint ${url} failed:`, error.message);
       }
-
-      const data = await response.json();
-      const objects = data.objects || [];
-      
-      if (objects.length === 0) return this.getMockItems();
-
-      return objects.map((item: any) => ({
-        id: item.id?.toString() || Math.random().toString(),
-        title: item.title || "Nimetön asia",
-        summary: item.preamble || item.title,
-        content: item.resolution || item.content,
-        status: item.decision_status || "agenda",
-        meetingDate: item.meeting?.date,
-        orgName: item.organization?.name,
-        url: item.origin_url,
-        municipality: this.municipalityName
-      }));
-    } catch (error: any) {
-      // Tunnistetaan DNS-virheet ja muut verkkohäiriöt
-      console.error("[EspooAPI] Network error or DNS fail:", error.message);
-      return this.getMockItems(); // TÄRKEÄÄ: Palautetaan mock-data virhetilanteessa
     }
+
+    console.error("[EspooAPI] All endpoints failed, using mock data");
+    return this.getMockItems();
   }
 
   private getMockItems(): MunicipalAgendaItem[] {

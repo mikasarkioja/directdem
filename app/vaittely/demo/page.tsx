@@ -13,6 +13,8 @@ import { createClient } from "@/lib/supabase/client";
 import type { Bill, MunicipalCase, UserProfile } from "@/lib/types";
 import FlyingEmojis from "@/components/FlyingEmojis";
 import VoteButton from "@/components/VoteButton";
+import { fetchRelevantNews, NewsItem } from "@/lib/news-fetcher";
+import FactCheckOverlay from "@/components/FactCheckOverlay";
 
 const CHALLENGERS = ["SDP", "Kokoomus", "Vihreät", "Perussuomalaiset", "Keskusta"];
 
@@ -22,12 +24,15 @@ export default function DebateDemo() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<Bill | MunicipalCase | null>(null);
   const [challenger, setChallenger] = useState(CHALLENGERS[0]);
+  const [news, setNews] = useState<NewsItem[]>([]);
   
   // Arena State
   const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
   const [currentText, setCurrentText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [debateFinished, setDebateFinished] = useState(false);
+  const [factCheck, setFactCheck] = useState<string | null>(null);
+  const [isLoadingNews, setIsLoadingNews] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,9 +51,16 @@ export default function DebateDemo() {
 
   const startDebate = async () => {
     if (!selectedTopic) return;
+    
+    setIsLoadingNews(true);
+    const relevantNews = await fetchRelevantNews(selectedTopic.title);
+    setNews(relevantNews);
+    setIsLoadingNews(false);
+
     setStep("arena");
     setMessages([]);
     setDebateFinished(false);
+    setFactCheck(null);
     // Automatically trigger first turn
     setTimeout(() => runTurn([]), 1000);
   };
@@ -69,7 +81,8 @@ export default function DebateDemo() {
         body: JSON.stringify({
           topic: selectedTopic?.title,
           challengerParty: challenger,
-          history
+          history,
+          news // Feed news to AI
         }),
       });
 
@@ -99,6 +112,26 @@ export default function DebateDemo() {
       setMessages(newHistory);
       setCurrentText("");
       setIsStreaming(false);
+
+      // Perform Live Fact-Check
+      try {
+        const fcRes = await fetch("/api/debate/fact-check", {
+          method: "POST",
+          body: JSON.stringify({
+            topic: selectedTopic?.title,
+            message: fullText,
+            contextNews: news
+          }),
+        });
+        const fcData = await fcRes.json();
+        if (fcData.factCheck) {
+          setFactCheck(fcData.factCheck);
+          // Auto-hide fact check after 10s if not clicked
+          setTimeout(() => setFactCheck(null), 10000);
+        }
+      } catch (e) {
+        console.error("Fact check failed", e);
+      }
 
       // Wait a bit then next turn
       if (newHistory.length < 6) {
@@ -191,29 +224,31 @@ export default function DebateDemo() {
                   </div>
                 </div>
 
-                <div className="flex justify-center pt-8">
-                  <button
-                    disabled={!selectedTopic}
-                    onClick={startDebate}
-                    className="flex items-center gap-3 bg-slate-900 text-white px-12 py-5 rounded-3xl text-sm font-black uppercase tracking-widest shadow-2xl hover:scale-105 hover:bg-black transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-white/10"
-                  >
-                    <Play size={20} fill="currentColor" />
-                    Aloita Väittely
-                  </button>
-                </div>
-              </motion.div>
-            )}
+                  <div className="flex justify-center pt-8">
+                    <button
+                      disabled={!selectedTopic || isLoadingNews}
+                      onClick={startDebate}
+                      className="flex items-center gap-3 bg-slate-900 text-white px-12 py-5 rounded-3xl text-sm font-black uppercase tracking-widest shadow-2xl hover:scale-105 hover:bg-black transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-white/10"
+                    >
+                      {isLoadingNews ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" />}
+                      {isLoadingNews ? "Haetaan uutisia..." : "Aloita Väittely"}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
-            {step === "arena" && (
-              <motion.div 
-                key="arena"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="relative h-[80vh] bg-slate-900 rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl flex flex-col"
-              >
-                <FlyingEmojis />
-                
-                {/* Arena Header */}
+              {step === "arena" && (
+                <div className="flex flex-col lg:flex-row gap-8">
+                  <motion.div 
+                    key="arena"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="relative flex-1 h-[80vh] bg-slate-900 rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl flex flex-col"
+                  >
+                    <FlyingEmojis />
+                    <FactCheckOverlay factCheck={factCheck} onClose={() => setFactCheck(null)} />
+                    
+                    {/* Arena Header */}
                 <div className="p-8 border-b border-white/5 flex justify-between items-center bg-slate-800/50 backdrop-blur-xl z-30">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-rose-500 rounded-full flex items-center justify-center animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.4)]">
@@ -295,10 +330,52 @@ export default function DebateDemo() {
                       className="bg-command-neon text-white px-12 py-4 rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all"
                     >
                       Katso yhteenveto
-                    </button>
-                  </motion.div>
-                )}
-              </motion.div>
+                      </button>
+                    </motion.div>
+                  )}
+                </motion.div>
+
+                {/* News Sidebar */}
+                <motion.aside 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="w-full lg:w-80 space-y-6"
+                >
+                  <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+                      <Radio size={14} className="text-rose-500 animate-pulse" />
+                      Päivän uutispoiminnat
+                    </h3>
+                    <div className="space-y-6">
+                      {news.map(item => (
+                        <a 
+                          key={item.id} 
+                          href={item.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block group"
+                        >
+                          <p className="text-[10px] font-black uppercase text-command-neon mb-1">{item.source}</p>
+                          <p className="text-sm font-bold text-slate-700 group-hover:text-command-neon transition-colors leading-snug">
+                            {item.title}
+                          </p>
+                          <div className="mt-2 flex items-center gap-1 text-[8px] font-black uppercase text-slate-400">
+                            <span>Lue artikkeli</span>
+                            <ChevronRight size={10} />
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-100 rounded-[2.5rem] p-8">
+                    <p className="text-[10px] font-black uppercase text-blue-500 mb-2">Agora AI Context</p>
+                    <p className="text-xs font-medium text-blue-700 leading-relaxed">
+                      Agentit hyödyntävät näitä uutisia argumentoinnissaan reaaliajassa.
+                    </p>
+                  </div>
+                </motion.aside>
+              </div>
             )}
 
             {step === "conclusion" && (

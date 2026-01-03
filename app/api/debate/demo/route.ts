@@ -4,7 +4,7 @@ import { streamText } from "ai";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const { topic, challengerParty, history = [] } = await req.json();
+  const { topic, challengerParty, history = [], news = [] } = await req.json();
 
   const challengerPrompts: Record<string, string> = {
     "SDP": "Olet kokenut ja vakaumuksellinen SDP:n edustaja. Puolustat intohimoisesti hyvinvointivaltiota, solidaarisuutta ja heikoimpien turvaa. Olet kriittinen markkinavoimien hallitsematonta valtaa kohtaan ja haastat vastustajasi arvot, jos ne uhkaavat sosiaalista oikeudenmukaisuutta. Puhetyylisi on jämäkkä ja arvopohjainen.",
@@ -19,10 +19,18 @@ export async function POST(req: Request) {
   const currentSpeaker = history.length % 2 === 0 ? "Liike Nyt" : challengerParty;
   const speakerPrompt = currentSpeaker === "Liike Nyt" ? liikeNytPrompt : challengerPrompts[challengerParty];
 
+  const newsContext = news.length > 0 
+    ? `AJANKOHTAISET UUTISET:
+${news.map((n: any) => `- ${n.source}: ${n.title}`).join("\n")}
+Huomioi nämä uutiset puheenvuorossasi ja viittaa niihin sivistyneesti jos ne tukevat argumenttiasi.`
+    : "";
+
   const systemPrompt = `${speakerPrompt}
 
 TOIMIT OSANA 'THE AGORA' -VÄITTELYÄ.
 Aihe: ${topic}
+
+${newsContext}
 
 SÄÄNNÖT:
 1. Käytä huoliteltua ja terävää suomen kieltä (parlamentaarinen tyyli).

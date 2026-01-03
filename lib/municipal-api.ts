@@ -80,39 +80,87 @@ export class EspooAPI extends MunicipalAPI {
   }
 
   private getMockItems(): MunicipalAgendaItem[] {
-    console.log("[EspooAPI] Returning mock items as fallback");
+    console.log("[EspooAPI] Returning realistic mock items as fallback");
     return [
       {
-        id: "mock-1",
+        id: "mock-espoo-1",
         title: "Keskuspuhdistamon laajennus ja modernisointi",
         summary: "Päätös Blominmäen jätevedenpuhdistamon kapasiteetin nostamisesta vastaamaan kasvavaa asukasmäärää.",
         content: "Kaupunginhallitus päätti hyväksyä suunnitelman laajentaa puhdistamoa...",
         status: "decided",
-        meetingDate: new Date().toISOString(),
+        meetingDate: "2026-01-03T10:00:00Z",
         orgName: "Kaupunginhallitus",
         municipality: "Espoo"
       },
       {
-        id: "mock-2",
-        title: "Uuden koulukeskuksen rakentaminen Leppävaaraan",
-        summary: "Suunnitelma uuden monitoimitalon ja yhtenäiskoulun rakentamiseksi vanhan purettavan koulun tilalle.",
-        content: "Opetus- ja varhaiskasvatuslautakunta esittää valtuustolle...",
+        id: "mock-espoo-2",
+        title: "Länsiväylän ympäristövaikutusten arviointi (YVA)",
+        summary: "Espoon kaupunki antaa lausunnon Länsiväylän parantamisen ympäristövaikutuksista Tapiolan kohdalla.",
+        content: "Hankkeella on merkittäviä vaikutuksia kaupunkikuvaan ja melutasoon...",
         status: "agenda",
-        meetingDate: new Date(Date.now() + 86400000 * 7).toISOString(),
-        orgName: "Valtuusto",
+        meetingDate: "2026-01-15T17:00:00Z",
+        orgName: "Kaupunkisuunnittelulautakunta",
         municipality: "Espoo"
       },
       {
-        id: "mock-3",
-        title: "Pyöräilybaanan rakentaminen Länsiväylän suuntaisesti",
-        summary: "Hanke edistää kestävä liikkumista rakentamalla laadukkaan pyörätien Tapiolan ja Helsingin välille.",
-        content: "Tekninen lautakunta käsittelee urakkatarjouksia...",
+        id: "mock-espoo-3",
+        title: "Kiviruukin uuden asuinalueen kaavoitus",
+        summary: "Kaavaehdotus mahdollistaa asuinkerrostalojen ja palvelujen rakentamisen Finnoon metropysäkin läheisyyteen.",
+        content: "Alueelle tavoitellaan hiilineutraalia rakentamista...",
         status: "agenda",
-        meetingDate: new Date(Date.now() + 86400000 * 3).toISOString(),
-        orgName: "Tekninen lautakunta",
+        meetingDate: "2026-01-20T16:00:00Z",
+        orgName: "Kaupunginhallitus",
+        municipality: "Espoo"
+      },
+      {
+        id: "mock-espoo-4",
+        title: "Maksuton joukkoliikenne alle 18-vuotiaille",
+        summary: "Aloite maksuttoman HSL-liikenteen tarjoamisesta kaikille espoolaisille nuorille.",
+        content: "Kustannusarvio on noin 12 miljoonaa euroa vuodessa...",
+        status: "agenda",
+        meetingDate: "2026-02-01T18:00:00Z",
+        orgName: "Valtuusto",
         municipality: "Espoo"
       }
     ];
+  }
+}
+
+/**
+ * Helsinki implementation using the Ahjo API (very stable)
+ */
+export class HelsinkiAPI extends MunicipalAPI {
+  municipalityName = "Helsinki";
+  private baseUrl = "https://paatokset.hel.fi/helsinki/ahjo/v1";
+
+  async fetchLatestItems(limit: number = 10): Promise<MunicipalAgendaItem[]> {
+    try {
+      const url = `${this.baseUrl}/agenda_item/?limit=${limit}`;
+      const response = await fetch(url, {
+        next: { revalidate: 3600 },
+        headers: { "Accept": "application/json" }
+      });
+
+      if (!response.ok) throw new Error(`Helsinki API error: ${response.status}`);
+
+      const data = await response.json();
+      const objects = data.objects || [];
+
+      return objects.map((item: any) => ({
+        id: (item.id || Math.random()).toString(),
+        title: item.title || "Nimetön asia",
+        summary: item.preamble || item.title,
+        content: item.resolution || item.content,
+        status: item.decision_status || "agenda",
+        meetingDate: item.meeting?.date,
+        orgName: item.organization_name || "Helsingin kaupunki",
+        url: item.permalink,
+        municipality: this.municipalityName
+      }));
+    } catch (error) {
+      console.error("Failed to fetch from Helsinki API:", error);
+      return [];
+    }
   }
 }
 
@@ -123,8 +171,11 @@ export function getMunicipalAPI(municipality: string): MunicipalAPI {
   switch (municipality.toLowerCase()) {
     case "espoo":
       return new EspooAPI();
+    case "helsinki":
+      return new HelsinkiAPI();
     default:
-      throw new Error(`Municipality ${municipality} not supported yet.`);
+      // Fallback to Espoo API which handles its own mock data
+      return new EspooAPI();
   }
 }
 

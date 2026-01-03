@@ -17,16 +17,14 @@ interface DashboardProps {
 export default function Dashboard({ user }: DashboardProps) {
   const [activeView, setActiveView] = useState<DashboardView>("bills");
   const [viewContext, setViewContext] = useState<ViewContext>("parliament");
+  const [selectedMunicipality, setSelectedMunicipality] = useState(user?.municipality || "Espoo");
 
   // Suggest municipal context if user has municipality in profile
   useEffect(() => {
-    if (user?.municipality && viewContext === "parliament" && activeView === "bills") {
-      // Auto-switch to municipal if they are from Espoo (for now)
-      if (user.municipality.toLowerCase() === "espoo") {
-        // We could auto-switch here, but it might be better to just show the option
-      }
+    if (user?.municipality) {
+      setSelectedMunicipality(user.municipality);
     }
-  }, [user, activeView, viewContext]);
+  }, [user]);
 
   return (
     <>
@@ -35,19 +33,37 @@ export default function Dashboard({ user }: DashboardProps) {
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           {/* Main Context Header */}
           {activeView === "bills" && (
-            <div className="flex justify-center p-4 bg-white border-b border-nordic-gray/20 sticky top-0 z-20">
+            <div className="flex flex-col items-center p-4 bg-white border-b border-nordic-gray/20 sticky top-0 z-20 gap-3">
               <ContextSwitcher 
                 currentContext={viewContext} 
                 onContextChange={setViewContext} 
-                municipality={user?.municipality || "Espoo"}
+                municipality={selectedMunicipality}
               />
+              
+              {viewContext === "municipal" && (
+                <div className="flex gap-2">
+                  {["Espoo", "Helsinki"].map(muni => (
+                    <button
+                      key={muni}
+                      onClick={() => setSelectedMunicipality(muni)}
+                      className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border transition-all ${
+                        selectedMunicipality === muni
+                          ? "bg-nordic-blue text-white border-nordic-blue"
+                          : "bg-white text-nordic-dark border-nordic-gray/20"
+                      }`}
+                    >
+                      {muni}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {activeView === "bills" && (
             viewContext === "parliament" 
               ? <ActiveBills user={user} /> 
-              : <MunicipalDashboard user={user} initialMunicipality={user?.municipality || "Espoo"} />
+              : <MunicipalDashboard user={user} initialMunicipality={selectedMunicipality} />
           )}
           
           {activeView === "consensus" && <ConsensusMap />}

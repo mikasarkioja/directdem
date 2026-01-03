@@ -6,6 +6,8 @@ import type { VirtualParty, UserProfile } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Plus, Target, TrendingUp, Shield, Zap, Search, MessageSquare, Loader2, Info } from "lucide-react";
 import PartyIcon from "./PartyIcon";
+import Link from "next/link";
+import { BrainCircuit } from "lucide-react";
 
 interface PartiesViewProps {
   user: UserProfile | null;
@@ -154,6 +156,13 @@ export default function PartiesView({ user }: PartiesViewProps) {
               >
                 Liity Liittoumaan
               </button>
+              <Link 
+                href={`/puolue/${party.id}/paivitys`}
+                className="bg-slate-900 text-white px-4 py-3 rounded-xl hover:bg-black transition-colors"
+                title="Puolueen Evoluutio"
+              >
+                <BrainCircuit size={16} />
+              </Link>
               <button className="bg-command-dark text-white px-4 py-3 rounded-xl">
                 <MessageSquare size={16} />
               </button>

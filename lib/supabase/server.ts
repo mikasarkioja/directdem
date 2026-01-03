@@ -30,7 +30,12 @@ export async function createClient() {
       async setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
         try {
           for (const { name, value, options } of cookiesToSet) {
-            await cookieStore.set(name, value, options);
+            // Force secure: false on localhost to avoid cookie rejection
+            const finalOptions = {
+              ...options,
+              secure: process.env.NODE_ENV === 'development' ? false : options?.secure,
+            };
+            await cookieStore.set(name, value, finalOptions);
           }
         } catch {
           // The `setAll` method was called from a Server Component.

@@ -29,40 +29,43 @@ export async function GET(request: Request) {
       },
       setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
+          // Explicitly set cookies on the redirect response
+          response.cookies.set(name, value, {
+            ...options,
+            // Ensure cookies work on localhost
+            secure: requestUrl.hostname === 'localhost' ? false : options?.secure,
+          });
         });
       },
     },
   });
 
-  if (code) {
-    console.log("[Auth Callback] Exchanging code for session...");
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error && data.session) {
-      console.log("[Auth Callback] exchangeCodeForSession SUCCESS.");
-      await upsertUserProfile(data.session.user.id);
-      return response;
-    }
-    if (error) {
-      console.error("[Auth Callback] exchangeCodeForSession error:", error.message);
-    }
-  } else if (token_hash) {
-    console.log("[Auth Callback] Verifying OTP token_hash...");
-    // Verify OTP
-    const { data, error } = await supabase.auth.verifyOtp({
-      token_hash,
-      type: type as any,
-    });
+  try {
+    if (code) {
+      console.log("[Auth Callback] Exchanging code for session...");
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error && data.session) {
+        console.log("[Auth Callback] exchangeCodeForSession SUCCESS.");
+        // Profile update can happen in the background or after redirect
+        // but for now we just return the response with cookies
+        return response;
+      }
+      if (error) console.error("[Auth Callback] exchangeCodeForSession error:", error.message);
+    } else if (token_hash) {
+      console.log("[Auth Callback] Verifying OTP token_hash...");
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash,
+        type: type as any,
+      });
 
-    if (!error && data.session) {
-      console.log("[Auth Callback] verifyOtp SUCCESS.");
-      await upsertUserProfile(data.session.user.id);
-      return response;
+      if (!error && data.session) {
+        console.log("[Auth Callback] verifyOtp SUCCESS.");
+        return response;
+      }
+      if (error) console.error("[Auth Callback] verifyOtp error:", error.message);
     }
-
-    if (error) {
-      console.error("[Auth Callback] verifyOtp error:", error.message);
-    }
+  } catch (err) {
+    console.error("[Auth Callback] Unexpected error:", err);
   }
 
   // Fallback redirect if something fails

@@ -23,11 +23,10 @@ function ConfirmContent() {
     setError(null);
 
     try {
-      console.log("[ConfirmPage] Verifying OTP...");
-      await verifyOtpAction(token_hash, type as any);
-      console.log("[ConfirmPage] Success, redirecting...");
-      // Full page reload to ensure session is picked up everywhere
-      window.location.href = '/';
+      console.log("[ConfirmPage] Redirecting to callback for verification...");
+      // We use the callback route which is more reliable for setting cookies in Next.js 15
+      const callbackUrl = `/auth/callback?token_hash=${encodeURIComponent(token_hash)}&type=${type}`;
+      window.location.href = callbackUrl;
     } catch (err: any) {
       console.error("[ConfirmPage] Error:", err);
       setError(err.message || "Kirjautuminen epäonnistui. Linkki saattaa olla vanhentunut.");

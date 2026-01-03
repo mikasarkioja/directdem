@@ -47,7 +47,7 @@ export default function ActiveBills({ user }: ActiveBillsProps) {
       </div>
 
       <div className="grid gap-4">
-        {bills.slice(0, 8).map((bill, index) => {
+        {bills.slice(0, 30).map((bill, index) => {
           const isAI = bill.summary && (bill.summary.length > 800 || bill.summary.includes("###"));
           
           return (

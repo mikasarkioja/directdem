@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { 
   Download, Trash2, MapPin, Loader2, CheckCircle, 
   AlertTriangle, Save, ToggleLeft, ToggleRight, 
-  Shield, User, Globe, Lock, Info
+  Shield, User, Globe, Lock, Info, Sparkles
 } from "lucide-react";
 import PartyMatchCard from "./PartyMatchCard";
 import { 

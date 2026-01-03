@@ -16,13 +16,12 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Espoo"
   const [cases, setCases] = useState<MunicipalCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [municipality, setMunicipality] = useState(initialMunicipality);
   const [selectedCase, setSelectedCase] = useState<MunicipalCase | null>(null);
 
-  const loadCases = async (showLoading = true) => {
+  const loadCases = async (muni: string, showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const data = await fetchMunicipalCases(municipality);
+      const data = await fetchMunicipalCases(muni);
       setCases(data);
     } catch (error) {
       console.error("Failed to load cases:", error);
@@ -32,15 +31,12 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Espoo"
   };
 
   useEffect(() => {
-    loadCases();
-  }, [municipality]);
+    loadCases(initialMunicipality);
+  }, [initialMunicipality]);
 
   const handleManualSync = async () => {
     setSyncing(true);
-    // The fetchMunicipalCases action already attempts sync if empty, 
-    // but we can add a way to force it if we want.
-    // For now, just reload.
-    await loadCases(false);
+    await loadCases(initialMunicipality, false);
     setSyncing(false);
   };
 
@@ -62,7 +58,7 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Espoo"
               <h2 className="text-3xl font-black text-nordic-darker uppercase tracking-tighter">Kuntavahti</h2>
             </div>
             <p className="text-sm text-nordic-dark font-medium uppercase tracking-wider flex items-center gap-1">
-              <MapPin size={14} /> {municipality} — Paikallinen päätöksenteko
+              <MapPin size={14} /> {initialMunicipality} — Paikallinen päätöksenteko
             </p>
           </div>
           <button
@@ -88,7 +84,7 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Espoo"
         {cases.length === 0 ? (
           <div className="bg-nordic-light rounded-2xl p-12 border-2 border-dashed border-nordic-gray text-center">
             <p className="text-nordic-dark mb-2 font-bold">Ei päätöksiä saatavilla.</p>
-            <p className="text-sm text-nordic-dark">Yritämme hakea tuoreita esityslistoja {municipality}n rajapinnasta.</p>
+            <p className="text-sm text-nordic-dark">Yritämme hakea tuoreita esityslistoja {initialMunicipality}n rajapinnasta.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

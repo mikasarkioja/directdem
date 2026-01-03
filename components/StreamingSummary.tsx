@@ -13,6 +13,7 @@ interface StreamingSummaryProps {
   billTitle?: string;
   publishedDate?: string;
   processingDate?: string;
+  context?: "parliament" | "municipal"; // Added
   onSummaryComplete?: (summary: string) => void;
 }
 
@@ -23,6 +24,7 @@ export default function StreamingSummary({
   billTitle,
   publishedDate,
   processingDate,
+  context = "parliament", // Default
   onSummaryComplete,
 }: StreamingSummaryProps) {
   const [finalSummary, setFinalSummary] = useState<string | null>(
@@ -50,6 +52,7 @@ export default function StreamingSummary({
     api: "/api/summarize",
     body: {
       billId: billId,
+      context: context, // Pass context to API
     },
     onFinish: async (prompt, completion) => {
       // Save to database when stream completes
@@ -287,8 +290,8 @@ export default function StreamingSummary({
         <div className="bg-nordic-light rounded-2xl p-6 border-2 border-nordic-blue text-center">
           <p className="text-base text-nordic-dark mb-4">
             {existingSummary && existingSummary.length > 50000 
-              ? "Lakiteksti on saatavilla, mutta selkokielinen tiivistelmä puuttuu. Generoi se AI:lla."
-              : "Tämä laki ei vielä ole selkokielinen tiivistelmä. Generoi se AI:lla."}
+              ? "Teksti on saatavilla, mutta selkokielinen tiivistelmä puuttuu. Generoi se AI:lla."
+              : "Tästä ei vielä ole selkokielistä tiivistelmää. Generoi se AI:lla."}
           </p>
           
           {/* Progress Step Indicator (shown during generation) */}

@@ -27,6 +27,29 @@ export interface Bill {
   url?: string;
 }
 
+// Municipal Case types
+export type MunicipalCaseStatus = "agenda" | "decided" | "appealed" | "cancelled";
+
+export interface MunicipalCase {
+  id: string;
+  municipality: string;
+  externalId: string;
+  title: string;
+  summary: string;
+  rawText?: string;
+  status: MunicipalCaseStatus;
+  meetingDate?: string;
+  orgName?: string;
+  neighborhood?: string;
+  costEstimate?: number;
+  category?: string;
+  url?: string;
+  citizenPulse: {
+    for: number;
+    against: number;
+  };
+}
+
 // Vote types
 export type VotePosition = "for" | "against" | "neutral";
 
@@ -47,6 +70,7 @@ export interface UserProfile {
   full_name?: string;
   is_verified?: boolean;
   vaalipiiri?: string;
+  municipality?: string;
   last_login?: string;
   gdpr_consent?: boolean;
   gdpr_consent_date?: string;
@@ -93,6 +117,7 @@ export interface SupabaseProfile {
   full_name: string | null;
   is_verified: boolean;
   vaalipiiri: string | null;
+  municipality: string | null;
   last_login: string | null;
   gdpr_consent: boolean;
   gdpr_consent_date: string | null;
@@ -103,8 +128,26 @@ export interface SupabaseProfile {
   updated_at: string;
 }
 
+export interface SupabaseMunicipalCase {
+  id: string;
+  municipality: string;
+  external_id: string;
+  title: string;
+  summary: string | null;
+  raw_text: string | null;
+  status: string;
+  meeting_date: string | null;
+  org_name: string | null;
+  neighborhood: string | null;
+  cost_estimate: number | null;
+  category: string | null;
+  url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Dashboard view types
-export type DashboardView = "bills" | "consensus" | "profile";
+export type DashboardView = "bills" | "municipal" | "consensus" | "profile";
 
 // API Test types
 export interface TestResult {

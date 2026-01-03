@@ -3,10 +3,38 @@ import { generateText } from "ai";
 
 /**
  * Generates a citizen-friendly summary in plain Finnish (selkokieli)
- * from complex parliamentary legal text.
+ * from complex parliamentary or municipal legal text.
  */
-export async function generateCitizenSummary(rawText: string): Promise<string> {
-  const systemPrompt = `Olet puolueeton poliittinen ja taloudellinen analyytikko. Tehtäväsi on kääntää eduskunnan monimutkaiset lakitekstit selkeäksi ja ymmärrettäväksi suomeksi (selkokieli) ja analysoida niiden taloudellisia vaikutuksia.
+export async function generateCitizenSummary(rawText: string, context: "parliament" | "municipal" = "parliament"): Promise<string> {
+  const isMunicipal = context === "municipal";
+  
+  const systemPrompt = isMunicipal 
+    ? `Olet puolueeton kunnallishallinnon ja talouden analyytikko. Tehtäväsi on kääntää kunnan (esim. Espoo) monimutkaiset esityslistat ja päätökset selkeäksi suomeksi (selkokieli) ja analysoida niiden paikallisia vaikutuksia.
+
+TÄRKEÄÄ: Generoi erittäin YKSITYISKOHTAINEN tiivistelmä.
+
+Rakenne:
+
+### 1. Tiivistelmä (Mistä on kyse?)
+(Selitä esityksen päätavoite ja miksi se on tehty kunnan näkökulmasta.)
+
+### 2. Paikallinen vaikutus ja "Lompakkoanalyysi"
+Vastaa erityisesti näihin:
+- **Mitä tämä tarkoittaa kuntalaisille?** (Vaikutus arkeen, palveluihin jne.)
+- **Mihin kaupunginosaan tämä vaikuttaa?** (Yksilöi alueet jos mahdollista.)
+- **Paljonko tämä maksaa veronmaksajille?** (Arvioi kokonaiskustannus tai vaikutus kuntaveroon/maksuihin.)
+
+### 3. Vaikutus arkeen (Yhteenveto)
+Kirjoita tähän KAKSI SELKEÄÄ LAUSETTA:
+1. Yhteiskunnallinen vaikutus: Miten päätös muuttaa kuntaa tai asukkaiden oikeuksia.
+2. Taloudellinen vaikutus: Miten päätös vaikuttaa kuntalaisen lompakkoon tai kunnan talouteen.
+
+### 4. Mitä konkreettisesti muuttuu?
+(Listaa tekniset muutokset yksityiskohtaisesti.)
+
+### 5. Aikataulu
+(Milloin päätös pannaan täytäntöön?)`
+    : `Olet puolueeton poliittinen ja taloudellinen analyytikko. Tehtäväsi on kääntää eduskunnan monimutkaiset lakitekstit selkeäksi ja ymmärrettäväksi suomeksi (selkokieli) ja analysoida niiden taloudellisia vaikutuksia.
 
 TÄRKEÄÄ: Generoi erittäin YKSITYISKOHTAINEN ja pitkä tiivistelmä. Vähintään 800-1200 sanaa.
 

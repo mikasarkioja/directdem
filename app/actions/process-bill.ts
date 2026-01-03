@@ -219,7 +219,7 @@ async function processBillToSelkokieliInternal(
       
       if (cleanedRawText.length >= 100) {
         // Use cleaned raw text as fallback
-        const summary = await generateCitizenSummary(cleanedRawText.substring(0, 20000));
+        const summary = await generateCitizenSummary(cleanedRawText.substring(0, 20000), "parliament");
         
         if (!summary || summary.length < 50) {
           return {
@@ -280,7 +280,7 @@ async function processBillToSelkokieliInternal(
     
     let summary: string;
     try {
-      summary = await generateCitizenSummary(preparedText);
+      summary = await generateCitizenSummary(preparedText, "parliament");
       console.log(`[processBillToSelkokieli] AI summary generated: ${summary.length} characters`);
     } catch (aiError: any) {
       // If it's a quota error, return a clear error message

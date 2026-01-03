@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     // 2. { prompt } from useCompletion hook (which sends the prompt directly)
     const text = body.text || body.prompt;
     const billId = body.billId;
+    const context = body.context || "parliament";
 
     if (!text || typeof text !== "string") {
       return new Response(
@@ -31,8 +32,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // System prompt for neutral political observer
-    const systemPrompt = `Olet puolueeton poliittinen analyytikko. Tehtäväsi on kääntää eduskunnan monimutkaiset lakitekstit selkeäksi ja ymmärrettäväksi suomeksi (selkokieli).
+    // System prompt based on context
+    const isMunicipal = context === "municipal";
+    const systemPrompt = isMunicipal
+      ? `Olet puolueeton kunnallishallinnon analyytikko. Tehtäväsi on kääntää kunnan (esim. Espoo) monimutkaiset esityslistat ja päätökset selkeäksi ja ymmärrettäväksi suomeksi (selkokieli).
+
+Säännöt:
+- Vältä jargonia.
+- Vaikutus edellä: Kerro heti, miten tämä muuttaa asukkaiden arkea.
+- Rakenne:
+  1. Mistä on kyse?
+  2. Mitä tämä tarkoittaa kuntalaisille?
+  3. Mihin kaupunginosaan tämä vaikuttaa?
+  4. Paljonko tämä maksaa veronmaksajille?
+  5. Mitä konkreettisesti muuttuu? (ranskalaiset viivat)
+  6. Aikataulu`
+      : `Olet puolueeton poliittinen analyytikko. Tehtäväsi on kääntää eduskunnan monimutkaiset lakitekstit selkeäksi ja ymmärrettäväksi suomeksi (selkokieli).
 
 Säännöt:
 - Vältä jargonia: Älä käytä termejä kuten 'momentti', 'lainvalmisteluasiakirja' tai 'asetuksenantovaltuutus' ilman selitystä.
@@ -62,7 +77,7 @@ Tavoite: Yksityiskohtainen mutta ymmärrettävä selitys. Vähintään 500-800 s
     const result = await streamText({
       model: openai("gpt-4o-mini") as any, // Type workaround for version conflict
       system: systemPrompt,
-      prompt: `Tiivistä tämä lakiteksti selkokielelle. Ole yksityiskohtainen ja selitä kaikki tärkeät asiat:\n\n${preparedText}`,
+      prompt: `Tiivistä tämä ${isMunicipal ? "päätös" : "lakiteksti"} selkokielelle. Ole yksityiskohtainen ja selitä kaikki tärkeät asiat:\n\n${preparedText}`,
       maxTokens: 2000, // Increased from 1500 to allow longer summaries
       temperature: 0.7,
     });

@@ -18,15 +18,59 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Espoo"
   const [municipality, setMunicipality] = useState(initialMunicipality);
   const [selectedCase, setSelectedCase] = useState<MunicipalCase | null>(null);
 
-  // ... existing useEffect ...
+  useEffect(() => {
+    async function loadCases() {
+      setLoading(true);
+      try {
+        const data = await fetchMunicipalCases(municipality);
+        setCases(data);
+      } catch (error) {
+        console.error("Failed to load cases:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadCases();
+  }, [municipality]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-nordic-blue" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
-        {/* ... existing header and info ... */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Building2 className="text-nordic-blue" size={24} />
+              <h2 className="text-3xl font-black text-nordic-darker uppercase tracking-tighter">Kuntavahti</h2>
+            </div>
+            <p className="text-sm text-nordic-dark font-medium uppercase tracking-wider flex items-center gap-1">
+              <MapPin size={14} /> {municipality} — Paikallinen päätöksenteko
+            </p>
+          </div>
+        </div>
+
+        {!user && (
+          <div className="mb-6 p-4 bg-nordic-light border-2 border-nordic-blue rounded-xl flex items-center gap-3 shadow-sm">
+            <Info className="text-nordic-blue flex-shrink-0" size={24} />
+            <p className="text-nordic-darker font-medium">
+              Voit selata kunnan esityslistoja. 
+              <span className="font-bold"> Kirjaudu sisään</span>, jos haluat ilmaista mielipiteesi asioista.
+            </p>
+          </div>
+        )}
 
         {cases.length === 0 ? (
-          /* ... existing empty state ... */
+          <div className="bg-nordic-light rounded-2xl p-12 border-2 border-dashed border-nordic-gray text-center">
+            <p className="text-nordic-dark mb-2 font-bold">Ei päätöksiä saatavilla.</p>
+            <p className="text-sm text-nordic-dark">Yritämme hakea tuoreita esityslistoja {municipality}n rajapinnasta.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {cases.map((item) => (
@@ -49,4 +93,3 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Espoo"
     </div>
   );
 }
-

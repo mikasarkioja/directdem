@@ -14,52 +14,77 @@ const supabase = createClient(
 
 const API_BASE = 'https://avoindata.eduskunta.fi/api/v1/tables';
 
-async function fetchAndSaveMPs() {
-  console.log('--- Haetaan kansanedustajat ---');
-  try {
-    const response = await axios.get(`${API_BASE}/Kansanedustaja/rows`);
-    const mps = response.data.rowData.map((row: any) => ({
-      id: row[0], // personId is typically the first column
-      first_name: row[1], // firstNames
-      last_name: row[2], // surname
-      party: row[4], // party
-      constituency: row[5], // constituency
-      image_url: `https://www.eduskunta.fi/FI/kansanedustajat/Images/${row[0]}.jpg`,
-      is_active: row[10] === 'true' // currentMp
-    }));
+// Logger that works in terminal and potentially browser
+const log = (msg: string, data?: any) => {
+  const timestamp = new Date().toLocaleTimeString();
+  console.log(`[${timestamp}] ${msg}`);
+  if (data) console.log(JSON.stringify(data, null, 2));
+};
 
-    // For Eduskunta table API, rowData is often an array of arrays. 
-    // If it's objects, we use keys. Let's adjust to be robust.
+async function fetchAndSaveMPs() {
+  log('--- Haetaan kansanedustajat ---');
+  try {
+    const url = `${API_BASE}/Kansanedustaja/rows`;
+    log(`Kutsutaan: ${url}`);
+    const response = await axios.get(url);
+    
+    if (!response.data || !response.data.rowData) {
+      log('Virhe: Rajapinta ei palauttanut rowData-kenttää');
+      return;
+    }
+
     const columnNames = response.data.columnNames || [];
-    const formattedMps = response.data.rowData.map((row: any) => {
-      const getVal = (col: string) => row[columnNames.indexOf(col)];
+    const rowData = response.data.rowData;
+    log(`Löytyi ${rowData.length} riviä sarakkeilla:`, columnNames);
+
+    const formattedMps = rowData.map((row: any, idx: number) => {
+      // Helper to get value regardless of if row is array or object
+      const getVal = (col: string) => {
+        if (Array.isArray(row)) {
+          const colIdx = columnNames.indexOf(col);
+          return colIdx !== -1 ? row[colIdx] : null;
+        }
+        return row[col];
+      };
+
+      const personId = getVal('personId');
+      if (!personId && idx === 0) log('Varoitus: personId puuttuu ensimmäiseltä riviltä', row);
+
       return {
-        id: parseInt(getVal('personId')),
+        id: parseInt(personId),
         first_name: getVal('firstNames'),
         last_name: getVal('surname'),
         party: getVal('party'),
         constituency: getVal('constituency'),
-        image_url: `https://www.eduskunta.fi/FI/kansanedustajat/Images/${getVal('personId')}.jpg`,
+        image_url: `https://www.eduskunta.fi/FI/kansanedustajat/Images/${personId}.jpg`,
         is_active: getVal('currentMp') === 'true'
       };
-    });
+    }).filter((mp: any) => !isNaN(mp.id));
 
+    log(`Muotoiltu ${formattedMps.length} kansanedustajaa. Tallennetaan Supabaseen...`);
+    
     const { error } = await supabase.from('mps').upsert(formattedMps);
-    if (error) throw error;
-    console.log(`Tallennettu ${formattedMps.length} kansanedustajaa.`);
-  } catch (err) {
-    console.error('Virhe MP-haussa:', err);
+    if (error) {
+      log('Supabase VIRHE MP-tallennuksessa:', error);
+      throw error;
+    }
+    log(`✅ Tallennettu ${formattedMps.length} kansanedustajaa.`);
+  } catch (err: any) {
+    log('KRIITTINEN VIRHE MP-haussa:', err.message);
+    if (err.response) log('Palvelimen vastaus:', err.response.data);
   }
 }
 
 async function fetchAndSaveVotingEvents(limit = 100) {
-  console.log('--- Haetaan äänestystapahtumat ---');
+  log('--- Haetaan äänestystapahtumat ---');
   let skip = 0;
   let hasMore = true;
 
   while (hasMore) {
     try {
-      const response = await axios.get(`${API_BASE}/Aanestys/rows`, {
+      const url = `${API_BASE}/Aanestys/rows`;
+      log(`Haetaan äänestyksiä (skip: ${skip}, limit: ${limit})...`);
+      const response = await axios.get(url, {
         params: {
           '$top': limit,
           '$skip': skip,
@@ -71,14 +96,22 @@ async function fetchAndSaveVotingEvents(limit = 100) {
       const rows = response.data.rowData;
       
       if (!rows || rows.length === 0) {
+        log('Ei enempää äänestyksiä.');
         hasMore = false;
         break;
       }
 
       const events = rows.map((row: any) => {
-        const getVal = (col: string) => row[columnNames.indexOf(col)];
+        const getVal = (col: string) => {
+          if (Array.isArray(row)) {
+            const colIdx = columnNames.indexOf(col);
+            return colIdx !== -1 ? row[colIdx] : null;
+          }
+          return row[col];
+        };
+
         return {
-          id: getVal('aanestysId').toString(),
+          id: getVal('aanestysId')?.toString(),
           title_fi: getVal('kohtaOtsikko') || 'Ei otsikkoa',
           voting_date: getVal('aanestysPvm'),
           he_id: getVal('heTunnus'),
@@ -87,30 +120,38 @@ async function fetchAndSaveVotingEvents(limit = 100) {
           blanks: parseInt(getVal('tyhjaa')) || 0,
           absent: parseInt(getVal('poissa')) || 0
         };
-      });
+      }).filter((e: any) => e.id);
 
       const { error } = await supabase.from('voting_events').upsert(events);
-      if (error) throw error;
+      if (error) {
+        log('Supabase VIRHE äänestystallennuksessa:', error);
+        throw error;
+      }
 
-      console.log(`Tallennettu ${events.length} äänestystä (yhteensä haettu: ${skip + events.length})...`);
+      log(`✅ Tallennettu ${events.length} äänestystä (yhteensä: ${skip + events.length}).`);
       skip += limit;
       
-      if (skip >= 500) hasMore = false;
-    } catch (err) {
-      console.error('Virhe äänestysten haussa:', err);
+      if (skip >= 500) {
+        log('Rajoitus saavutettu (500). Lopetetaan.');
+        hasMore = false;
+      }
+    } catch (err: any) {
+      log('VIRHE äänestysten haussa:', err.message);
       hasMore = false;
     }
   }
 }
 
 async function fetchAndSaveMPVotes(limit = 1000) {
-  console.log('--- Haetaan yksittäiset äänet (tämä voi kestää) ---');
+  log('--- Haetaan yksittäiset äänet ---');
   let skip = 0;
   let hasMore = true;
 
   while (hasMore) {
     try {
-      const response = await axios.get(`${API_BASE}/EduskuntaAanestys/rows`, {
+      const url = `${API_BASE}/EduskuntaAanestys/rows`;
+      log(`Haetaan ääniä (skip: ${skip}, limit: ${limit})...`);
+      const response = await axios.get(url, {
         params: {
           '$top': limit,
           '$skip': skip
@@ -121,43 +162,62 @@ async function fetchAndSaveMPVotes(limit = 1000) {
       const rows = response.data.rowData;
       
       if (!rows || rows.length === 0) {
+        log('Ei enempää ääniä.');
         hasMore = false;
         break;
       }
 
       const votes = rows.map((row: any) => {
-        const getVal = (col: string) => row[columnNames.indexOf(col)];
+        const getVal = (col: string) => {
+          if (Array.isArray(row)) {
+            const colIdx = columnNames.indexOf(col);
+            return colIdx !== -1 ? row[colIdx] : null;
+          }
+          return row[col];
+        };
+
         const voteVal = getVal('aanestysArvo');
         return {
           mp_id: parseInt(getVal('personId')),
-          event_id: getVal('aanestysId').toString(),
+          event_id: getVal('aanestysId')?.toString(),
           vote_type: voteVal === 'jaa' ? 'jaa' : 
                      voteVal === 'ei' ? 'ei' : 
                      voteVal === 'tyhjaa' ? 'tyhjaa' : 'poissa'
         };
-      });
+      }).filter((v: any) => !isNaN(v.mp_id) && v.event_id);
 
       const { error } = await supabase.from('mp_votes').upsert(votes);
       if (error) {
-        console.warn('Huom: Kaikkia ääniä ei voitu tallentaa (ehkä puuttuva MP/Event ID).');
+        log('Supabase VAROITUS yksittäisissä äänissä:', error.message);
+      } else {
+        log(`✅ Tallennettu ${votes.length} ääntä (yhteensä: ${skip + votes.length}).`);
       }
 
-      console.log(`Tallennettu ${votes.length} ääntä (yhteensä haettu: ${skip + votes.length})...`);
       skip += limit;
-
-      if (skip >= 10000) hasMore = false;
-    } catch (err) {
-      console.error('Virhe yksittäisten äänien haussa:', err);
+      if (skip >= 10000) {
+        log('Rajoitus saavutettu (10000). Lopetetaan.');
+        hasMore = false;
+      }
+    } catch (err: any) {
+      log('VIRHE yksittäisten äänien haussa:', err.message);
       hasMore = false;
     }
   }
 }
 
 async function main() {
+  log('🚀 Aloitetaan Eduskunnan massadatan haku...');
+  
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    log('VIRHE: Supabase-asetukset puuttuvat .env.local tiedostosta!');
+    process.exit(1);
+  }
+
   await fetchAndSaveMPs();
   await fetchAndSaveVotingEvents();
   await fetchAndSaveMPVotes();
-  console.log('--- Haku valmis! ---');
+  
+  log('🏁 Kaikki valmista!');
 }
 
 main();

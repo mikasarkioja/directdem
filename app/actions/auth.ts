@@ -44,7 +44,7 @@ export async function getUser(): Promise<UserProfile | null> {
   // Fetch profile data
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("full_name, is_verified, vaalipiiri, last_login, join_report_list")
+    .select("full_name, is_verified, vaalipiiri, municipality, last_login, join_report_list, impact_points, xp, level")
     .eq("id", user.id)
     .single();
 
@@ -60,8 +60,12 @@ export async function getUser(): Promise<UserProfile | null> {
     full_name: profile?.full_name || null,
     is_verified: profile?.is_verified || false,
     vaalipiiri: profile?.vaalipiiri || null,
+    municipality: profile?.municipality || null,
     last_login: profile?.last_login || null,
     join_report_list: profile?.join_report_list || false,
+    impact_points: profile?.impact_points || 0,
+    xp: profile?.xp || 0,
+    level: profile?.level || 1,
   };
   } catch (error: any) {
     // Catch any unexpected errors (network issues, etc.)
@@ -118,6 +122,9 @@ export async function upsertUserProfile(userId: string, metadata?: any) {
  */
 export async function verifyOtpAction(token_hash: string, type: any) {
   const supabase = await createClient();
+  
+  console.log("[verifyOtpAction] Verifying OTP for type:", type);
+  
   const { data, error } = await supabase.auth.verifyOtp({
     token_hash,
     type,
@@ -125,12 +132,22 @@ export async function verifyOtpAction(token_hash: string, type: any) {
 
   if (error) {
     console.error("[verifyOtpAction] Error:", error.message);
-    throw error;
+    throw new Error(error.message);
   }
 
-  // Pakotetaan evästeiden päivitys kutsumalla getUser
+  if (!data.session) {
+    console.error("[verifyOtpAction] No session returned after verification");
+    throw new Error("Istunnon luonti epäonnistui.");
+  }
+
+  console.log("[verifyOtpAction] SUCCESS. Session created for:", data.session.user.email);
+
+  // Update profile
+  await upsertUserProfile(data.session.user.id);
+
+  // Force cookie update by calling getUser
   await supabase.auth.getUser();
 
-  return data;
+  return { success: true };
 }
 

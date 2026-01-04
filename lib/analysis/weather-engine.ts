@@ -1,6 +1,8 @@
 // lib/analysis/weather-engine.ts
 import { createClient } from "@supabase/supabase-js";
 import { formatParty } from "@/lib/utils/party-utils";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 export interface PredictionResult {
   jaa: number;
@@ -29,6 +31,25 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
 
   if (!bill) throw new Error("Bill not found");
 
+  // AI Categorization if category is generic or missing
+  let category = bill.category;
+  if (!category || category === 'Hallituksen esitys' || category === 'Muu') {
+    try {
+      const { text } = await generateText({
+        model: openai('gpt-4o-mini') as any,
+        system: `Olet poliittinen analyytikko. Luokittele lakiesityksen otsikko kuuteen kategoriaan: 
+          Talous, Arvot, Ympäristö, Aluepolitiikka, Kansainvälisyys, Turvallisuus.
+          Vastaa vain kategorian nimellä.`,
+        prompt: bill.title,
+      });
+      category = text.trim();
+      // Update bill category in DB for future
+      await supabase.from('bills').update({ category }).eq('id', billId);
+    } catch (e) {
+      console.warn("AI categorization failed, using default axis");
+    }
+  }
+
   // Map category to DNA axis
   const catToAxis: Record<string, string> = {
     'Talous': 'economic_score',
@@ -39,7 +60,7 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
     'Turvallisuus': 'security_score'
   };
 
-  const axis = catToAxis[bill.category || ''] || 'economic_score';
+  const axis = catToAxis[category || ''] || 'economic_score';
 
   // 2. Get All Active MPs and their DNA
   const { data: mps } = await supabase
@@ -63,7 +84,9 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
   const rebels: any[] = [];
 
   mps.forEach(mp => {
-    const profile = mp.mp_profiles?.[0];
+    // Handle both array and object formats from Supabase
+    const profile = Array.isArray(mp.mp_profiles) ? mp.mp_profiles[0] : mp.mp_profiles;
+    
     if (!profile) {
       abstain++;
       return;

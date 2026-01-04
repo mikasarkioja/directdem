@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
-import type { Bill, UserProfile } from "@/lib/types";
+import { getIntegrityAlertsForEvent } from "@/lib/actions/promise-actions";
+import type { Bill, UserProfile, IntegrityAlert } from "@/lib/types";
 import BillDetail from "./BillDetail";
-import { Loader2, RefreshCw, Database, Sparkles, Calendar, ChevronRight } from "lucide-react";
+import { Loader2, RefreshCw, Database, Sparkles, Calendar, ChevronRight, AlertCircle, ShieldCheck, Zap } from "lucide-react";
 
 interface ActiveBillsProps {
   user: UserProfile | null;
@@ -14,6 +15,7 @@ interface ActiveBillsProps {
 export default function ActiveBills({ user }: ActiveBillsProps) {
   const [bills, setBills] = useState<Bill[]>([]);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const [alerts, setAlerts] = useState<Record<string, IntegrityAlert[]>>({});
   const [loading, setLoading] = useState(true);
 
   const loadBills = async () => {
@@ -21,6 +23,18 @@ export default function ActiveBills({ user }: ActiveBillsProps) {
       setLoading(true);
       const data = await fetchBillsFromSupabase();
       setBills(data);
+      
+      // Fetch alerts for all bills
+      const alertMap: Record<string, IntegrityAlert[]> = {};
+      for (const bill of data) {
+        if (bill.parliamentId) {
+          const billAlerts = await getIntegrityAlertsForEvent(bill.parliamentId);
+          if (billAlerts.length > 0) {
+            alertMap[bill.parliamentId] = billAlerts;
+          }
+        }
+      }
+      setAlerts(alertMap);
     } catch (err: any) {
       console.error("Failed to load bills:", err);
     } finally {
@@ -49,6 +63,9 @@ export default function ActiveBills({ user }: ActiveBillsProps) {
       <div className="grid gap-4">
         {bills.slice(0, 30).map((bill, index) => {
           const isAI = bill.summary && (bill.summary.length > 800 || bill.summary.includes("###"));
+          const billAlerts = bill.parliamentId ? alerts[bill.parliamentId] : [];
+          const highSeverityCount = billAlerts?.filter(a => a.severity === 'high').length || 0;
+          const mediumSeverityCount = billAlerts?.filter(a => a.severity === 'medium').length || 0;
           
           return (
             <motion.div
@@ -64,6 +81,23 @@ export default function ActiveBills({ user }: ActiveBillsProps) {
                   <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-command-neon text-[8px] font-black rounded-bl-lg uppercase tracking-tight border-l border-b border-blue-100">
                     <Sparkles size={8} />
                     <span>AI Enhanced</span>
+                  </div>
+                </div>
+              )}
+
+              {billAlerts && billAlerts.length > 0 && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                  <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm border ${
+                    highSeverityCount > 0 
+                      ? "bg-rose-500 text-white border-rose-600" 
+                      : mediumSeverityCount > 0
+                        ? "bg-amber-500 text-white border-amber-600"
+                        : "bg-emerald-500 text-white border-emerald-600"
+                  }`}>
+                    {highSeverityCount > 0 ? <Zap size={10} /> : mediumSeverityCount > 0 ? <AlertCircle size={10} /> : <ShieldCheck size={10} />}
+                    <span>
+                      {highSeverityCount > 0 ? 'Takinkääntö havaittu' : mediumSeverityCount > 0 ? 'Poikkeama havaittu' : 'Lupauksen mukainen'}
+                    </span>
                   </div>
                 </div>
               )}

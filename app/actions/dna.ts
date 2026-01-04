@@ -130,3 +130,14 @@ export async function trackEngagement(billId: string, durationSeconds: number) {
   return { success: false };
 }
 
+export async function confirmAlert(alertId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false };
+
+  // Add Vigilante (Fact Checker) points
+  await addDNAPoints("fact_checker", 5);
+  
+  return { success: true, message: "Kiitos vahvistuksesta! Sait 5 Faktantarkistaja-pistettä." };
+}
+

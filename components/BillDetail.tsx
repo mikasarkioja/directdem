@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, RefreshCw, AlertCircle, CheckCircle, Database, Radio } from "lucide-react";
-import type { Bill, VoteStats } from "@/lib/types";
+import { X, Sparkles, RefreshCw, AlertCircle, CheckCircle, Database, Radio, ShieldCheck, Zap, ThumbsUp, CloudSun } from "lucide-react";
+import type { Bill, VoteStats, IntegrityAlert } from "@/lib/types";
 import { regenerateBillSummary } from "@/app/actions/process-bill";
+import { getIntegrityAlertsForEvent } from "@/lib/actions/promise-actions";
 import StreamingSummary from "./StreamingSummary";
 import ComparisonMirror from "./ComparisonMirror";
 import VoteButton from "./VoteButton";
 import { getVoteStats } from "@/app/actions/votes";
-import { trackEngagement } from "@/app/actions/dna";
+import { trackEngagement, confirmAlert } from "@/app/actions/dna";
+import Link from "next/link";
 
 interface BillDetailProps {
   bill: Bill;
@@ -19,10 +21,25 @@ interface BillDetailProps {
 export default function BillDetail({ bill, onClose }: BillDetailProps) {
   const [savedSummary, setSavedSummary] = useState<string | null>(bill.summary || null);
   const [voteStats, setVoteStats] = useState<any>(null);
+  const [alerts, setAlerts] = useState<IntegrityAlert[]>([]);
   const [processing, setProcessing] = useState(false);
+  const [confirmedAlerts, setConfirmedAlerts] = useState<Set<string>>(new Set());
+
+  const handleConfirmAlert = async (alertId: string) => {
+    if (confirmedAlerts.has(alertId)) return;
+    const result = await confirmAlert(alertId);
+    if (result.success) {
+      setConfirmedAlerts(prev => new Set([...Array.from(prev), alertId]));
+      alert(result.message);
+    }
+  };
 
   useEffect(() => {
     getVoteStats(bill.id).then(setVoteStats);
+    
+    if (bill.parliamentId) {
+      getIntegrityAlertsForEvent(bill.parliamentId).then(setAlerts);
+    }
     
     // Track engagement
     const startTime = Date.now();
@@ -30,7 +47,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
       const durationSeconds = (Date.now() - startTime) / 1000;
       trackEngagement(bill.id, durationSeconds);
     };
-  }, [bill.id]);
+  }, [bill.id, bill.parliamentId]);
 
   const handleRegenerate = async () => {
     setProcessing(true);
@@ -70,9 +87,18 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
               <p className="text-command-gray text-[10px] font-bold uppercase tracking-widest">{bill.parliamentId || "Eduskunta"}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors text-command-gray">
-            <X size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/ennusteet/${bill.id}`}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-purple-900/20"
+            >
+              <CloudSun size={14} />
+              <span>Sääennuste</span>
+            </Link>
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors text-command-gray">
+              <X size={24} />
+            </button>
+          </div>
         </div>
 
         <div className="p-6 md:p-10 space-y-12">
@@ -125,6 +151,71 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
               </div>
             </div>
           </div>
+
+          {/* Promise Watch Sector */}
+          {alerts.length > 0 && (
+            <div className="space-y-6 pt-12 border-t border-white/5">
+              <div className="flex items-center gap-2 text-amber-500 neon-text">
+                <ShieldCheck size={18} />
+                <h3 className="text-xs font-black uppercase tracking-widest">Vaalilupaus-vahti (Integrity Alerts)</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {alerts.slice(0, 6).map((alert) => (
+                  <div key={alert.id} className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${alert.severity === 'high' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]'}`} />
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${alert.severity === 'high' ? 'text-rose-400' : 'text-amber-400'}`}>
+                          {alert.severity === 'high' ? 'Takinkääntö' : 'Poikkeama'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">{alert.category}</span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-command-gray">Lupaus (Vaalikone):</span>
+                        <span className="text-white font-black">{alert.promise_value > 0 ? 'Myönteinen' : 'Kielteinen'} ({alert.promise_value}%)</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-command-gray">Toteutus (Äänestys):</span>
+                        <span className={`font-black uppercase ${alert.vote_type === 'jaa' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {alert.vote_type.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-white/5 space-y-4">
+                      <p className="text-[10px] text-command-gray leading-relaxed italic">
+                        "Tämä edustaja lupasi vaalikoneessa toimia {alert.category.toLowerCase()}-asioissa {alert.promise_value > 0 ? 'positiivisesti' : 'kriittisesti'}, mutta äänesti tässä lakiesityksessä päinvastoin."
+                      </p>
+                      <button
+                        onClick={() => handleConfirmAlert(alert.id)}
+                        disabled={confirmedAlerts.has(alert.id)}
+                        className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border ${
+                          confirmedAlerts.has(alert.id)
+                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                            : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {confirmedAlerts.has(alert.id) ? (
+                          <>
+                            <CheckCircle size={10} />
+                            <span>Vahvistettu</span>
+                          </>
+                        ) : (
+                          <>
+                            <ThumbsUp size={10} />
+                            <span>Vahvista poikkeama (+5 XP)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>

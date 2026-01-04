@@ -1,12 +1,14 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { calculatePivotScore } from "@/lib/analysis/pivot-engine";
 
 export interface MPMatch {
   id: number;
   full_name: string;
   party: string;
   compatibility: number;
+  pivotScore: number;
   scores: {
     economic: number;
     liberal: number;
@@ -30,6 +32,7 @@ export interface HarkimoMatchResult {
       global: number;
       security: number;
     };
+    pivotScore: number;
   };
   topMatches: MPMatch[];
   bottomMatches: MPMatch[];
@@ -41,7 +44,7 @@ export interface HarkimoMatchResult {
 }
 
 // Helper function to map long party names to short abbreviations
-const formatParty = (party: string, fullName?: string): string => {
+export const formatParty = (party: string, fullName?: string): string => {
   if (!party || party === 'Tuntematon') {
     // Fallback for specific prominent figures if party is missing
     if (fullName?.includes('Esko Aho')) return 'Kesk';
@@ -264,6 +267,22 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
     // Ensure we don't have overlapping matches if the list is short
     const sliceCount = Math.min(5, Math.floor(matches.length / 2));
     
+    const pivotScore = await calculatePivotScore(harkimoMp.id);
+    
+    // Calculate pivot scores for the top and bottom matches only (for performance)
+    const topSlice = matches.slice(0, sliceCount);
+    const bottomSlice = matches.slice(-sliceCount).reverse();
+
+    const withPivotScores = async (list: any[]) => {
+      return Promise.all(list.map(async (m) => ({
+        ...m,
+        pivotScore: await calculatePivotScore(m.id)
+      })));
+    };
+
+    const finalTop = await withPivotScores(topSlice);
+    const finalBottom = await withPivotScores(bottomSlice);
+
     return {
       harkimo: {
         id: harkimoMp.id,
@@ -276,10 +295,11 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
           urban: harkimoProfile.urban_rural_score,
           global: harkimoProfile.international_national_score,
           security: harkimoProfile.security_score
-        }
+        },
+        pivotScore: pivotScore
       },
-      topMatches: matches.slice(0, sliceCount),
-      bottomMatches: matches.slice(-sliceCount).reverse(),
+      topMatches: finalTop,
+      bottomMatches: finalBottom,
       partyAnalysis: partyAnalysis // Return all parties
     };
   } catch (error: any) {

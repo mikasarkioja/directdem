@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Map, User, LayoutGrid, Users, Radio, BarChart3 } from "lucide-react";
+import { FileText, Map, User, LayoutGrid, Users, Radio, BarChart3, TrendingUp, Activity } from "lucide-react";
 import type { DashboardView, UserProfile } from "@/lib/types";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -52,6 +52,8 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
     { id: "bills", label: "Active Bills", icon: FileText },
     { id: "consensus", label: "Consensus Map", icon: Map },
     { id: "parties", label: "Factions", icon: Users },
+    { id: "ranking", label: "Power Rankings", icon: TrendingUp, href: "/ranking" },
+    { id: "analysis", label: "Party Analysis", icon: Activity, href: "/puolueet/analyysi" },
     { id: "debate", label: "The Agora", icon: Radio, href: "/vaittely/demo" },
     { id: "overview", label: "Hjallis Demo", icon: BarChart3, href: "/demo/harkimo" },
     { id: "profile", label: "My Profile", icon: User },

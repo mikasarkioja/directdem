@@ -4,6 +4,8 @@ import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { checkVoteIntegrity } from '../lib/analysis/promise-monitor';
+import { predictVoteOutcome } from '../lib/analysis/weather-engine';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
@@ -79,6 +81,9 @@ async function categorizeVotes() {
           summary_ai: `AI-painotus: ${analysis.weight}` 
         })
         .eq('id', event.id);
+
+      // Vaalilupaus-vahti: Tarkista poikkeamat
+      await checkVoteIntegrity(event.id);
 
     } catch (err: any) {
       // Hiljainen virhe, jatketaan seuraavaan
@@ -208,30 +213,27 @@ async function calculateMPProfiles() {
     return ((val - bounds.min) / (bounds.max - bounds.min)) * 2 - 1;
   };
 
-  for (const p of rawProfiles) {
-    const stretchedEcon = stretch(p.scores.economic, econBounds);
-    const stretchedLib = stretch(p.scores.liberal, libBounds);
-    const stretchedEnv = stretch(p.scores.env, envBounds);
-    const stretchedUrban = stretch(p.scores.urban, urbanBounds);
-    const stretchedGlobal = stretch(p.scores.global, globalBounds);
-    const stretchedSecurity = stretch(p.scores.security, securityBounds);
+  const profilesToUpsert = rawProfiles.map(p => ({
+    mp_id: p.mp_id,
+    economic_score: stretch(p.scores.economic, econBounds),
+    liberal_conservative_score: stretch(p.scores.liberal, libBounds),
+    environmental_score: stretch(p.scores.env, envBounds),
+    urban_rural_score: stretch(p.scores.urban, urbanBounds),
+    international_national_score: stretch(p.scores.global, globalBounds),
+    security_score: stretch(p.scores.security, securityBounds),
+    total_votes_analyzed: p.vote_count,
+    last_updated: new Date().toISOString()
+  }));
 
-    const { error: upsertError } = await supabase.from('mp_profiles').upsert({
-      mp_id: p.mp_id,
-      economic_score: stretchedEcon,
-      liberal_conservative_score: stretchedLib,
-      environmental_score: stretchedEnv,
-      urban_rural_score: stretchedUrban,
-      international_national_score: stretchedGlobal,
-      security_score: stretchedSecurity,
-      total_votes_analyzed: p.vote_count,
-      last_updated: new Date().toISOString()
-    }, { onConflict: 'mp_id' });
+  const { error: upsertError } = await supabase
+    .from('mp_profiles')
+    .upsert(profilesToUpsert, { onConflict: 'mp_id' });
 
-    if (upsertError) console.error(`Virhe MP ${p.mp_id}:`, upsertError.message);
+  if (upsertError) {
+    console.error(`Virhe päivitettäessä profiileja:`, upsertError.message);
+  } else {
+    console.log('Kaikki DNA-pisteet päivitetty kontrastivahvistuksella (Batch update).');
   }
-
-  console.log('DNA-pisteet päivitetty kontrastivahvistuksella.');
 }
 
 async function main() {
@@ -244,6 +246,19 @@ async function main() {
     
     // Lopuksi vielä kerran päivitys jos uusia luokitteluja tuli
     await calculateMPProfiles();
+
+    // Sääennusteet tuleville äänestyksille
+    console.log('--- Generoidaan sääennusteet tuleville äänestyksille ---');
+    const { data: bills } = await supabase.from('bills').select('id').eq('status', 'voting');
+    if (bills) {
+      for (const bill of bills) {
+        try {
+          await predictVoteOutcome(bill.id);
+        } catch (e) {
+          // Ignore forecast errors for now
+        }
+      }
+    }
     
     console.log('--- Prosessi valmis! ---');
   } catch (err: any) {

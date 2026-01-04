@@ -347,7 +347,13 @@ export default function HarkimoDemo() {
                           <div className="space-y-0.5">
                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.1em]">Kansanedustaja</p>
                             <p className="text-sm font-black uppercase text-slate-900 leading-tight">Hjallis Harkimo</p>
-                            <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-900 text-white rounded-md text-[7px] font-black uppercase">
+                                <RefreshCw size={6} className="animate-spin-slow" />
+                                <span>Pivot: {data.harkimo.pivotScore}%</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                         
@@ -374,7 +380,13 @@ export default function HarkimoDemo() {
                           <div className="space-y-0.5">
                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.1em]">Haastaja</p>
                             <p className="text-sm font-black uppercase text-slate-900 leading-tight">{selectedMp.full_name}</p>
-                            <p className="text-xs font-bold text-blue-600 uppercase">{selectedMp.party}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-blue-600 uppercase">{selectedMp.party}</p>
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-900 text-white rounded-md text-[7px] font-black uppercase">
+                                <RefreshCw size={6} className="animate-spin-slow" />
+                                <span>Pivot: {selectedMp.pivotScore}%</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
 

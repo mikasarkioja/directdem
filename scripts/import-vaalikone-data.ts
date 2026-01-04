@@ -162,12 +162,26 @@ async function main() {
       
       const scores = { economic: 0, liberal: 0, env: 0, urban: 0, global: 0, security: 0 };
       const counts = { economic: 0, liberal: 0, env: 0, urban: 0, global: 0, security: 0 };
+      const responsesToInsert: any[] = [];
 
       questionMappings.forEach(m => {
         const valStr = values[m.idx];
         const val = parseInt(valStr);
         
         if (!isNaN(val) && val >= 1 && val <= 5) {
+          // Store raw response
+          responsesToInsert.push({
+            mp_id: mp.id,
+            question: m.q,
+            response_value: val,
+            category: m.axis === 'economic' ? 'Talous' : 
+                      m.axis === 'liberal' ? 'Arvot' : 
+                      m.axis === 'env' ? 'Ympäristö' : 
+                      m.axis === 'urban' ? 'Aluepolitiikka' : 
+                      m.axis === 'global' ? 'Kansainvälisyys' : 'Turvallisuus',
+            weight: m.weight
+          });
+
           // Normalize: 1 -> 1.0, 3 -> 0.0, 5 -> -1.0
           const normalized = (3 - val) / 2;
           const finalScore = normalized * m.weight;
@@ -176,6 +190,11 @@ async function main() {
           (counts as any)[m.axis]++;
         }
       });
+
+      // Batch insert responses
+      if (responsesToInsert.length > 0) {
+        await supabase.from('mp_candidate_responses').upsert(responsesToInsert, { onConflict: 'mp_id,question' });
+      }
 
       // Päivitä mp_profiles jos saatiin vastauksia
       if (counts.economic > 0 || counts.liberal > 0 || counts.env > 0 || 

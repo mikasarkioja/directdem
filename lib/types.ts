@@ -200,7 +200,7 @@ export interface DebateParticipant {
 }
 
 // Dashboard view types
-export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate";
+export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate" | "ranking" | "analysis";
 
 // API Test types
 export interface TestResult {
@@ -212,6 +212,18 @@ export interface TestResult {
   data?: any;
   error?: string;
   contentType?: string;
+}
+
+export interface IntegrityAlert {
+  id: string;
+  mp_id: number;
+  event_id: string;
+  category: string;
+  promise_value: number;
+  vote_type: string;
+  deviation_score: number;
+  severity: 'low' | 'medium' | 'high';
+  created_at: string;
 }
 
 

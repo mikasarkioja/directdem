@@ -34,6 +34,10 @@ async function fetchAndSaveMPs() {
       const columnNames = response.data.columnNames || [];
       const rowData = response.data.rowData;
       
+      if (page === 0) {
+        log('MP-taulun sarakkeet:', columnNames);
+      }
+      
       if (!rowData || rowData.length === 0) {
         hasMore = false;
         break;
@@ -50,7 +54,7 @@ async function fetchAndSaveMPs() {
           party: getVal('party')?.trim() || 'Tuntematon',
           constituency: '', 
           image_url: `https://www.eduskunta.fi/FI/kansanedustajat/Images/${personId}.jpg`,
-          is_active: true
+          is_active: false // Default to false, will mark active later
         };
       }).filter((mp: any) => !isNaN(mp.id));
 
@@ -174,6 +178,40 @@ async function fetchAndSaveMPVotes(limit = 100) {
   }
 }
 
+async function markActiveMPs() {
+  log('--- Merkitään nykyiset kansanedustajat aktiivisiksi (viimeisimpien äänien perusteella) ---');
+  
+  // Haetaan MP:t, jotka ovat äänestäneet missä tahansa tietokannassa olevassa äänestyksessä
+  // Koska haemme vain tuoreita äänestyksiä, tämä suodattaa pois historialliset MP:t
+  const { data: activeMpIds, error } = await supabase
+    .from('mp_votes')
+    .select('mp_id');
+    
+  if (error) {
+    log('VIRHE aktiivisten MP-tunnusten haussa:', error.message);
+    return;
+  }
+
+  const uniqueIds = Array.from(new Set(activeMpIds.map(v => v.mp_id)));
+  log(`Löytyi ${uniqueIds.length} aktiivista kansanedustajaa.`);
+
+  if (uniqueIds.length > 0) {
+    // Päivitetään mps-taulu erissä
+    const batchSize = 100;
+    for (let i = 0; i < uniqueIds.length; i += batchSize) {
+      const batch = uniqueIds.slice(i, i + batchSize);
+      const { error: updateError } = await supabase
+        .from('mps')
+        .update({ is_active: true })
+        .in('id', batch);
+        
+      if (updateError) {
+        log(`VIRHE MP-erän ${i} päivityksessä:`, updateError.message);
+      }
+    }
+  }
+}
+
 async function main() {
   log('🚀 Aloitetaan Eduskunnan massadatan haku (FINAL FIX)...');
   
@@ -185,6 +223,7 @@ async function main() {
   await fetchAndSaveMPs();
   await fetchAndSaveVotingEvents();
   await fetchAndSaveMPVotes();
+  await markActiveMPs();
   
   log('🏁 Kaikki valmista!');
 }

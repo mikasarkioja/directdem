@@ -91,7 +91,9 @@ async function calculateMPProfiles() {
         vote_type,
         voting_events!inner (
           category,
-          summary_ai
+          summary_ai,
+          ayes,
+          noes
         )
       `)
       .eq('mp_id', mp.id);
@@ -112,11 +114,29 @@ async function calculateMPProfiles() {
       const parts = v.voting_events.summary_ai.split(': ');
       if (parts.length < 2) return;
       
-      const weight = parseFloat(parts[1]);
-      if (isNaN(weight)) return;
+      const aiWeight = parseFloat(parts[1]);
+      if (isNaN(aiWeight)) return;
+
+      // Calculate controversy score (0...1)
+      // 0 = everyone agrees, 1 = 50/50 split
+      const jaa = v.voting_events.ayes || 0;
+      const ei = v.voting_events.noes || 0;
+      const total = jaa + ei;
+      
+      let controversyWeight = 0;
+      if (total > 0) {
+        // Linear scaling: if 100/0 -> 0, if 50/50 -> 1
+        controversyWeight = 1 - Math.abs(jaa - ei) / total;
+      }
+
+      // If controversy is very low (e.g. < 0.1), ignore the vote for profiling
+      if (controversyWeight < 0.1) return;
 
       const voteVal = v.vote_type === 'jaa' ? 1 : v.vote_type === 'ei' ? -1 : 0;
-      const score = voteVal * weight;
+      
+      // Final weight combines AI relevance and political controversy
+      const finalWeight = aiWeight * controversyWeight;
+      const score = voteVal * finalWeight;
 
       if (v.voting_events.category === 'Talous') {
         economic += score;

@@ -27,16 +27,16 @@ export async function POST() {
         
         const mps = rows.map((row: any) => {
           const getVal = (col: string) => row[colNames.indexOf(col)];
-          const personId = getVal('personId');
-          return {
-            id: parseInt(personId),
-            first_name: getVal('firstname')?.trim(),
-            last_name: getVal('lastname')?.trim(),
-            party: getVal('party')?.trim() || 'Tuntematon',
-            constituency: '',
-            image_url: `https://www.eduskunta.fi/FI/kansanedustajat/Images/${personId}.jpg`,
-            is_active: true
-          };
+            const personId = getVal('personId');
+            return {
+              id: parseInt(personId),
+              first_name: getVal('firstname')?.trim(),
+              last_name: getVal('lastname')?.trim(),
+              party: getVal('party')?.trim() || 'Tuntematon',
+              constituency: '',
+              image_url: `https://www.eduskunta.fi/FI/kansanedustajat/Images/${personId}.jpg`,
+              is_active: false // Default to false
+            };
         }).filter((m: any) => !isNaN(m.id));
 
         log(`Löytyi ${mps.length} edustajaa. Tallennetaan...`);
@@ -94,6 +94,21 @@ export async function POST() {
         const { error: voteErr } = await supabase.from('mp_votes').upsert(votes, { onConflict: 'mp_id,event_id' });
         if (voteErr) log(`VAROITUS äänitallennuksessa: ${voteErr.message}`);
         else log(`✅ ${votes.length} ääntä tallennettu.`);
+
+        // 4. Mark active MPs
+        log("--- Vaihe 4: Merkitään aktiiviset kansanedustajat ---");
+        // Haetaan kaikki mp_id:t mp_votes-taulusta. Koska olemme juuri hakeneet 
+        // tuoreimmat äänet, tämä tunnistaa vain nykyiset edustajat.
+        const { data: activeIds } = await supabase.from('mp_votes').select('mp_id');
+        const uniqueIds = Array.from(new Set(activeIds?.map(v => v.mp_id) || []));
+        
+        if (uniqueIds.length > 0) {
+          // Asetetaan kaikki ensin epäaktiivisiksi (jos on vanhaa dataa)
+          // Mutta parempi päivittää vain löydetyt aktiivisiksi
+          const { error: upErr } = await supabase.from('mps').update({ is_active: true }).in('id', uniqueIds);
+          if (upErr) log(`VAROITUS aktivoinnissa: ${upErr.message}`);
+          else log(`✅ ${uniqueIds.length} edustajaa merkitty aktiivisiksi (perustuen tuoreisiin ääniin).`);
+        }
 
         log("🏁 Synkronointi valmis!");
       } catch (error: any) {

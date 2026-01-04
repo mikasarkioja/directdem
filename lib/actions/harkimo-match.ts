@@ -98,7 +98,7 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
     await supabase.from('mp_profiles').upsert(harkimoProfile, { onConflict: 'mp_id' });
   }
 
-  // 3. Get all other profiles
+  // 3. Get all other profiles (ONLY ACTIVE ONES)
   const { data: allProfiles } = await supabase
     .from("mp_profiles")
     .select(`
@@ -106,9 +106,11 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
       mps!inner (
         first_name,
         last_name,
-        party
+        party,
+        is_active
       )
     `)
+    .eq("mps.is_active", true)
     .neq("mp_id", harkimoMp.id);
 
   if (!allProfiles) {
@@ -139,7 +141,11 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
 
     // Max distance in 3D space with -1...1 range is sqrt(2^2 + 2^2 + 2^2) = sqrt(12) approx 3.46
     const maxDist = 3.46;
-    const compatibility = Math.max(0, Math.round((1 - distance / maxDist) * 100));
+    // Using a more sensitive exponential curve to highlight differences
+    // Linear: 1 - dist/maxDist
+    // Sensitive: (1 - dist/maxDist) ^ 1.5
+    const normalizedDist = distance / maxDist;
+    const compatibility = Math.max(0, Math.round(Math.pow(1 - normalizedDist, 1.5) * 100));
 
     const fullName = `${p.mps.first_name} ${p.mps.last_name}`;
     return {

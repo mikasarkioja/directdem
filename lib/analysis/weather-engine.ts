@@ -76,15 +76,14 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
   // 3. Get Party Rice Indices (Cohesion)
   // For demo, we assume high cohesion (90%) for government, slightly lower for others
   const partyCohesion: Record<string, number> = {
-    'KOK': 0.95, 'PS': 0.92, 'RKP': 0.88, 'KD': 0.90, // Government
-    'SDP': 0.85, 'KESK': 0.75, 'VIHR': 0.80, 'VAS': 0.82, 'LIIK': 0.70 // Opposition/Independent
+    'Kok': 0.95, 'PS': 0.92, 'RKP': 0.88, 'KD': 0.90, // Government
+    'SDP': 0.85, 'Kesk': 0.75, 'Vihr': 0.80, 'Vas': 0.82, 'Liik': 0.70 // Opposition/Independent
   };
 
   let jaa = 0, ei = 0, abstain = 0;
   const rebels: any[] = [];
 
   mps.forEach(mp => {
-    // Handle both array and object formats from Supabase
     const profile = Array.isArray(mp.mp_profiles) ? mp.mp_profiles[0] : mp.mp_profiles;
     
     if (!profile) {
@@ -98,14 +97,13 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
 
     // Simulation logic:
     // DNA score > 0 means tends to JAA (depending on axis definition)
-    // For now, let's assume axis > 0 means the proposal's intent (e.g. if it's a right-wing bill and MP is right-wing)
-    // We'll use a simplified model: score > 0.2 -> tend JAA, score < -0.2 -> tend EI, middle -> abstain
+    let probJaa = 0.5 + (score * 0.4); 
     
-    let probJaa = 0.5 + (score * 0.4); // Base probability from DNA
+    // 4. Party Line Detection
+    // Government: Kok, PS, RKP, KD
+    const isGov = ['Kok', 'PS', 'RKP', 'KD'].includes(party);
+    const partyLine = isGov ? 1 : -1; 
     
-    // Adjust by party line (assuming majority of party votes one way)
-    // This is a simplification: in reality we'd check party's official stance
-    const partyLine = party === 'KOK' || party === 'PS' ? 1 : -1; // Mock: Gov bills pass
     const correctedProb = (probJaa * (1 - cohesion)) + (partyLine === 1 ? cohesion : 0);
 
     if (correctedProb > 0.55) jaa++;
@@ -124,22 +122,35 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
     }
   });
 
-  // 4. Final Analysis
-  const total = jaa + ei;
+  // 5. Generate AI Summary (Analyst's Note)
+  let summary = "";
+  try {
+    const { text } = await generateText({
+      model: openai('gpt-4o-mini') as any,
+      system: `Olet kokenut poliittinen analyytikko. Kirjoita lyhyt, 1-2 lauseen pituinen analyytikon huomio (Analyst's Note) 
+        perustuen äänestysennusteeseen. Käytä neutraalia, mutta asiantuntevaa sävyä.
+        Lakiesitys: ${bill.title}
+        Ennuste: ${jaa} JAA, ${ei} EI, ${abstain} TYHJÄÄ.`,
+      prompt: "Kirjoita tiivistelmä tuloksesta ja mahdollisesta poliittisesta jännitteestä.",
+    });
+    summary = text.trim();
+  } catch (e) {
+    // Fallback to static summaries if AI fails
+    const diff = Math.abs(jaa - ei);
+    if (jaa > ei && diff > 20) {
+      summary = "Hallitusrintama näyttää sääennusteen mukaan kestävän. Esitys on menossa läpi selvin lukemin.";
+    } else if (diff < 10) {
+      summary = "Myrskyvaroitus! Äänestyksestä on tulossa erittäin tiukka. Muutama kapinaääni voi kääntää tuloksen.";
+    } else {
+      summary = "Epävakaata korkeapainetta. Esitys hyväksyttäneen, mutta soraääniä kuuluu useasta leiristä.";
+    }
+  }
+
+  // 6. Final Weather Calculation
   const diff = Math.abs(jaa - ei);
   let weather: 'sunny' | 'stormy' | 'cloudy' = 'cloudy';
-  let summary = "";
-
-  if (jaa > ei && diff > 20) {
-    weather = 'sunny';
-    summary = "Hallitusrintama näyttää sääennusteen mukaan kestävän. Esitys on menossa läpi selvin lukemin.";
-  } else if (diff < 10) {
-    weather = 'stormy';
-    summary = "Myrskyvaroitus! Äänestyksestä on tulossa erittäin tiukka. Muutama kapinaääni voi kääntää tuloksen.";
-  } else {
-    weather = 'cloudy';
-    summary = "Epävakaata korkeapainetta. Esitys hyväksyttäneen, mutta soraääniä kuuluu useasta leiristä.";
-  }
+  if (jaa > ei && diff > 30) weather = 'sunny';
+  else if (diff < 15) weather = 'stormy';
 
   const result = {
     jaa, ei, abstain,
@@ -148,7 +159,7 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
     summary
   };
 
-  // 5. Cache result in DB
+  // 7. Cache result in DB
   await supabase.from('bill_forecasts').upsert({
     bill_id: billId,
     predicted_jaa: jaa,

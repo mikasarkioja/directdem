@@ -46,8 +46,7 @@ export async function GET(request: Request) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error && data.session) {
         console.log("[Auth Callback] exchangeCodeForSession SUCCESS.");
-        // Profile update can happen in the background or after redirect
-        // but for now we just return the response with cookies
+        await upsertUserProfile(data.session.user.id);
         return response;
       }
       if (error) console.error("[Auth Callback] exchangeCodeForSession error:", error.message);
@@ -60,6 +59,7 @@ export async function GET(request: Request) {
 
       if (!error && data.session) {
         console.log("[Auth Callback] verifyOtp SUCCESS.");
+        await upsertUserProfile(data.session.user.id);
         return response;
       }
       if (error) console.error("[Auth Callback] verifyOtp error:", error.message);

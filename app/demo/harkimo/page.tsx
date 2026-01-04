@@ -81,7 +81,43 @@ export default function HarkimoDemo() {
     );
   }
 
-  if (!data) return <div>Virhe datan latauksessa.</div>;
+  if (!data) return (
+    <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="text-center space-y-4 p-8 bg-white rounded-3xl shadow-xl border border-slate-200 max-w-md">
+        <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Info size={32} />
+        </div>
+        <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Hups! Jotain meni vikaan</h2>
+        <p className="text-slate-500 font-medium">Datan lataus epäonnistui. Tämä johtuu yleensä siitä, että tietokanta on vielä tyhjä tai yhteysasetukset ovat väärin.</p>
+        <div className="bg-slate-50 p-4 rounded-xl text-[10px] font-mono text-slate-400 break-all text-left">
+          Varmista että olet ajanut datan latauksen ja analyysin tuotantoympäristöön.
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="w-full bg-slate-900 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-purple-600 transition-colors"
+        >
+          Yritä uudelleen
+        </button>
+      </div>
+    </div>
+  );
+
+  if (data.error) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="text-center space-y-4 p-8 bg-white rounded-3xl shadow-xl border border-slate-200 max-w-md">
+          <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Zap size={32} />
+          </div>
+          <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Tietokanta on tyhjä</h2>
+          <p className="text-slate-500 font-medium">{data.error}</p>
+          <div className="bg-slate-50 p-4 rounded-xl text-[10px] font-mono text-slate-400 break-all text-left">
+            Aja 'npm run fetch-eduskunta-data' ja 'npm run analyze-mp-dna' tuotantotunnuksilla.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] text-slate-900 overflow-hidden">

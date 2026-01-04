@@ -37,6 +37,7 @@ export interface HarkimoMatchResult {
     name: string;
     avgCompatibility: number;
   }[];
+  error?: string;
 }
 
 // Helper function to map long party names to short abbreviations
@@ -82,7 +83,18 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
 
     if (harkimoError || !harkimoMp) {
       console.error("Harkimo fetch error:", harkimoError);
-      throw new Error("Hjallis Harkimoa ei löytynyt tietokannasta. Varmista, että massadata on ladattu.");
+      return {
+        harkimo: {
+          id: 1328,
+          full_name: "Harry Harkimo",
+          party: "Liik",
+          scores: { economic: 0, liberal: 0, env: 0, urban: 0, global: 0, security: 0 }
+        },
+        topMatches: [],
+        bottomMatches: [],
+        partyAnalysis: [],
+        error: "Harkimoa ei löytynyt tietokannasta. Tarkista Supabase-yhteys."
+      } as any;
     }
 
     // 2. Get his profile

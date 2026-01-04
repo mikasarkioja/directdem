@@ -93,5 +93,5 @@ export const fetchBillsFromSupabase = cache(async (): Promise<Bill[]> => {
   // In production, you might want to seed some initial bills in Supabase
   console.info("No bills found. Consider adding bills manually to Supabase or check Eduskunta API endpoint.");
   return [];
-}
+});
 

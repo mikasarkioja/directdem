@@ -9,7 +9,7 @@ import ComparisonRadarChart from "@/components/ComparisonRadarChart";
 import { 
   Users, Zap, Info, TrendingUp, TrendingDown, 
   ChevronRight, BrainCircuit, BarChart3, Loader2,
-  User, Sparkles, Quote, Share2, RefreshCw
+  User, Sparkles, Quote, Share2, RefreshCw, Activity
 } from "lucide-react";
 import { initializeProfileFromMP } from "@/lib/actions/user-profile-actions";
 import { useRouter } from "next/navigation";

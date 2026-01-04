@@ -11,7 +11,7 @@ import { generateProfileSummary } from "@/lib/utils/profile-describer";
 import { getHarkimoMatches, type HarkimoMatchResult } from "@/lib/actions/harkimo-match";
 import { 
   Sparkles, BrainCircuit, Share2, Download, 
-  ArrowRight, User, Activity, Loader2 
+  ArrowRight, User, Activity, Loader2, Play
 } from "lucide-react";
 import Link from "next/link";
 
@@ -156,12 +156,13 @@ export default function TestiTulokset() {
 
         {/* CTA Section */}
         <div className="flex flex-col items-center gap-6 pt-12">
-          <button 
-            onClick={() => router.push("/bills")}
-            className="px-12 py-5 bg-white text-slate-950 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-white/10"
+          <Link 
+            href="/bills"
+            className="px-12 py-5 bg-purple-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-purple-600/20 flex items-center gap-3"
           >
+            <Play size={16} fill="currentColor" />
             Jatka äänestysareenalle
-          </button>
+          </Link>
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">
             Jokainen ääni tarkentaa profiiliasi
           </p>

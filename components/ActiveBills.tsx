@@ -79,7 +79,7 @@ export default function ActiveBills({ user }: ActiveBillsProps) {
       </div>
 
       <div className="grid gap-4">
-        {bills.slice(0, 30).map((bill, index) => {
+        {bills.map((bill, index) => {
           const isAI = bill.summary && (bill.summary.length > 800 || bill.summary.includes("###"));
           const billAlerts = bill.parliamentId ? alerts[bill.parliamentId] : [];
           const highSeverityCount = billAlerts?.filter(a => a.severity === 'high').length || 0;

@@ -16,7 +16,7 @@ export const fetchBillsFromSupabase = cache(async (): Promise<Bill[]> => {
   const { data: billsData, error } = await supabase
     .from("bills")
     .select("*")
-    .order("created_at", { ascending: false })
+    .order("published_date", { ascending: false })
     .limit(50);
 
   // If we have bills in Supabase, use them

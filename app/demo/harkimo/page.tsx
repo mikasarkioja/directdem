@@ -36,6 +36,18 @@ export default function HarkimoDemo() {
     }
   };
 
+  const getMatchBreakdown = (mp: MPMatch) => {
+    if (!data?.harkimo) return null;
+    const h = data.harkimo.scores;
+    const m = mp.scores;
+    
+    return [
+      { label: 'Talous', match: Math.abs(h.economic - m.economic) < 0.4 },
+      { label: 'Arvot', match: Math.abs(h.liberal - m.liberal) < 0.4 },
+      { label: 'Ympäristö', match: Math.abs(h.env - m.env) < 0.4 },
+    ];
+  };
+
   useEffect(() => {
     async function load() {
       try {
@@ -73,57 +85,83 @@ export default function HarkimoDemo() {
       <main className="flex-1 overflow-y-auto relative custom-scrollbar pb-32">
         <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-12">
           
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full w-fit">
-                <BrainCircuit size={14} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Poliittinen DNA - Vertailu</span>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-slate-900">
-                Hjalliksen <span className="text-purple-600">Poliittiset Kaimat</span>
-              </h1>
-              <p className="text-slate-500 font-bold uppercase text-xs tracking-widest flex items-center gap-2">
-                <Info size={14} />
-                Tämä demo käyttää todellista äänestysdataa vaalikaudelta 2023-2027
-              </p>
-            </div>
-            
-            <div className="flex flex-col gap-4">
-              <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm flex items-center gap-6">
-                <div className="w-16 h-16 rounded-2xl bg-purple-600 flex items-center justify-center text-white text-2xl font-black italic">
-                  HH
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full w-fit">
+                  <BrainCircuit size={14} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Poliittinen DNA - Vertailu</span>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Keskiössä</p>
-                  <p className="text-xl font-black uppercase tracking-tight">{data.harkimo.full_name}</p>
-                  <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
-                </div>
+                <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-slate-900">
+                  Hjalliksen <span className="text-purple-600">Poliittiset Kaimat</span>
+                </h1>
+                <p className="text-slate-500 font-bold uppercase text-xs tracking-widest flex items-center gap-2">
+                  <Info size={14} />
+                  Tämä demo käyttää todellista äänestysdataa vaalikaudelta 2023-2027
+                </p>
               </div>
               
-              <button
-                onClick={handleCopyProfile}
-                disabled={initializing}
-                className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-purple-700 transition-all shadow-lg disabled:opacity-50 group overflow-hidden relative"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                {initializing ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <>
-                    <User size={16} className="group-hover:rotate-12 transition-transform" />
-                    <span>Mitä jos sinä olisit Hjallis?</span>
-                    <Sparkles size={14} className="text-purple-400 animate-pulse" />
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col gap-4">
+                <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm flex items-center gap-6">
+                  <div className="w-16 h-16 rounded-2xl bg-purple-600 flex items-center justify-center text-white text-2xl font-black italic">
+                    HH
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Keskiössä</p>
+                    <p className="text-xl font-black uppercase tracking-tight">{data.harkimo.full_name}</p>
+                    <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handleCopyProfile}
+                  disabled={initializing}
+                  className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-purple-700 transition-all shadow-lg disabled:opacity-50 group overflow-hidden relative"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {initializing ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <>
+                      <User size={16} className="group-hover:rotate-12 transition-transform" />
+                      <span>Mitä jos sinä olisit Hjallis?</span>
+                      <Sparkles size={14} className="text-purple-400 animate-pulse" />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
+
+            {/* Party Comparison Section - Moved here and expanded */}
+            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-10 shadow-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <BarChart3 size={20} className="text-purple-600" />
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Hjallis vs. Puolueet</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                {data.partyAnalysis.map((p: any, i: number) => (
+                  <div key={p.name} className="space-y-3 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex justify-between items-end">
+                      <span className="text-xs font-black uppercase tracking-tight text-slate-600">{p.name}</span>
+                      <span className="text-lg font-black text-purple-600 leading-none">{p.avgCompatibility}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${p.avgCompatibility}%` }}
+                        className={`h-full ${i === 0 ? "bg-purple-600" : "bg-slate-400 opacity-50"}`}
+                      />
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">
+                      {p.avgCompatibility > 70 ? "Vahva liittolainen" : p.avgCompatibility > 50 ? "Yhteinen linja" : "Eriävä linja"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            {/* Left Column: Top & Bottom Matches */}
-            <div className="space-y-8">
               {/* Top Matches */}
               <div className="space-y-4">
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
@@ -135,23 +173,42 @@ export default function HarkimoDemo() {
                     <button
                       key={mp.id}
                       onClick={() => setSelectedMp(mp)}
-                      className={`w-full p-4 rounded-2xl border text-left transition-all group ${
+                      className={`w-full p-5 rounded-3xl border text-left transition-all group relative overflow-hidden ${
                         selectedMp?.id === mp.id 
                           ? "bg-purple-50 border-purple-200 ring-1 ring-purple-100 shadow-md" 
-                          : "bg-white border-slate-100 hover:border-purple-200 hover:bg-slate-50"
+                          : "bg-white border-slate-100 hover:border-purple-200 hover:bg-slate-50 shadow-sm"
                       }`}
                     >
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-black uppercase text-slate-400">{mp.party}</span>
-                        <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                          {mp.compatibility}% MATCH
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="space-y-1">
+                          <p className={`text-sm font-black uppercase tracking-tight transition-colors ${
+                            selectedMp?.id === mp.id ? "text-purple-700" : "text-slate-900"
+                          }`}>
+                            {mp.full_name}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{mp.party}</p>
+                        </div>
+                        <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100/50">
+                          {mp.compatibility}%
                         </span>
                       </div>
-                      <p className={`font-black uppercase tracking-tight transition-colors ${
-                        selectedMp?.id === mp.id ? "text-purple-700" : "text-slate-700 group-hover:text-purple-600"
-                      }`}>
-                        {mp.full_name}
-                      </p>
+                      
+                      {/* DNA Match Highlights */}
+                      <div className="flex gap-2">
+                        {getMatchBreakdown(mp)?.map((item) => (
+                          <div 
+                            key={item.label}
+                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md border ${
+                              item.match 
+                                ? "bg-emerald-50 border-emerald-100 text-emerald-600" 
+                                : "bg-slate-50 border-slate-200 text-slate-400"
+                            }`}
+                          >
+                            <div className={`w-1 h-1 rounded-full ${item.match ? "bg-emerald-500" : "bg-slate-300"}`} />
+                            <span className="text-[8px] font-black uppercase tracking-tighter">{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -168,28 +225,46 @@ export default function HarkimoDemo() {
                     <button
                       key={mp.id}
                       onClick={() => setSelectedMp(mp)}
-                      className={`w-full p-4 rounded-2xl border text-left transition-all group ${
+                      className={`w-full p-5 rounded-3xl border text-left transition-all group relative overflow-hidden ${
                         selectedMp?.id === mp.id 
                           ? "bg-purple-50 border-purple-200 ring-1 ring-purple-100 shadow-md" 
-                          : "bg-white border-slate-100 hover:border-purple-200 hover:bg-slate-50"
+                          : "bg-white border-slate-100 hover:border-purple-200 hover:bg-slate-50 shadow-sm"
                       }`}
                     >
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-black uppercase text-slate-400">{mp.party}</span>
-                        <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
-                          {mp.compatibility}% MATCH
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="space-y-1">
+                          <p className={`text-sm font-black uppercase tracking-tight transition-colors ${
+                            selectedMp?.id === mp.id ? "text-purple-700" : "text-slate-900"
+                          }`}>
+                            {mp.full_name}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{mp.party}</p>
+                        </div>
+                        <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100/50">
+                          {mp.compatibility}%
                         </span>
                       </div>
-                      <p className={`font-black uppercase tracking-tight transition-colors ${
-                        selectedMp?.id === mp.id ? "text-purple-700" : "text-slate-700 group-hover:text-purple-600"
-                      }`}>
-                        {mp.full_name}
-                      </p>
+
+                      {/* DNA Match Highlights */}
+                      <div className="flex gap-2">
+                        {getMatchBreakdown(mp)?.map((item) => (
+                          <div 
+                            key={item.label}
+                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md border ${
+                              item.match 
+                                ? "bg-emerald-50 border-emerald-100 text-emerald-600" 
+                                : "bg-rose-50 border-rose-100 text-rose-400"
+                            }`}
+                          >
+                            <div className={`w-1 h-1 rounded-full ${item.match ? "bg-emerald-500" : "bg-rose-300"}`} />
+                            <span className="text-[8px] font-black uppercase tracking-tighter">{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
 
             {/* Middle Column: DNA Comparison */}
             <div className="lg:col-span-2 space-y-8">
@@ -242,22 +317,18 @@ export default function HarkimoDemo() {
                         </div>
                         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
                           <div className="flex items-center gap-3">
-                            <BarChart3 size={18} className="text-purple-600" />
-                            <h4 className="text-[10px] font-black uppercase tracking-widest">Puolueiden Läheisyys</h4>
+                            <Zap size={18} className="text-purple-600" />
+                            <h4 className="text-[10px] font-black uppercase tracking-widest">Match-erittely</h4>
                           </div>
-                          <div className="space-y-3">
-                            {data.partyAnalysis.map((p: any, i: number) => (
-                              <div key={p.name} className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
-                                  <span>{p.name}</span>
-                                  <span>{p.avgCompatibility}%</span>
-                                </div>
-                                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                  <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${p.avgCompatibility}%` }}
-                                    className={`h-full ${i === 0 ? "bg-purple-600" : "bg-slate-400 opacity-50"}`}
-                                  />
+                          <div className="space-y-4">
+                            {getMatchBreakdown(selectedMp)?.map((item) => (
+                              <div key={item.label} className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-slate-500 uppercase">{item.label}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[10px] font-black uppercase ${item.match ? "text-emerald-600" : "text-rose-500"}`}>
+                                    {item.match ? "Match" : "Eriävä"}
+                                  </span>
+                                  <div className={`w-2 h-2 rounded-full ${item.match ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"}`} />
                                 </div>
                               </div>
                             ))}

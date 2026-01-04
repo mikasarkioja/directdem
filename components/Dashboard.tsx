@@ -26,6 +26,13 @@ export default function Dashboard({ user, initialView = "overview" }: DashboardP
   const [viewContext, setViewContext] = useState<ViewContext>("parliament");
   const [selectedMunicipality, setSelectedMunicipality] = useState(user?.municipality || "Espoo");
 
+  // Sync state with initialView prop if it changes (e.g. navigation)
+  useEffect(() => {
+    if (initialView && initialView !== activeView) {
+      setActiveView(initialView);
+    }
+  }, [initialView]);
+
   // Suggest municipal context if user has municipality in profile
   useEffect(() => {
     if (user?.municipality) {

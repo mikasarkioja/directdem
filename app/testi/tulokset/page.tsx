@@ -140,7 +140,7 @@ export default function TestiTulokset() {
                   <div className="text-4xl font-black text-white italic">
                     {topMatch.compatibility}% <span className="text-sm font-bold uppercase tracking-widest text-slate-500 not-italic">Match</span>
                   </div>
-                  <Link href="/bills" className="p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-all">
+                  <Link href="/?view=bills" className="p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-all">
                     <ArrowRight size={20} />
                   </Link>
                 </div>
@@ -164,7 +164,7 @@ export default function TestiTulokset() {
         {/* CTA Section */}
         <div className="flex flex-col items-center gap-6 pt-12">
           <Link 
-            href="/bills"
+            href="/?view=bills"
             className="px-12 py-5 bg-purple-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-purple-600/20 flex items-center gap-3"
           >
             <Play size={16} fill="currentColor" />

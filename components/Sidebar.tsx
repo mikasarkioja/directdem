@@ -48,11 +48,11 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
   };
 
   const menuItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
-    { id: "overview", label: "Keskus", icon: LayoutGrid },
-    { id: "bills", label: "Äänestysareena", icon: FileText, href: "/bills" },
+    { id: "overview", label: "Keskus", icon: LayoutGrid, href: "/?view=overview" },
+    { id: "bills", label: "Äänestysareena", icon: FileText, href: "/?view=bills" },
     { id: "profile", label: "DNA-Testi", icon: Sparkles, href: "/testi" },
-    { id: "consensus", label: "Konsensuskartta", icon: Map },
-    { id: "parties", label: "Heimot", icon: Users },
+    { id: "consensus", label: "Konsensuskartta", icon: Map, href: "/?view=consensus" },
+    { id: "parties", label: "Heimot", icon: Users, href: "/?view=parties" },
     { id: "ranking", label: "Voimasuhteet", icon: TrendingUp, href: "/ranking" },
     { id: "analysis", label: "Takinkääntö-vahti", icon: Activity, href: "/puolueet/analyysi" },
     { id: "debate", label: "The Agora", icon: Radio, href: "/vaittely/demo" },

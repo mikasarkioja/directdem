@@ -55,10 +55,10 @@ export default function Dashboard({ user, initialView = "overview" }: DashboardP
                   animate={{ opacity: 1, y: 0 }}
                   className="text-3xl font-black uppercase tracking-tight text-command-dark"
                 >
-                  Civic <span className="text-command-neon">Command Center</span>
+                  Kansalais <span className="text-command-neon">Keskus</span>
                 </motion.h1>
                 <p className="text-command-gray text-[10px] font-bold uppercase tracking-[0.2em] mt-1 opacity-70">
-                  User: {user?.full_name || "Guest Citizen"} — Identity Verified
+                  Kansalainen: {user?.full_name || "Vieras"} — Henkilöllisyys varmistettu
                 </p>
               </div>
 
@@ -70,7 +70,7 @@ export default function Dashboard({ user, initialView = "overview" }: DashboardP
                   }`}
                 >
                   <LayoutDashboard size={14} />
-                  Overview
+                  Yleisnäkymä
                 </button>
                 <button
                   onClick={() => setActiveView("bills")}
@@ -79,7 +79,7 @@ export default function Dashboard({ user, initialView = "overview" }: DashboardP
                   }`}
                 >
                   <Radio size={14} />
-                  Live Arena
+                  Live Areena
                 </button>
               </div>
             </div>
@@ -124,7 +124,7 @@ export default function Dashboard({ user, initialView = "overview" }: DashboardP
                     <div className="space-y-10">
                       <QuestLog />
                       <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-command-dark mb-6">Tribe Map</h3>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-command-dark mb-6">Heimokartta</h3>
                         <div className="aspect-square bg-[#F8FAFC] rounded-2xl border border-slate-100 flex items-center justify-center relative overflow-hidden group cursor-help">
                           {/* Tribe Map SVG Visual */}
                           <svg viewBox="0 0 200 200" className="w-full h-full p-4 opacity-20 group-hover:opacity-40 transition-opacity">

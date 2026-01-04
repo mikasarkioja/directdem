@@ -55,7 +55,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
     { id: "parties", label: "Heimot", icon: Users, href: "/?view=parties" },
     { id: "ranking", label: "Voimasuhteet", icon: TrendingUp, href: "/ranking" },
     { id: "analysis", label: "Takinkääntö-vahti", icon: Activity, href: "/puolueet/analyysi" },
-    { id: "debate", label: "The Agora", icon: Radio, href: "/vaittely/demo" },
+    { id: "debate", label: "Väittelyareena", icon: Radio, href: "/vaittely/demo" },
     { id: "overview", label: "Hjallis-haaste", icon: BarChart3, href: "/demo/harkimo" },
     { id: "profile", label: "Oma DNA", icon: User, href: "/profiili" },
   ];
@@ -131,7 +131,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center">
-              <p className="text-[10px] font-black uppercase text-command-dark truncate">{user?.full_name || "Guest"}</p>
+              <p className="text-[10px] font-black uppercase text-command-dark truncate">{user?.full_name || "Vieras"}</p>
               {userParty && (
                 <PartyPin 
                   dnaProfile={userParty.dna_profile_avg} 
@@ -140,7 +140,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
                 />
               )}
             </div>
-            <p className="text-[9px] font-bold text-slate-400 uppercase truncate">Citizen ID Verified</p>
+            <p className="text-[9px] font-bold text-slate-400 uppercase truncate">Henkilöllisyys vahvistettu</p>
           </div>
         </div>
       </div>

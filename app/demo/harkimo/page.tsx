@@ -21,6 +21,7 @@ export default function HarkimoDemo() {
   const [selectedMp, setSelectedMp] = useState<MPMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [initializing, setInitializing] = useState(false);
+  const [expandedParty, setExpandedParty] = useState<string | null>(null);
   const router = useRouter();
 
   const handleCopyProfile = async () => {
@@ -194,18 +195,50 @@ export default function HarkimoDemo() {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {data.partyAnalysis.map((p: any, i: number) => (
-                  <div key={p.name} className="space-y-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex justify-between items-end">
-                      <span className="text-[10px] font-black uppercase tracking-tight text-slate-600">{p.name}</span>
-                      <span className="text-sm font-black text-purple-600 leading-none">{p.avgCompatibility}%</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${p.avgCompatibility}%` }}
-                        className={`h-full ${i === 0 ? "bg-purple-600" : "bg-slate-400 opacity-50"}`}
-                      />
-                    </div>
+                  <div key={p.name} className="flex flex-col">
+                    <button 
+                      onClick={() => setExpandedParty(expandedParty === p.name ? null : p.name)}
+                      className={`text-left space-y-2 p-4 rounded-2xl border transition-all hover:scale-[1.02] ${
+                        expandedParty === p.name ? "bg-purple-100 border-purple-300 shadow-md" : "bg-slate-50 border-slate-100"
+                      }`}
+                    >
+                      <div className="flex justify-between items-end">
+                        <span className="text-[10px] font-black uppercase tracking-tight text-slate-600">{p.name}</span>
+                        <span className="text-sm font-black text-purple-600 leading-none">{p.avgCompatibility}%</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${p.avgCompatibility}%` }}
+                          className={`h-full ${i === 0 || expandedParty === p.name ? "bg-purple-600" : "bg-slate-400 opacity-50"}`}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[7px] font-black uppercase text-slate-400">Paina nähdäksesi edustajat</span>
+                        {expandedParty === p.name ? <ChevronRight size={8} className="rotate-90" /> : <ChevronRight size={8} />}
+                      </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {expandedParty === p.name && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden bg-slate-50 border-x border-b border-slate-200 rounded-b-2xl -mt-2 pt-4 px-3 pb-3 space-y-2 z-10 shadow-lg"
+                        >
+                          <p className="text-[8px] font-black uppercase text-slate-400 mb-2 border-b border-slate-200 pb-1">Puolueen {p.name} edustajat:</p>
+                          <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1 pr-1">
+                            {p.mps.map((mp: any) => (
+                              <div key={mp.id} className="flex justify-between items-center p-2 bg-white rounded-lg border border-slate-100 text-[10px]">
+                                <span className="font-bold text-slate-700 truncate mr-2">{mp.name}</span>
+                                <span className="font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 shrink-0">{mp.compatibility}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 ))}
               </div>

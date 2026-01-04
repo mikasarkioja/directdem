@@ -66,7 +66,7 @@ export default function ComparisonMirror({
         </div>
         <div>
           <h3 className="text-sm font-black uppercase tracking-widest text-command-dark">
-            {isMunicipal ? "Decision Mirror" : "Democracy Mirror"}
+            {isMunicipal ? "Päätösmittari" : "Demokratiamittari"}
           </h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{billName}</p>
         </div>
@@ -77,10 +77,10 @@ export default function ComparisonMirror({
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              {isMunicipal ? "Council" : "Parliament"}
+              {isMunicipal ? "Valtuusto" : "Eduskunta"}
             </span>
             <span className="text-xs font-black text-command-dark">
-              {parliamentVote}% PRO
+              {parliamentVote}% KYLLÄ
             </span>
           </div>
           <div className="space-y-2">
@@ -109,10 +109,10 @@ export default function ComparisonMirror({
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-black uppercase tracking-widest text-command-neon">
-              Citizens
+              Kansalaiset
             </span>
             <span className="text-xs font-black text-command-neon">
-              {citizenVote}% PRO
+              {citizenVote}% KYLLÄ
             </span>
           </div>
           <div className="space-y-2">
@@ -150,10 +150,10 @@ export default function ComparisonMirror({
           </div>
           <div>
             <p className="text-xs font-black uppercase text-rose-700 mb-1">
-              Critical Democracy Gap ({gap}%)
+              Kriittinen edustuksellinen vaje ({gap}%)
             </p>
             <p className="text-xs text-rose-600 font-medium leading-relaxed">
-              Representatives and citizens are significantly misaligned on this issue.
+              Kansanedustajien ja kansalaisten mielipiteet eroavat merkittävästi tässä asiassa.
             </p>
           </div>
         </motion.div>
@@ -163,7 +163,7 @@ export default function ComparisonMirror({
       {analyzedStances && analyzedStances.length > 0 && (
         <div className="mt-10 pt-8 border-t border-slate-100">
           <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">
-            Party Alignment Spectrum
+            Puolueiden sijainti
           </h4>
           <div className="relative h-20 bg-slate-50 rounded-2xl p-2 border border-slate-100">
             {/* Citizen Pulse indicator */}
@@ -172,7 +172,7 @@ export default function ComparisonMirror({
               style={{ left: `${citizenVote}%` }}
             >
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-command-neon text-white text-[8px] font-black px-1.5 py-0.5 rounded">
-                YOU
+                SINÄ
               </div>
             </div>
             
@@ -208,9 +208,9 @@ export default function ComparisonMirror({
             </div>
           </div>
           <div className="mt-3 flex justify-between text-[8px] font-black uppercase text-slate-400 tracking-widest px-1">
-            <span>Opposed</span>
-            <span className="text-command-neon">Citizen Pulse: {citizenVote}%</span>
-            <span>In Favor</span>
+            <span>Vastustaa</span>
+            <span className="text-command-neon">Kansalaismielipide: {citizenVote}%</span>
+            <span>Kannattaa</span>
           </div>
         </div>
       )}

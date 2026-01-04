@@ -87,7 +87,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.2em]">{bill.parliamentId || "Eduskunta"}</p>
                 <span className="w-1 h-1 rounded-full bg-slate-700" />
-                <p className="text-emerald-500 text-[9px] font-black uppercase tracking-[0.2em]">Live Data Stream</p>
+                <p className="text-emerald-500 text-[9px] font-black uppercase tracking-[0.2em]">Suora datavirta</p>
               </div>
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
               <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
                 <Sparkles size={20} className="animate-pulse" />
               </div>
-              <h3 className="text-xs font-black uppercase tracking-[0.2em]">AI Analyst Intelligence</h3>
+              <h3 className="text-xs font-black uppercase tracking-[0.2em]">AI-analyytikko</h3>
             </div>
             <div className="bg-slate-800/30 border border-white/5 p-8 rounded-[2rem] shadow-inner">
               <StreamingSummary
@@ -143,7 +143,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                 <div className="p-2 bg-rose-500/10 rounded-lg border border-rose-500/20">
                   <RefreshCw size={20} />
                 </div>
-                <h3 className="text-xs font-black uppercase tracking-[0.2em]">Democracy Mirror</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em]">Demokratiamittari</h3>
               </div>
               <div className="bg-slate-800/30 border border-white/5 p-8 rounded-[2rem] h-full flex items-center">
                 <ComparisonMirror
@@ -160,7 +160,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                 <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                   <Radio size={20} className="animate-pulse" />
                 </div>
-                <h3 className="text-xs font-black uppercase tracking-[0.2em]">The Arena</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em]">Vaikutusareena</h3>
               </div>
               <div className="bg-slate-900 border border-purple-500/20 p-10 rounded-[2rem] shadow-[0_0_30px_rgba(168,85,247,0.1)] h-full flex flex-col justify-center">
                 <div className="text-center mb-8">

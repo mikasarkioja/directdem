@@ -74,7 +74,7 @@ export default function ActiveBills({ user }: ActiveBillsProps) {
           <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Live Areena</span>
         </div>
         <div className="flex gap-1">
-          <button onClick={loadBills} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-slate-500" title="Refresh Data"><Database size={14} /></button>
+          <button onClick={loadBills} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-slate-500" title="Päivitä tiedot"><Database size={14} /></button>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export default function ActiveBills({ user }: ActiveBillsProps) {
                 <div className="absolute top-0 right-0 p-2">
                   <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/10 text-purple-400 text-[8px] font-black rounded-bl-lg uppercase tracking-tight border-l border-b border-purple-500/20">
                     <Sparkles size={8} />
-                    <span>AI Enhanced</span>
+                    <span>AI-rikastettu</span>
                   </div>
                 </div>
               )}

@@ -241,23 +241,23 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
         <div className="bg-command-card rounded-3xl border border-white/5 p-8 space-y-8">
           <div className="flex items-center gap-2 text-command-neon">
             <Shield size={18} />
-            <h3 className="text-sm font-black uppercase tracking-widest">System Settings</h3>
+            <h3 className="text-sm font-black uppercase tracking-widest">Järjestelmäasetukset</h3>
           </div>
 
           <div className="space-y-6">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-command-gray mb-2">Email Address</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-command-gray mb-2">Sähköpostiosoite</p>
               <p className="text-sm font-bold text-white opacity-60">{user.email}</p>
             </div>
 
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-command-gray mb-2">Operational District (Vaalipiiri)</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-command-gray mb-2">Vaalipiiri</p>
               <select
                 value={selectedVaalipiiri}
                 onChange={(e) => setSelectedVaalipiiri(e.target.value)}
                 className="w-full bg-command-bg border border-white/10 rounded-xl px-4 py-2 text-sm font-bold text-white focus:border-command-neon outline-none transition-all"
               >
-                <option value="">Select District</option>
+                <option value="">Valitse vaalipiiri</option>
                 {FINNISH_DISTRICTS.map(d => <option key={d.code} value={d.name}>{d.name}</option>)}
               </select>
             </div>
@@ -267,9 +267,9 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <Globe size={14} className="text-command-neon" />
-                    <p className="text-xs font-black uppercase tracking-tight text-white">Public Stance</p>
+                    <p className="text-xs font-black uppercase tracking-tight text-white">Julkinen kanta</p>
                   </div>
-                  <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Show your votes to other citizens to help form virtual tribes.</p>
+                  <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Näytä äänesi muille kansalaisille heimojen muodostamiseksi.</p>
                 </div>
                 <button onClick={handleTogglePublicStance} disabled={savingStance}>
                   {publicStance ? <ToggleRight size={40} className="text-command-neon" /> : <ToggleLeft size={40} className="text-command-gray" />}
@@ -280,9 +280,9 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <Info size={14} className="text-command-emerald" />
-                    <p className="text-xs font-black uppercase tracking-tight text-white">Report Participation</p>
+                    <p className="text-xs font-black uppercase tracking-tight text-white">Raportointiosallistuminen</p>
                   </div>
-                  <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Include your data in weekly reports sent to parliamentary representatives.</p>
+                  <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Sisällytä tietosi viikoittaisiin raportteihin, jotka lähetetään kansanedustajille.</p>
                 </div>
                 <button onClick={() => {}}>
                   {joinReportList ? <ToggleRight size={40} className="text-command-emerald" /> : <ToggleLeft size={40} className="text-command-gray" />}
@@ -297,9 +297,9 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
           <div className="bg-command-card rounded-3xl border border-white/5 p-8 space-y-6">
             <div className="flex items-center gap-2 text-command-gray">
               <Lock size={18} />
-              <h3 className="text-sm font-black uppercase tracking-widest">Data Management</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest">Datan hallinta</h3>
             </div>
-            <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Download a complete backup of your civic engagement data or request permanent deletion.</p>
+            <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Lataa varmuuskopio kaikesta toiminnastasi tai pyydä tilin pysyvää poistamista.</p>
             
             <div className="flex gap-2">
               <button 
@@ -308,7 +308,7 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
                 className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
               >
                 {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                Export Data
+                Lataa tiedot (Export)
               </button>
               <button 
                 onClick={() => setConfirmDelete(true)}
@@ -322,8 +322,8 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
           <AnimatePresence>
             {confirmDelete && (
               <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-command-rose/5 border border-command-rose/20 rounded-3xl p-8 space-y-4">
-                <p className="text-xs font-black uppercase tracking-widest text-command-rose">Danger Zone: Confirm Deletion</p>
-                <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Type "POISTA" to confirm permanent identity removal. This cannot be undone.</p>
+                <p className="text-xs font-black uppercase tracking-widest text-command-rose">Vaara-alue: Vahvista poisto</p>
+                <p className="text-[10px] text-command-gray font-bold uppercase leading-relaxed">Kirjoita "POISTA" vahvistaaksesi tilin pysyvän poistamisen. Tätä ei voi peruuttaa.</p>
                 <input 
                   type="text" 
                   value={deleteConfirmText} 
@@ -332,8 +332,8 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
                   placeholder="POISTA"
                 />
                 <div className="flex gap-2 pt-2">
-                  <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2 text-[10px] font-black uppercase text-command-gray">Cancel</button>
-                  <button onClick={() => {}} className="flex-1 bg-command-rose text-white py-2 rounded-xl text-[10px] font-black uppercase">Execute Deletion</button>
+                  <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2 text-[10px] font-black uppercase text-command-gray">Peruuta</button>
+                  <button onClick={() => {}} className="flex-1 bg-command-rose text-white py-2 rounded-xl text-[10px] font-black uppercase">Suorita poisto</button>
                 </div>
               </motion.div>
             )}

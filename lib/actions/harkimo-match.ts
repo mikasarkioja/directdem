@@ -40,6 +40,7 @@ export interface HarkimoMatchResult {
   partyAnalysis: {
     name: string;
     avgCompatibility: number;
+    mps: { id: number; name: string; compatibility: number }[];
   }[];
   error?: string;
 }
@@ -158,19 +159,21 @@ export async function findMatchesForScores(inputScores: {
     };
   }).sort((a, b) => b.compatibility - a.compatibility);
 
-  const partyScores: Record<string, { totalComp: number, count: number }> = {};
+  const partyScores: Record<string, { totalComp: number, count: number, mps: any[] }> = {};
   matches.forEach(m => {
     const pName = m.party;
-    if (!partyScores[pName]) partyScores[pName] = { totalComp: 0, count: 0 };
+    if (!partyScores[pName]) partyScores[pName] = { totalComp: 0, count: 0, mps: [] };
     partyScores[pName].totalComp += m.compatibility;
     partyScores[pName].count++;
+    partyScores[pName].mps.push({ id: m.id, name: m.full_name, compatibility: m.compatibility });
   });
 
   const partyAnalysis = Object.entries(partyScores)
     .filter(([name]) => name !== 'N/A' && name !== 'Sit')
     .map(([name, data]) => ({
       name,
-      avgCompatibility: Math.round(data.totalComp / data.count)
+      avgCompatibility: Math.round(data.totalComp / data.count),
+      mps: data.mps.sort((a, b) => b.compatibility - a.compatibility)
     })).sort((a, b) => b.avgCompatibility - a.avgCompatibility);
 
   const sliceCount = Math.min(5, Math.floor(matches.length / 2));

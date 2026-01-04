@@ -11,10 +11,10 @@ interface BottomNavProps {
 
 export default function BottomNav({ activeView, onViewChange }: BottomNavProps) {
   const navItems = [
-    { label: "Overview", view: "overview" as const, icon: LayoutGrid },
-    { label: "Bills", view: "bills" as const, icon: FileText },
-    { label: "Agora", view: "debate" as const, icon: Radio, href: "/vaittely/demo" },
-    { label: "Profile", view: "profile" as const, icon: User },
+    { label: "Keskus", view: "overview" as const, icon: LayoutGrid },
+    { label: "Areena", view: "bills" as const, icon: FileText },
+    { label: "Väittely", view: "debate" as const, icon: Radio, href: "/vaittely/demo" },
+    { label: "Profiili", view: "profile" as const, icon: User },
   ];
 
   return (

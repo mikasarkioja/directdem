@@ -33,12 +33,12 @@ export default function ImpactStats({
             <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
               <Zap size={16} className="text-command-neon" />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-command-gray opacity-80">Impact Points (IP)</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-command-gray opacity-80">Vaikutuspisteet (VP)</p>
           </div>
           <h3 className="text-4xl font-black text-command-dark tracking-tight">{impactPoints.toLocaleString()}</h3>
           <div className="mt-4 flex items-center gap-2 text-command-emerald text-xs font-bold bg-emerald-50 w-fit px-2 py-1 rounded-md">
             <TrendingUp size={14} />
-            <span>+12% vs last week</span>
+            <span>+12% vs viime viikko</span>
           </div>
         </div>
       </motion.div>
@@ -55,7 +55,7 @@ export default function ImpactStats({
             <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center">
               <Target size={16} className="text-command-rose" />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-command-gray opacity-80">Democracy Gap Reduced</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-command-gray opacity-80">Demokratiavaje pienentynyt</p>
           </div>
           <h3 className="text-4xl font-black text-command-rose tracking-tight">{democracyGapReduced}%</h3>
           <div className="mt-6 h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -80,10 +80,10 @@ export default function ImpactStats({
             <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
               <Award size={16} className="text-command-emerald" />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-command-gray opacity-80">Level {level} — Kansalaisaktiivi</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-command-gray opacity-80">Taso {level} — Kansalaisaktiivi</p>
           </div>
           <div className="flex justify-between items-end mb-2">
-            <h3 className="text-2xl font-black text-command-dark tracking-tight">Level Up Soon</h3>
+            <h3 className="text-2xl font-black text-command-dark tracking-tight">Seuraava taso lähellä</h3>
             <p className="text-command-gray text-[10px] font-bold uppercase">{xp} / {nextLevelXp} XP</p>
           </div>
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">

@@ -169,7 +169,6 @@ export async function findMatchesForScores(inputScores: {
   });
 
   const partyAnalysis = Object.entries(partyScores)
-    .filter(([name]) => name !== 'N/A' && name !== 'Sit')
     .map(([name, data]) => ({
       name,
       avgCompatibility: Math.round(data.totalComp / data.count),

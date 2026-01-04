@@ -48,15 +48,15 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
   };
 
   const menuItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
-    { id: "overview", label: "Overview", icon: LayoutGrid },
-    { id: "bills", label: "Active Bills", icon: FileText },
-    { id: "consensus", label: "Consensus Map", icon: Map },
-    { id: "parties", label: "Factions", icon: Users },
-    { id: "ranking", label: "Power Rankings", icon: TrendingUp, href: "/ranking" },
-    { id: "analysis", label: "Party Analysis", icon: Activity, href: "/puolueet/analyysi" },
+    { id: "overview", label: "Keskus", icon: LayoutGrid },
+    { id: "bills", label: "Äänestysareena", icon: FileText },
+    { id: "consensus", label: "Konsensuskartta", icon: Map },
+    { id: "parties", label: "Heimot", icon: Users },
+    { id: "ranking", label: "Voimasuhteet", icon: TrendingUp, href: "/ranking" },
+    { id: "analysis", label: "Takinkääntö-vahti", icon: Activity, href: "/puolueet/analyysi" },
     { id: "debate", label: "The Agora", icon: Radio, href: "/vaittely/demo" },
-    { id: "overview", label: "Hjallis Demo", icon: BarChart3, href: "/demo/harkimo" },
-    { id: "profile", label: "My Profile", icon: User },
+    { id: "overview", label: "Hjallis-haaste", icon: BarChart3, href: "/demo/harkimo" },
+    { id: "profile", label: "Oma DNA", icon: User },
   ];
 
   return (

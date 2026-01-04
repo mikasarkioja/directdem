@@ -133,26 +133,26 @@ export default function HarkimoDemo() {
                   <BrainCircuit size={14} />
                   <span className="text-[10px] font-black uppercase tracking-widest">Poliittinen DNA - Vertailu</span>
                 </div>
-                <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-slate-900">
-                  Hjalliksen <span className="text-purple-600">Poliittiset Kaimat</span>
+                <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-slate-900 leading-none">
+                  Hjallis <span className="text-purple-600">vs. Eduskunta</span>
                 </h1>
-                <p className="text-slate-500 font-bold uppercase text-xs tracking-widest flex items-center gap-2">
-                  <Info size={14} />
-                  Tämä demo käyttää todellista äänestysdataa vaalikaudelta 2023-2027
+                <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest flex items-center gap-2">
+                  <Activity size={12} className="text-purple-500" />
+                  Kuka on todellinen hengenheimolaisesi? Testaa match-prosenttisi.
                 </p>
               </div>
               
               <div className="flex flex-col gap-4">
-                <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm flex items-center gap-6">
-                  <div className="w-16 h-16 rounded-2xl bg-purple-600 flex items-center justify-center text-white text-2xl font-black italic">
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] shadow-2xl flex items-center gap-6 group hover:border-purple-500/50 transition-all">
+                  <div className="w-16 h-16 rounded-2xl bg-purple-600 flex items-center justify-center text-white text-2xl font-black italic shadow-lg shadow-purple-500/20 group-hover:scale-110 transition-transform">
                     HH
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Keskiössä</p>
-                    <p className="text-xl font-black uppercase tracking-tight">{data.harkimo.full_name}</p>
+                    <p className="text-[9px] font-black uppercase text-purple-400 tracking-[0.2em] mb-1">Pääpelaaja</p>
+                    <p className="text-xl font-black uppercase tracking-tight text-white">{data.harkimo.full_name}</p>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
-                      <span className="text-[8px] px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded-full font-black border border-purple-100 uppercase">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">{data.harkimo.party}</p>
+                      <span className="text-[8px] px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded-full font-black border border-purple-500/20 uppercase">
                         {generateProfileSummary(data.harkimo.scores).title}
                       </span>
                     </div>
@@ -162,16 +162,16 @@ export default function HarkimoDemo() {
                 <button
                   onClick={handleCopyProfile}
                   disabled={initializing}
-                  className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-purple-700 transition-all shadow-lg disabled:opacity-50 group overflow-hidden relative"
+                  className="w-full flex items-center justify-center gap-3 bg-purple-600 text-white py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-purple-500 hover:scale-[1.02] transition-all shadow-xl shadow-purple-600/20 disabled:opacity-50 group overflow-hidden relative"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   {initializing ? (
                     <Loader2 size={16} className="animate-spin" />
                   ) : (
                     <>
-                      <User size={16} className="group-hover:rotate-12 transition-transform" />
-                      <span>Mitä jos sinä olisit Hjallis?</span>
-                      <Sparkles size={14} className="text-purple-400 animate-pulse" />
+                      <Zap size={16} className="fill-current animate-pulse" />
+                      <span>Ole Hjallis!</span>
+                      <Sparkles size={14} className="text-white/50" />
                     </>
                   )}
                 </button>

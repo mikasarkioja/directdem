@@ -11,13 +11,20 @@ const config: Config = {
     extend: {
       colors: {
         command: {
-          bg: "#F8FAFC",
-          card: "#FFFFFF",
-          neon: "#005EB8", // Nordic Blue
-          emerald: "#059669",
-          rose: "#E11D48",
-          gray: "#64748B",
-          dark: "#1E293B",
+          bg: "#0F172A", // Slate 900
+          card: "#1E293B", // Slate 800
+          neon: "#A855F7", // Electric Purple
+          emerald: "#10B981",
+          rose: "#F43F5E",
+          gray: "#94A3B8",
+          dark: "#0F172A",
+        },
+        cyber: {
+          purple: "#A855F7",
+          blue: "#3B82F6",
+          emerald: "#10B981",
+          rose: "#F43F5E",
+          amber: "#F59E0B",
         },
         nordic: {
           white: "#ECEFF4",

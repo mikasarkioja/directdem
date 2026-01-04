@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { 
   Download, Trash2, MapPin, Loader2, CheckCircle, 
   AlertTriangle, Save, ToggleLeft, ToggleRight, 
-  Shield, User, Globe, Lock, Info, Sparkles
+  Shield, User, Globe, Lock, Info, Sparkles, Share2
 } from "lucide-react";
 import PartyMatchCard from "./PartyMatchCard";
 import { 
@@ -136,16 +136,17 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-16 h-16 bg-command-card border border-command-neon/20 rounded-2xl flex items-center justify-center shadow-lg shadow-command-neon/5">
-          <User size={32} className="text-command-neon" />
+        <div className="w-16 h-16 bg-command-card border border-purple-500/20 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/10 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <User size={32} className="text-purple-500 relative z-10" />
         </div>
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Citizen Profile</h2>
+            <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Kansalaisprofiili</h2>
             {badges.length > 0 && (
               <div className="flex gap-1">
                 {badges.map(badge => (
-                  <div key={badge} className="px-2 py-1 bg-command-neon text-white text-[8px] font-black uppercase rounded-md shadow-sm border border-white/20" title={badge}>
+                  <div key={badge} className="px-2 py-1 bg-purple-600 text-white text-[8px] font-black uppercase rounded-md shadow-sm border border-white/20 animate-pulse" title={badge}>
                     {badge}
                   </div>
                 ))}
@@ -153,16 +154,44 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
             )}
           </div>
           <div className="flex flex-col gap-1">
-            <p className="text-command-gray text-[10px] font-black uppercase tracking-widest">Identity: {user.id.substring(0, 8)}...</p>
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Operatiivinen ID: {user.id.substring(0, 8)}
+            </p>
             {user.initialized_from_mp && (
-              <div className="flex items-center gap-1.5 text-purple-400 bg-purple-400/10 w-fit px-2 py-0.5 rounded-full border border-purple-400/20">
-                <Sparkles size={10} className="animate-pulse" />
+              <div className="flex items-center gap-1.5 text-purple-400 bg-purple-400/10 w-fit px-2 py-0.5 rounded-full border border-purple-400/20 mt-1">
+                <Sparkles size={10} />
                 <p className="text-[9px] font-black uppercase tracking-tight">
-                  {user.initialized_from_mp}
+                  Alustettu: {user.initialized_from_mp.split(': ')[1]}
                 </p>
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-slate-900/50 border border-white/5 p-6 rounded-3xl flex flex-col items-center justify-center text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">Vaikuttavuus</p>
+          <p className="text-3xl font-black text-white">LVL {Math.min(10, Math.floor((history.length || 0) / 5) + 1)}</p>
+          <div className="w-full h-1.5 bg-white/5 rounded-full mt-3 overflow-hidden">
+            <div 
+              className="h-full bg-purple-600" 
+              style={{ width: `${((history.length || 0) % 5) * 20}%` }}
+            />
+          </div>
+        </div>
+        <div className="bg-slate-900/50 border border-white/5 p-6 rounded-3xl flex flex-col items-center justify-center text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">Äänet</p>
+          <p className="text-3xl font-black text-white">{history.length || 0}</p>
+          <p className="text-[10px] font-bold text-emerald-500 uppercase mt-2">Aktiivinen</p>
+        </div>
+        <div className="bg-slate-900/50 border border-white/5 p-6 rounded-3xl flex flex-col items-center justify-center text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">Heimo</p>
+          <p className="text-lg font-black text-white uppercase truncate w-full px-2">
+            {history.length > 0 ? history[history.length - 1].archetype || 'Tiedustelija' : 'Aloittelija'}
+          </p>
+          <p className="text-[10px] font-bold text-purple-500 uppercase mt-2">Status</p>
         </div>
       </div>
 
@@ -187,12 +216,21 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
         <DemocraticDNA />
         <EvolutionLineChart history={history} />
         
-        <div className="bg-white rounded-3xl border border-slate-200 p-10 shadow-sm space-y-8">
-          <div className="text-center space-y-2">
-            <h3 className="text-xl font-black uppercase tracking-tighter">Identity Identity Card</h3>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">Lataa ja jaa poliittinen profiilisi</p>
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-blue-600 rounded-[2.5rem] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+          <div className="relative bg-slate-900 rounded-[2rem] border border-white/5 p-8 md:p-12 space-y-10">
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest mb-2">
+                <Share2 size={12} />
+                Social Sharing
+              </div>
+              <h3 className="text-3xl font-black uppercase tracking-tighter text-white">Identity Card</h3>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
+                Lataa digitaalinen identiteettikorttisi ja jaa se somessa. Haasta kaverisi vertailuun!
+              </p>
+            </div>
+            <IdentityCard userProfile={user} />
           </div>
-          <IdentityCard userProfile={user} />
         </div>
 
         <PartyMatchCard />

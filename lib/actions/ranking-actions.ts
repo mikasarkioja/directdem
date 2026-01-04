@@ -2,7 +2,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { formatParty } from "./harkimo-match";
+import { formatParty } from "@/lib/utils/party-utils";
 
 export interface RankingResult {
   parties: {

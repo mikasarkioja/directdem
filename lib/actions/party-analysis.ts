@@ -2,7 +2,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { formatParty } from "@/lib/actions/harkimo-match";
+import { formatParty } from "@/lib/utils/party-utils";
 import { calculatePivotScore } from "@/lib/analysis/pivot-engine";
 
 export interface PartyAnalysisData {

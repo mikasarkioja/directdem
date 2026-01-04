@@ -1,6 +1,6 @@
 // lib/analysis/weather-engine.ts
 import { createClient } from "@supabase/supabase-js";
-import { formatParty } from "@/lib/actions/harkimo-match";
+import { formatParty } from "@/lib/utils/party-utils";
 
 export interface PredictionResult {
   jaa: number;

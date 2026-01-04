@@ -9,10 +9,12 @@ import ComparisonRadarChart from "@/components/ComparisonRadarChart";
 import { 
   Users, Zap, Info, TrendingUp, TrendingDown, 
   ChevronRight, BrainCircuit, BarChart3, Loader2,
-  User, Sparkles
+  User, Sparkles, Quote, Share2
 } from "lucide-react";
 import { initializeProfileFromMP } from "@/lib/actions/user-profile-actions";
 import { useRouter } from "next/navigation";
+import { generateProfileSummary } from "@/lib/utils/profile-describer";
+import Link from "next/link";
 
 export default function HarkimoDemo() {
   const [data, setData] = useState<HarkimoMatchResult | null>(null);
@@ -45,6 +47,9 @@ export default function HarkimoDemo() {
       { label: 'Talous', match: Math.abs(h.economic - m.economic) < 0.4 },
       { label: 'Arvot', match: Math.abs(h.liberal - m.liberal) < 0.4 },
       { label: 'Ympäristö', match: Math.abs(h.env - m.env) < 0.4 },
+      { label: 'Alue', match: Math.abs(h.urban - m.urban) < 0.4 },
+      { label: 'Kansainv.', match: Math.abs(h.global - m.global) < 0.4 },
+      { label: 'Turvallis.', match: Math.abs(h.security - m.security) < 0.4 },
     ];
   };
 
@@ -109,7 +114,12 @@ export default function HarkimoDemo() {
                   <div>
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Keskiössä</p>
                     <p className="text-xl font-black uppercase tracking-tight">{data.harkimo.full_name}</p>
-                    <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
+                      <span className="text-[8px] px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded-full font-black border border-purple-100 uppercase">
+                        {generateProfileSummary(data.harkimo.scores).title}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 
@@ -129,6 +139,14 @@ export default function HarkimoDemo() {
                     </>
                   )}
                 </button>
+
+                <Link
+                  href="/profiili"
+                  className="w-full flex items-center justify-center gap-3 bg-purple-100 text-purple-700 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-purple-200 transition-all border border-purple-200"
+                >
+                  <Share2 size={14} />
+                  <span>Poliittinen Haaste: Jaa oma DNA!</span>
+                </Link>
               </div>
             </div>
 
@@ -136,25 +154,22 @@ export default function HarkimoDemo() {
             <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-10 shadow-sm">
               <div className="flex items-center gap-3 mb-8">
                 <BarChart3 size={20} className="text-purple-600" />
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Hjallis vs. Puolueet</h3>
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Hjallis vs. Kaikki Puolueet</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {data.partyAnalysis.map((p: any, i: number) => (
-                  <div key={p.name} className="space-y-3 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div key={p.name} className="space-y-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex justify-between items-end">
-                      <span className="text-xs font-black uppercase tracking-tight text-slate-600">{p.name}</span>
-                      <span className="text-lg font-black text-purple-600 leading-none">{p.avgCompatibility}%</span>
+                      <span className="text-[10px] font-black uppercase tracking-tight text-slate-600">{p.name}</span>
+                      <span className="text-sm font-black text-purple-600 leading-none">{p.avgCompatibility}%</span>
                     </div>
-                    <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${p.avgCompatibility}%` }}
                         className={`h-full ${i === 0 ? "bg-purple-600" : "bg-slate-400 opacity-50"}`}
                       />
                     </div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">
-                      {p.avgCompatibility > 70 ? "Vahva liittolainen" : p.avgCompatibility > 50 ? "Yhteinen linja" : "Eriävä linja"}
-                    </p>
                   </div>
                 ))}
               </div>
@@ -275,68 +290,97 @@ export default function HarkimoDemo() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="bg-white border border-slate-200 rounded-[3rem] p-10 shadow-sm space-y-8"
+                    className="bg-white border border-slate-200 rounded-[3rem] p-8 md:p-10 shadow-sm space-y-8"
                   >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-50 pb-8">
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">DNA Vertailu</p>
-                        <h2 className="text-2xl font-black uppercase tracking-tighter">
-                          Hjallis vs <span className="text-purple-600">{selectedMp.full_name}</span>
-                        </h2>
-                        <p className="text-xs font-bold text-slate-500 mt-1">{selectedMp.party}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Yhteensopivuus</p>
-                          <p className="text-3xl font-black text-purple-600">{selectedMp.compatibility}%</p>
-                        </div>
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 border-b border-slate-50 pb-12 relative">
+                      {/* Comparison Badge in middle */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex flex-col items-center z-20">
+                        <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center text-white shadow-xl ${
                           selectedMp.compatibility > 75 ? "bg-emerald-500" : 
                           selectedMp.compatibility > 50 ? "bg-amber-500" : "bg-rose-500"
                         }`}>
-                          <Zap size={24} fill="currentColor" />
+                          <p className="text-[8px] font-black uppercase leading-none opacity-70">Match</p>
+                          <p className="text-xl font-black">{selectedMp.compatibility}%</p>
+                        </div>
+                      </div>
+
+                      {/* MP 1 (Hjallis) */}
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-2xl bg-purple-600 flex items-center justify-center text-white text-xl font-black italic shadow-lg shadow-purple-200">HH</div>
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.1em]">Kansanedustaja</p>
+                            <p className="text-sm font-black uppercase text-slate-900 leading-tight">Hjallis Harkimo</p>
+                            <p className="text-xs font-bold text-purple-600 uppercase">{data.harkimo.party}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3 bg-purple-50/50 p-5 rounded-[2rem] border border-purple-100/50 relative overflow-hidden group">
+                          <Quote className="absolute -top-2 -right-2 text-purple-200 opacity-20 group-hover:opacity-40 transition-opacity" size={64} />
+                          <div className="flex items-center gap-2 mb-1">
+                            <Sparkles size={12} className="text-purple-500" />
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-purple-700">
+                              Arkkityyppi: {generateProfileSummary(data.harkimo.scores).title}
+                            </h4>
+                          </div>
+                          <p className="text-xs text-slate-600 leading-relaxed font-medium italic relative z-10">
+                            "{generateProfileSummary(data.harkimo.scores).description}"
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* MP 2 (Target) */}
+                      <div className="space-y-6 md:pl-12 border-t md:border-t-0 md:border-l border-slate-100 pt-8 md:pt-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-2xl bg-blue-500 flex items-center justify-center text-white text-xl font-black italic uppercase shadow-lg shadow-blue-200">
+                            {selectedMp.full_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                          </div>
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.1em]">Haastaja</p>
+                            <p className="text-sm font-black uppercase text-slate-900 leading-tight">{selectedMp.full_name}</p>
+                            <p className="text-xs font-bold text-blue-600 uppercase">{selectedMp.party}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 bg-blue-50/50 p-5 rounded-[2rem] border border-blue-100/50 relative overflow-hidden group">
+                          <Quote className="absolute -top-2 -right-2 text-blue-200 opacity-20 group-hover:opacity-40 transition-opacity" size={64} />
+                          <div className="flex items-center gap-2 mb-1">
+                            <Sparkles size={12} className="text-blue-500" />
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700">
+                              Arkkityyppi: {generateProfileSummary(selectedMp.scores).title}
+                            </h4>
+                          </div>
+                          <p className="text-xs text-slate-600 leading-relaxed font-medium italic relative z-10">
+                            "{generateProfileSummary(selectedMp.scores).description}"
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                      <div className="space-y-6">
-                        <div className="space-y-4">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Analyysi</h4>
-                          <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                            {selectedMp.compatibility > 85 ? (
-                              `Nämä kaksi edustajaa ovat lähes poliittisia kaksosia. He jakavat saman näkemyksen ${
-                                selectedMp.scores.economic > 0.5 ? "markkinavetoisesta taloudesta" : "valtion roolista taloudessa"
-                              } ja äänestävät lähes poikkeuksetta samalla tavalla.`
-                            ) : selectedMp.compatibility > 65 ? (
-                              "Edustajilla on vahva yhteinen peruslinja, vaikka yksittäisissä kysymyksissä löytyykin painotuseroja."
-                            ) : (
-                              "Edustajien välillä on merkittäviä linjaeroja. Heidän äänestyskäyttäytymisensä heijastaa erilaisia arvomaailmoja ja prioriteetteja."
-                            )}
-                          </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center pt-4">
+                      <div className="p-8 bg-slate-50/50 border border-slate-100 rounded-[2.5rem] space-y-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                            <Zap size={16} className="text-purple-600" />
+                          </div>
+                          <h4 className="text-xs font-black uppercase tracking-widest">DNA Match-erittely</h4>
                         </div>
-                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
-                          <div className="flex items-center gap-3">
-                            <Zap size={18} className="text-purple-600" />
-                            <h4 className="text-[10px] font-black uppercase tracking-widest">Match-erittely</h4>
-                          </div>
-                          <div className="space-y-4">
-                            {getMatchBreakdown(selectedMp)?.map((item) => (
-                              <div key={item.label} className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-500 uppercase">{item.label}</span>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[10px] font-black uppercase ${item.match ? "text-emerald-600" : "text-rose-500"}`}>
-                                    {item.match ? "Match" : "Eriävä"}
-                                  </span>
-                                  <div className={`w-2 h-2 rounded-full ${item.match ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"}`} />
-                                </div>
+                        <div className="grid grid-cols-1 gap-4">
+                          {getMatchBreakdown(selectedMp)?.map((item) => (
+                            <div key={item.label} className="flex items-center justify-between bg-white p-3 px-4 rounded-xl border border-slate-100 shadow-sm">
+                              <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">{item.label}</span>
+                              <div className="flex items-center gap-3">
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${item.match ? "text-emerald-600" : "text-rose-500"}`}>
+                                  {item.match ? "Match" : "Eriävä"}
+                                </span>
+                                <div className={`w-2.5 h-2.5 rounded-full ${item.match ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" : "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]"}`} />
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                       
-                      <div className="relative bg-slate-50/50 rounded-full p-4">
+                      <div className="relative bg-white border border-slate-100 rounded-[3rem] p-6 shadow-sm">
                         <ComparisonRadarChart 
                           harkimo={data.harkimo.scores} 
                           target={{ 

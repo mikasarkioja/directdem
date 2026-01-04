@@ -11,36 +11,60 @@ interface ComparisonRadarChartProps {
     economic: number;
     liberal: number;
     env: number;
+    urban?: number;
+    global?: number;
+    security?: number;
   };
   target: {
     name: string;
     economic: number;
     liberal: number;
     env: number;
+    urban?: number;
+    global?: number;
+    security?: number;
   };
 }
 
 export default function ComparisonRadarChart({ harkimo, target }: ComparisonRadarChartProps) {
   // Map -1...1 to 0...100 for better radar visualization
-  const mapScore = (val: number) => Math.round((val + 1) * 50);
+  const mapScore = (val: number | undefined) => Math.round(((val ?? 0) + 1) * 50);
 
   const data = [
     {
-      subject: 'Talous (Oikeisto)',
+      subject: 'Talous (Oik.)',
       A: mapScore(harkimo.economic),
       B: mapScore(target.economic),
       fullMark: 100,
     },
     {
-      subject: 'Arvot (Liberaali)',
+      subject: 'Arvot (Lib.)',
       A: mapScore(harkimo.liberal),
       B: mapScore(target.liberal),
       fullMark: 100,
     },
     {
-      subject: 'Ympäristö (Suojelu)',
+      subject: 'Ympäristö (Suoj.)',
       A: mapScore(harkimo.env),
       B: mapScore(target.env),
+      fullMark: 100,
+    },
+    {
+      subject: 'Alue (Maas.)',
+      A: mapScore(harkimo.urban),
+      B: mapScore(target.urban),
+      fullMark: 100,
+    },
+    {
+      subject: 'Kansainv. (Glob.)',
+      A: mapScore(harkimo.global),
+      B: mapScore(target.global),
+      fullMark: 100,
+    },
+    {
+      subject: 'Turvallis. (Kova)',
+      A: mapScore(harkimo.security),
+      B: mapScore(target.security),
       fullMark: 100,
     },
   ];

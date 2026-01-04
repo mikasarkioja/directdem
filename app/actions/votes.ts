@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { VoteStats, VotePosition } from "@/lib/types";
 import { addDNAPoints } from "./dna";
+import { updateUserPoliticalDNA } from "@/lib/actions/user-dna-engine";
 
 export async function submitVote(billId: string, position: VotePosition) {
   const supabase = await createClient();
@@ -39,6 +40,9 @@ export async function submitVote(billId: string, position: VotePosition) {
   if (error) {
     throw new Error(`Äänestys epäonnistui: ${error.message}`);
   }
+
+  // --- Political DNA Update ---
+  await updateUserPoliticalDNA(billId, position);
 
   // --- DNA Points Logic ---
   

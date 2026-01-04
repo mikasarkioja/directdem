@@ -45,6 +45,9 @@ export async function initializeProfileFromMP(mpId: number) {
       economic_score: mpProfile.economic_score,
       liberal_conservative_score: mpProfile.liberal_conservative_score,
       environmental_score: mpProfile.environmental_score,
+      urban_rural_score: mpProfile.urban_rural_score,
+      international_national_score: mpProfile.international_national_score,
+      security_score: mpProfile.security_score,
       initialized_from_mp: `Alustettu lähteestä: ${mpName}`
     })
     .eq("id", user.id);
@@ -61,5 +64,25 @@ export async function initializeProfileFromMP(mpId: number) {
   revalidatePath("/profiili");
   
   return { success: true, mpName };
+}
+
+/**
+ * Fetches a limited public profile for comparison.
+ */
+export async function getPublicProfile(userId: string) {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, economic_score, liberal_conservative_score, environmental_score, urban_rural_score, international_national_score, security_score")
+    .eq("id", userId)
+    .single();
+
+  if (error || !data) {
+    console.error("Public profile fetch error:", error);
+    return null;
+  }
+
+  return data;
 }
 

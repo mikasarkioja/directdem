@@ -11,6 +11,9 @@ export interface MPMatch {
     economic: number;
     liberal: number;
     env: number;
+    urban: number;
+    global: number;
+    security: number;
   };
 }
 
@@ -23,6 +26,9 @@ export interface HarkimoMatchResult {
       economic: number;
       liberal: number;
       env: number;
+      urban: number;
+      global: number;
+      security: number;
     };
   };
   topMatches: MPMatch[];
@@ -55,6 +61,8 @@ const formatParty = (party: string, fullName?: string): string => {
   if (p.includes('RUOTSALAINEN') || p.includes('SWEDISH')) return 'RKP';
   if (p.includes('KRISTILLISDEMOKRAATTI') || p.includes('CHRISTIAN DEMOCRATIC')) return 'KD';
   if (p.includes('LIIKE NYT')) return 'Liik';
+  if (p.includes('VORNANEN')) return 'Sit';
+  if (p.includes('NOT A MEMBER') || p.includes('SITOUTUMATON')) return 'Sit';
   return party;
 };
 
@@ -65,12 +73,11 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 1. Get Hjallis Harkimo (personId 1328 or name)
+    // 1. Get Hjallis Harkimo (Harry Harkimo, id 1328)
     const { data: harkimoMp, error: harkimoError } = await supabase
       .from("mps")
       .select("id, first_name, last_name, party")
-      .or(`id.eq.1328,last_name.ilike.Harkimo`)
-      .limit(1)
+      .eq("id", 1328)
       .single();
 
     if (harkimoError || !harkimoMp) {
@@ -92,6 +99,9 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
         economic_score: 0.75, 
         liberal_conservative_score: 0.2, 
         environmental_score: -0.1, 
+        urban_rural_score: -0.5,
+        international_national_score: 0.3,
+        security_score: 0.8,
         total_votes_analyzed: 42
       };
     }
@@ -102,6 +112,7 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
       .select(`
         *,
         mps!inner (
+          id,
           first_name,
           last_name,
           party,
@@ -121,7 +132,10 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
           scores: {
             economic: harkimoProfile.economic_score,
             liberal: harkimoProfile.liberal_conservative_score,
-            env: harkimoProfile.environmental_score
+            env: harkimoProfile.environmental_score,
+            urban: harkimoProfile.urban_rural_score || 0,
+            global: harkimoProfile.international_national_score || 0,
+            security: harkimoProfile.security_score || 0
           }
         },
         topMatches: [],
@@ -130,20 +144,32 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
       };
     }
 
+    // Deduplicate profiles by MP ID just in case
+    const uniqueProfiles = Array.from(new Map(allProfiles.map(p => [p.mps.id, p])).values());
+
     // 4. Calculate Statistics for Normalization (relative to current parliament)
     const stats = {
       eco: { sum: 0, sqSum: 0, count: 0 },
       lib: { sum: 0, sqSum: 0, count: 0 },
-      env: { sum: 0, sqSum: 0, count: 0 }
+      env: { sum: 0, sqSum: 0, count: 0 },
+      urb: { sum: 0, sqSum: 0, count: 0 },
+      glo: { sum: 0, sqSum: 0, count: 0 },
+      sec: { sum: 0, sqSum: 0, count: 0 }
     };
 
-    allProfiles.forEach((p: any) => {
+    uniqueProfiles.forEach((p: any) => {
       stats.eco.sum += p.economic_score;
       stats.eco.sqSum += Math.pow(p.economic_score, 2);
       stats.lib.sum += p.liberal_conservative_score;
       stats.lib.sqSum += Math.pow(p.liberal_conservative_score, 2);
       stats.env.sum += p.environmental_score;
       stats.env.sqSum += Math.pow(p.environmental_score, 2);
+      stats.urb.sum += p.urban_rural_score || 0;
+      stats.urb.sqSum += Math.pow(p.urban_rural_score || 0, 2);
+      stats.glo.sum += p.international_national_score || 0;
+      stats.glo.sqSum += Math.pow(p.international_national_score || 0, 2);
+      stats.sec.sum += p.security_score || 0;
+      stats.sec.sqSum += Math.pow(p.security_score || 0, 2);
       stats.eco.count++;
     });
 
@@ -152,31 +178,43 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
     const means = {
       eco: stats.eco.sum / count,
       lib: stats.lib.sum / count,
-      env: stats.env.sum / count
+      env: stats.env.sum / count,
+      urb: stats.urb.sum / count,
+      glo: stats.glo.sum / count,
+      sec: stats.sec.sum / count
     };
 
     const stdDevs = {
       eco: Math.sqrt(Math.max(0.01, stats.eco.sqSum / count - Math.pow(means.eco, 2))),
       lib: Math.sqrt(Math.max(0.01, stats.lib.sqSum / count - Math.pow(means.lib, 2))),
-      env: Math.sqrt(Math.max(0.01, stats.env.sqSum / count - Math.pow(means.env, 2)))
+      env: Math.sqrt(Math.max(0.01, stats.env.sqSum / count - Math.pow(means.env, 2))),
+      urb: Math.sqrt(Math.max(0.01, stats.urb.sqSum / count - Math.pow(means.urb, 2))),
+      glo: Math.sqrt(Math.max(0.01, stats.glo.sqSum / count - Math.pow(means.glo, 2))),
+      sec: Math.sqrt(Math.max(0.01, stats.sec.sqSum / count - Math.pow(means.sec, 2)))
     };
 
     const getZ = (val: number, mean: number, sd: number) => (val - mean) / sd;
 
     // 5. Calculate Euclidean distance and compatibility using Z-scores
-    const matches = allProfiles.map((p: any) => {
+    const matches = uniqueProfiles.map((p: any) => {
       const dEco = getZ(p.economic_score, means.eco, stdDevs.eco) - getZ(harkimoProfile.economic_score, means.eco, stdDevs.eco);
       const dLib = getZ(p.liberal_conservative_score, means.lib, stdDevs.lib) - getZ(harkimoProfile.liberal_conservative_score, means.lib, stdDevs.lib);
       const dEnv = getZ(p.environmental_score, means.env, stdDevs.env) - getZ(harkimoProfile.environmental_score, means.env, stdDevs.env);
+      const dUrb = getZ(p.urban_rural_score || 0, means.urb, stdDevs.urb) - getZ(harkimoProfile.urban_rural_score || 0, means.urb, stdDevs.urb);
+      const dGlo = getZ(p.international_national_score || 0, means.glo, stdDevs.glo) - getZ(harkimoProfile.international_national_score || 0, means.glo, stdDevs.glo);
+      const dSec = getZ(p.security_score || 0, means.sec, stdDevs.sec) - getZ(harkimoProfile.security_score || 0, means.sec, stdDevs.sec);
 
-      const distance = Math.sqrt(Math.pow(dEco, 2) + Math.pow(dLib, 2) + Math.pow(dEnv, 2));
+      const distance = Math.sqrt(
+        Math.pow(dEco, 2) + Math.pow(dLib, 2) + Math.pow(dEnv, 2) +
+        Math.pow(dUrb, 2) + Math.pow(dGlo, 2) + Math.pow(dSec, 2)
+      );
 
-      // normalizedDist: 0 is same, ~6 is very far (3 standard deviations in opposite directions)
-      const maxZDist = 6.0; 
+      // normalizedDist: 0 is same, ~10 is very far
+      const maxZDist = 10.0; 
       const normalizedDist = Math.min(1, distance / maxZDist);
       
-      // (1 - x)^4 curve: extremely sensitive to highlight even minor differences in Z-space
-      const compatibility = Math.max(0, Math.round(Math.pow(1 - normalizedDist, 4) * 100));
+      // (1 - x)^1.5 curve: better balance between high allies and distinct opposites
+      const compatibility = Math.max(0, Math.round(Math.pow(1 - normalizedDist, 1.5) * 100));
 
       const fullName = `${p.mps.first_name} ${p.mps.last_name}`;
       return {
@@ -187,7 +225,10 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
         scores: {
           economic: p.economic_score,
           liberal: p.liberal_conservative_score,
-          env: p.environmental_score
+          env: p.environmental_score,
+          urban: p.urban_rural_score || 0,
+          global: p.international_national_score || 0,
+          security: p.security_score || 0
         }
       };
     }).sort((a, b) => b.compatibility - a.compatibility);
@@ -201,11 +242,16 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
       partyScores[pName].count++;
     });
 
-    const partyAnalysis = Object.entries(partyScores).map(([name, data]) => ({
-      name,
-      avgCompatibility: Math.round(data.totalComp / data.count)
-    })).sort((a, b) => b.avgCompatibility - a.avgCompatibility);
+    const partyAnalysis = Object.entries(partyScores)
+      .filter(([name]) => name !== 'N/A' && name !== 'Sit') // Poistetaan epärelevantit kategoriat
+      .map(([name, data]) => ({
+        name,
+        avgCompatibility: Math.round(data.totalComp / data.count)
+      })).sort((a, b) => b.avgCompatibility - a.avgCompatibility);
 
+    // Ensure we don't have overlapping matches if the list is short
+    const sliceCount = Math.min(5, Math.floor(matches.length / 2));
+    
     return {
       harkimo: {
         id: harkimoMp.id,
@@ -214,12 +260,15 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
         scores: {
           economic: harkimoProfile.economic_score,
           liberal: harkimoProfile.liberal_conservative_score,
-          env: harkimoProfile.environmental_score
+          env: harkimoProfile.environmental_score,
+          urban: harkimoProfile.urban_rural_score,
+          global: harkimoProfile.international_national_score,
+          security: harkimoProfile.security_score
         }
       },
-      topMatches: matches.slice(0, 3),
-      bottomMatches: matches.slice(-3).reverse(),
-      partyAnalysis: partyAnalysis.slice(0, 5)
+      topMatches: matches.slice(0, sliceCount),
+      bottomMatches: matches.slice(-sliceCount).reverse(),
+      partyAnalysis: partyAnalysis // Return all parties
     };
   } catch (error: any) {
     console.error("Critical error in getHarkimoMatches:", error);

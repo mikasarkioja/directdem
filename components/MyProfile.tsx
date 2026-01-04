@@ -20,6 +20,9 @@ import type { UserProfile } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import DemocraticDNA from "./DemocraticDNA";
+import EvolutionLineChart from "./EvolutionLineChart";
+import IdentityCard from "./IdentityCard";
+import { getUserDNAHistory } from "@/lib/actions/user-dna-engine";
 
 interface MyProfileProps {
   user: UserProfile | null;
@@ -41,6 +44,7 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
   const [publicStance, setPublicStance] = useState(false);
   const [savingStance, setSavingStance] = useState(false);
   const [badges, setBadges] = useState<string[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   
   const router = useRouter();
 
@@ -72,6 +76,10 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
         if (badgeData) {
           setBadges(badgeData.map(b => b.badge_type));
         }
+
+        // Fetch history
+        const dnaHistory = await getUserDNAHistory();
+        setHistory(dnaHistory);
       }
       setLoading(false);
     }
@@ -177,6 +185,16 @@ export default function MyProfile({ user: initialUser }: MyProfileProps) {
           </div>
         )}
         <DemocraticDNA />
+        <EvolutionLineChart history={history} />
+        
+        <div className="bg-white rounded-3xl border border-slate-200 p-10 shadow-sm space-y-8">
+          <div className="text-center space-y-2">
+            <h3 className="text-xl font-black uppercase tracking-tighter">Identity Identity Card</h3>
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">Lataa ja jaa poliittinen profiilisi</p>
+          </div>
+          <IdentityCard userProfile={user} />
+        </div>
+
         <PartyMatchCard />
       </div>
 

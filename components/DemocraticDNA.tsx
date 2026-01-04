@@ -8,8 +8,9 @@ import {
 import { getDNAPoints } from "@/app/actions/dna";
 import { getUser } from "@/app/actions/auth";
 import type { ArchetypePoints, UserProfile } from "@/lib/types";
-import { Loader2, Info, Award, Shield, Zap, Search, HelpCircle, User, BrainCircuit, Sparkles } from "lucide-react";
+import { Loader2, Info, Award, Shield, Zap, Search, HelpCircle, User, BrainCircuit, Sparkles, Quote } from "lucide-react";
 import { motion } from "framer-motion";
+import { generateProfileSummary } from "@/lib/utils/profile-describer";
 
 export default function DemocraticDNA() {
   const [points, setPoints] = useState<ArchetypePoints | null>(null);
@@ -128,17 +129,53 @@ export default function DemocraticDNA() {
             </div>
           </div>
 
-          {userProfile && (userProfile.economic_score !== 0 || userProfile.liberal_conservative_score !== 0 || userProfile.environmental_score !== 0) && (
-            <div className="space-y-3 pt-4 border-t border-slate-50">
+          {userProfile && (
+            userProfile.economic_score !== 0 || 
+            userProfile.liberal_conservative_score !== 0 || 
+            userProfile.environmental_score !== 0 ||
+            userProfile.urban_rural_score !== 0 ||
+            userProfile.international_national_score !== 0 ||
+            userProfile.security_score !== 0
+          ) && (
+            <div className="space-y-4 pt-4 border-t border-slate-50">
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Quote size={14} className="text-purple-600" />
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-purple-600">
+                    Poliittinen Arkkityyppi: {generateProfileSummary({
+                      economic: userProfile.economic_score || 0,
+                      liberal: userProfile.liberal_conservative_score || 0,
+                      env: userProfile.environmental_score || 0,
+                      urban: userProfile.urban_rural_score || 0,
+                      global: userProfile.international_national_score || 0,
+                      security: userProfile.security_score || 0
+                    }).title}
+                  </h5>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed font-medium italic">
+                  "{generateProfileSummary({
+                    economic: userProfile.economic_score || 0,
+                    liberal: userProfile.liberal_conservative_score || 0,
+                    env: userProfile.environmental_score || 0,
+                    urban: userProfile.urban_rural_score || 0,
+                    global: userProfile.international_national_score || 0,
+                    security: userProfile.security_score || 0
+                  }).description}"
+                </p>
+              </div>
+
               <div className="flex items-center gap-2">
                 <BrainCircuit size={14} className="text-purple-600" />
-                <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Political DNA</h5>
+                <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Political DNA Dimensions</h5>
               </div>
               <div className="grid grid-cols-1 gap-2">
                 {[
                   { label: 'Talous', val: userProfile.economic_score, left: 'Vasen', right: 'Oikeisto' },
-                  { label: 'Arvot', val: userProfile.liberal_conservative_score, left: 'Konservatiivi', right: 'Liberaali' },
+                  { label: 'Arvot', val: userProfile.liberal_conservative_score, left: 'Liberaali', right: 'Konservatiivi' },
                   { label: 'Ympäristö', val: userProfile.environmental_score, left: 'Hyödyntäminen', right: 'Suojelu' },
+                  { label: 'Aluepolitiikka', val: userProfile.urban_rural_score, left: 'Urbaani', right: 'Maaseutu' },
+                  { label: 'Kansainvälisyys', val: userProfile.international_national_score, left: 'Kansallinen', right: 'Globalisti' },
+                  { label: 'Turvallisuus', val: userProfile.security_score, left: 'Pehmeä', right: 'Kova' },
                 ].map((score) => (
                   <div key={score.label} className="space-y-1">
                     <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-400">

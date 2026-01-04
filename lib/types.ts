@@ -92,6 +92,9 @@ export interface UserProfile {
   economic_score?: number;
   liberal_conservative_score?: number;
   environmental_score?: number;
+  urban_rural_score?: number;
+  international_national_score?: number;
+  security_score?: number;
   initialized_from_mp?: string;
 }
 
@@ -144,6 +147,9 @@ export interface SupabaseProfile {
   economic_score: number | null;
   liberal_conservative_score: number | null;
   environmental_score: number | null;
+  urban_rural_score: number | null;
+  international_national_score: number | null;
+  security_score: number | null;
   initialized_from_mp: string | null;
   created_at: string;
   updated_at: string;

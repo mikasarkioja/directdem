@@ -8,7 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import ComparisonRadarChart from "@/components/ComparisonRadarChart";
 import IdentityCard from "@/components/IdentityCard";
 import { generateProfileSummary } from "@/lib/utils/profile-describer";
-import { getHarkimoMatches, type HarkimoMatchResult } from "@/lib/actions/harkimo-match";
+import { getHarkimoMatches, findMatchesForScores, type HarkimoMatchResult, type MPMatch } from "@/lib/actions/harkimo-match";
 import { 
   Sparkles, BrainCircuit, Share2, Download, 
   ArrowRight, User, Activity, Loader2, Play
@@ -17,7 +17,7 @@ import Link from "next/link";
 
 export default function TestiTulokset() {
   const [scores, setScores] = useState<any>(null);
-  const [matchData, setMatchData] = useState<HarkimoMatchResult | null>(null);
+  const [matchData, setMatchData] = useState<{ topMatches: MPMatch[]; bottomMatches: MPMatch[]; partyAnalysis: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -30,10 +30,17 @@ export default function TestiTulokset() {
     const parsedScores = JSON.parse(saved);
     setScores(parsedScores);
 
-    // Fetch top match (Harkimo demo function is perfect for this)
+    // Fetch matches for these SPECIFIC scores
     const fetchMatch = async () => {
       try {
-        const result = await getHarkimoMatches();
+        const result = await findMatchesForScores({
+          economic: parsedScores.economic_score,
+          liberal: parsedScores.liberal_conservative_score,
+          env: parsedScores.environmental_score,
+          urban: parsedScores.urban_rural_score,
+          global: parsedScores.international_national_score,
+          security: parsedScores.security_score
+        });
         setMatchData(result);
       } catch (e) {
         console.error(e);

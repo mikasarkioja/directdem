@@ -18,10 +18,11 @@ import { LayoutDashboard, Radio } from "lucide-react";
 
 interface DashboardProps {
   user: UserProfile | null;
+  initialView?: DashboardView;
 }
 
-export default function Dashboard({ user }: DashboardProps) {
-  const [activeView, setActiveView] = useState<DashboardView>("overview");
+export default function Dashboard({ user, initialView = "overview" }: DashboardProps) {
+  const [activeView, setActiveView] = useState<DashboardView>(initialView);
   const [viewContext, setViewContext] = useState<ViewContext>("parliament");
   const [selectedMunicipality, setSelectedMunicipality] = useState(user?.municipality || "Espoo");
 

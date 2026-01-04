@@ -50,7 +50,7 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
     .select(`
       vote_type,
       event_id,
-      mps!inner ( party, is_active )
+      mps!inner ( party, is_active, first_name, last_name )
     `)
     .eq("mps.is_active", true);
 
@@ -59,7 +59,8 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
   // Group votes by party and event
   const partyVotes: Record<string, Record<string, { jaa: number; ei: number }>> = {};
   voteAgg.forEach((v: any) => {
-    const party = formatParty(v.mps.party);
+    const mp = v.mps;
+    const party = formatParty(mp.party, `${mp.first_name} ${mp.last_name}`);
     if (!partyVotes[party]) partyVotes[party] = {};
     if (!partyVotes[party][v.event_id]) partyVotes[party][v.event_id] = { jaa: 0, ei: 0 };
     if (v.vote_type === 'jaa') partyVotes[party][v.event_id].jaa++;
@@ -109,7 +110,8 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
 
   const partyProfiles: Record<string, any[]> = {};
   mpData.forEach(p => {
-    const party = formatParty(p.mps.party);
+    const mp = p.mps;
+    const party = formatParty(mp.party, `${mp.first_name} ${mp.last_name}`);
     if (!partyProfiles[party]) partyProfiles[party] = [];
     partyProfiles[party].push(p);
   });
@@ -147,7 +149,8 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
 
   const partyActivity: Record<string, Record<string, number>> = {};
   voteAgg.forEach((v: any) => {
-    const party = formatParty(v.mps.party);
+    const mp = v.mps;
+    const party = formatParty(mp.party, `${mp.first_name} ${mp.last_name}`);
     const cat = eventCategories[v.event_id];
     if (!cat || cat === 'Muu') return;
     if (!partyActivity[party]) partyActivity[party] = {};

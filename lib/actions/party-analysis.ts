@@ -32,10 +32,11 @@ export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
   // Ryhmittele MP:t puolueittain
   const parties: Record<string, { ids: number[], mps: { id: number; name: string }[] }> = {};
   mpsData.forEach(mp => {
-    const pName = formatParty(mp.party);
+    const fullName = `${mp.first_name} ${mp.last_name}`;
+    const pName = formatParty(mp.party, fullName);
     if (!parties[pName]) parties[pName] = { ids: [], mps: [] };
     parties[pName].ids.push(mp.id);
-    parties[pName].mps.push({ id: mp.id, name: `${mp.first_name} ${mp.last_name}` });
+    parties[pName].mps.push({ id: mp.id, name: fullName });
   });
 
   // 2. Laske Rice Index ja Topic Ownership (tämä on raskasta, haetaan kootusti)
@@ -44,7 +45,7 @@ export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
     .select(`
       vote_type,
       event_id,
-      mps!inner ( party, is_active ),
+      mps!inner ( party, is_active, first_name, last_name ),
       voting_events!inner ( category )
     `)
     .eq('mps.is_active', true);
@@ -56,7 +57,10 @@ export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
   for (const [pName, partyData] of Object.entries(parties)) {
     const mpIds = partyData.ids;
     // Rice Index
-    const pVotes = votes.filter(v => formatParty((v as any).mps.party) === pName);
+    const pVotes = votes.filter(v => {
+      const mp = (v as any).mps;
+      return formatParty(mp.party, `${mp.first_name} ${mp.last_name}`) === pName;
+    });
     const votesByEvent: Record<string, { jaa: number, ei: number }> = {};
     pVotes.forEach(v => {
       if (!votesByEvent[v.event_id]) votesByEvent[v.event_id] = { jaa: 0, ei: 0 };

@@ -95,6 +95,8 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
       };
     }
 
+    const pivotScore = await calculatePivotScore(harkimoMp.id);
+
     // 3. Get all other profiles (ONLY ACTIVE ONES)
     const { data: allProfiles, error: profilesError } = await supabase
       .from("mp_profiles")
@@ -125,7 +127,8 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
             urban: harkimoProfile.urban_rural_score || 0,
             global: harkimoProfile.international_national_score || 0,
             security: harkimoProfile.security_score || 0
-          }
+          },
+          pivotScore: pivotScore
         },
         topMatches: [],
         bottomMatches: [],
@@ -240,8 +243,6 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
 
     // Ensure we don't have overlapping matches if the list is short
     const sliceCount = Math.min(5, Math.floor(matches.length / 2));
-    
-    const pivotScore = await calculatePivotScore(harkimoMp.id);
     
     // Calculate pivot scores for the top and bottom matches only (for performance)
     const topSlice = matches.slice(0, sliceCount);

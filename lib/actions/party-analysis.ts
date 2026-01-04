@@ -33,7 +33,6 @@ export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
   const parties: Record<string, { ids: number[], mps: { id: number; name: string }[] }> = {};
   mpsData.forEach(mp => {
     const pName = formatParty(mp.party);
-    if (pName === 'N/A' || pName === 'Sit') return;
     if (!parties[pName]) parties[pName] = { ids: [], mps: [] };
     parties[pName].ids.push(mp.id);
     parties[pName].mps.push({ id: mp.id, name: `${mp.first_name} ${mp.last_name}` });

@@ -50,6 +50,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
   const menuItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
     { id: "overview", label: "Keskus", icon: LayoutGrid },
     { id: "bills", label: "Äänestysareena", icon: FileText },
+    { id: "profile", label: "DNA-Testi", icon: Sparkles, href: "/testi" },
     { id: "consensus", label: "Konsensuskartta", icon: Map },
     { id: "parties", label: "Heimot", icon: Users },
     { id: "ranking", label: "Voimasuhteet", icon: TrendingUp, href: "/ranking" },

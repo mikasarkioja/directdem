@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getLatestBills } from "@/lib/eduskunta-api";
 import { generateMockCitizenPulse, generateMockPoliticalReality } from "@/lib/bill-helpers";
 import type { Bill, SupabaseBill } from "@/lib/types";
+import { cache } from "react";
 
 /**
  * Fetches bills from Supabase, or syncs from Eduskunta API if needed
  */
-export async function fetchBillsFromSupabase(): Promise<Bill[]> {
+export const fetchBillsFromSupabase = cache(async (): Promise<Bill[]> => {
   const supabase = await createClient();
 
   // Try to fetch from Supabase first

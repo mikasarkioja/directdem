@@ -15,6 +15,26 @@ export async function getIntegrityAlertsForEvent(eventId: string): Promise<Integ
   return data as IntegrityAlert[];
 }
 
+export async function getBatchIntegrityAlerts(eventIds: string[]): Promise<Record<string, IntegrityAlert[]>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('integrity_alerts')
+    .select('*')
+    .in('event_id', eventIds);
+
+  if (error || !data) return {};
+
+  const alertsMap: Record<string, IntegrityAlert[]> = {};
+  data.forEach((alert: any) => {
+    if (!alertsMap[alert.event_id]) {
+      alertsMap[alert.event_id] = [];
+    }
+    alertsMap[alert.event_id].push(alert as IntegrityAlert);
+  });
+  
+  return alertsMap;
+}
+
 export async function getUserFollowedAlerts(userId: string): Promise<any[]> {
   const supabase = await createClient();
   

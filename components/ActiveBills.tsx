@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
-import { getIntegrityAlertsForEvent } from "@/lib/actions/promise-actions";
+import { getBatchIntegrityAlerts } from "@/lib/actions/promise-actions";
 import type { Bill, UserProfile, IntegrityAlert } from "@/lib/types";
 import BillDetail from "./BillDetail";
 import { Loader2, RefreshCw, Database, Sparkles, Calendar, ChevronRight, AlertCircle, ShieldCheck, Zap } from "lucide-react";
@@ -24,17 +24,15 @@ export default function ActiveBills({ user }: ActiveBillsProps) {
       const data = await fetchBillsFromSupabase();
       setBills(data);
       
-      // Fetch alerts for all bills
-      const alertMap: Record<string, IntegrityAlert[]> = {};
-      for (const bill of data) {
-        if (bill.parliamentId) {
-          const billAlerts = await getIntegrityAlertsForEvent(bill.parliamentId);
-          if (billAlerts.length > 0) {
-            alertMap[bill.parliamentId] = billAlerts;
-          }
-        }
+      // Batch fetch alerts for all bills in one query (MASSIVE performance boost)
+      const parliamentIds = data
+        .map(b => b.parliamentId)
+        .filter((id): id is string => !!id);
+      
+      if (parliamentIds.length > 0) {
+        const alertsMap = await getBatchIntegrityAlerts(parliamentIds);
+        setAlerts(alertsMap);
       }
-      setAlerts(alertMap);
     } catch (err: any) {
       console.error("Failed to load bills:", err);
     } finally {
@@ -46,7 +44,27 @@ export default function ActiveBills({ user }: ActiveBillsProps) {
     loadBills();
   }, []);
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-command-neon" size={24} /></div>;
+  if (loading) {
+    return (
+      <div className="grid gap-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="bg-slate-900 border border-white/5 p-6 rounded-[2rem] animate-pulse">
+            <div className="flex justify-between items-start gap-6">
+              <div className="flex-1 space-y-4">
+                <div className="flex gap-2">
+                  <div className="h-4 w-12 bg-white/5 rounded" />
+                  <div className="h-4 w-24 bg-white/5 rounded" />
+                </div>
+                <div className="h-6 w-3/4 bg-white/5 rounded" />
+                <div className="h-4 w-full bg-white/5 rounded" />
+              </div>
+              <div className="w-10 h-10 bg-white/5 rounded-2xl" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS integrity_alerts (
   UNIQUE(mp_id, event_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_integrity_alerts_event_id ON integrity_alerts(event_id);
+
 -- Add follows table if not exists (for notifications)
 CREATE TABLE IF NOT EXISTS user_follows (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

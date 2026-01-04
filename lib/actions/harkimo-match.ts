@@ -131,21 +131,52 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
     };
   }
 
-  // 4. Calculate Euclidean distance and compatibility
-  const matches = allProfiles.map((p: any) => {
-    const distance = Math.sqrt(
-      Math.pow(p.economic_score - harkimoProfile.economic_score, 2) +
-      Math.pow(p.liberal_conservative_score - harkimoProfile.liberal_conservative_score, 2) +
-      Math.pow(p.environmental_score - harkimoProfile.environmental_score, 2)
-    );
+  // 4. Calculate Statistics for Normalization (relative to current parliament)
+  const stats = {
+    eco: { sum: 0, sqSum: 0, count: 0 },
+    lib: { sum: 0, sqSum: 0, count: 0 },
+    env: { sum: 0, sqSum: 0, count: 0 }
+  };
 
-    // Max distance in 3D space with -1...1 range is sqrt(2^2 + 2^2 + 2^2) = sqrt(12) approx 3.46
-    const maxDist = 3.46;
-    // Using a more sensitive exponential curve to highlight differences
-    // Linear: 1 - dist/maxDist
-    // Sensitive: (1 - dist/maxDist) ^ 1.5
-    const normalizedDist = distance / maxDist;
-    const compatibility = Math.max(0, Math.round(Math.pow(1 - normalizedDist, 1.5) * 100));
+  allProfiles.forEach((p: any) => {
+    stats.eco.sum += p.economic_score;
+    stats.eco.sqSum += Math.pow(p.economic_score, 2);
+    stats.lib.sum += p.liberal_conservative_score;
+    stats.lib.sqSum += Math.pow(p.liberal_conservative_score, 2);
+    stats.env.sum += p.environmental_score;
+    stats.env.sqSum += Math.pow(p.environmental_score, 2);
+    stats.eco.count++;
+  });
+
+  // Basic stats for Z-score calc
+  const means = {
+    eco: stats.eco.sum / stats.eco.count,
+    lib: stats.lib.sum / stats.eco.count,
+    env: stats.env.sum / stats.eco.count
+  };
+
+  const stdDevs = {
+    eco: Math.sqrt(stats.eco.sqSum / stats.eco.count - Math.pow(means.eco, 2)) || 0.1,
+    lib: Math.sqrt(stats.lib.sqSum / stats.eco.count - Math.pow(means.lib, 2)) || 0.1,
+    env: Math.sqrt(stats.env.sqSum / stats.eco.count - Math.pow(means.env, 2)) || 0.1
+  };
+
+  const getZ = (val: number, mean: number, sd: number) => (val - mean) / sd;
+
+  // 5. Calculate Euclidean distance and compatibility using Z-scores
+  const matches = allProfiles.map((p: any) => {
+    const dEco = getZ(p.economic_score, means.eco, stdDevs.eco) - getZ(harkimoProfile.economic_score, means.eco, stdDevs.eco);
+    const dLib = getZ(p.liberal_conservative_score, means.lib, stdDevs.lib) - getZ(harkimoProfile.liberal_conservative_score, means.lib, stdDevs.lib);
+    const dEnv = getZ(p.environmental_score, means.env, stdDevs.env) - getZ(harkimoProfile.environmental_score, means.env, stdDevs.env);
+
+    const distance = Math.sqrt(Math.pow(dEco, 2) + Math.pow(dLib, 2) + Math.pow(dEnv, 2));
+
+    // normalizedDist: 0 is same, ~6 is very far (3 standard deviations in opposite directions)
+    const maxZDist = 6.0; 
+    const normalizedDist = Math.min(1, distance / maxZDist);
+    
+    // (1 - x)^4 curve: extremely sensitive to highlight even minor differences in Z-space
+    const compatibility = Math.max(0, Math.round(Math.pow(1 - normalizedDist, 4) * 100));
 
     const fullName = `${p.mps.first_name} ${p.mps.last_name}`;
     return {
@@ -161,7 +192,7 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
     };
   }).sort((a, b) => b.compatibility - a.compatibility);
 
-  // 5. Party closeness analysis
+  // 6. Party closeness analysis
   const partyScores: Record<string, { totalComp: number, count: number }> = {};
   matches.forEach(m => {
     const pName = m.party;

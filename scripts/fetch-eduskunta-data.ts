@@ -13,6 +13,7 @@ const supabase = createClient(
 );
 
 const API_BASE = 'https://avoindata.eduskunta.fi/api/v1/tables';
+const TERM_START_DATE = '2023-04-01'; // Nykyinen vaalikausi alkoi huhtikuussa 2023
 
 const log = (msg: string, data?: any) => {
   const timestamp = new Date().toLocaleTimeString();
@@ -20,8 +21,20 @@ const log = (msg: string, data?: any) => {
   if (data) console.log(JSON.stringify(data, null, 2));
 };
 
+async function cleanupOldData() {
+  log('--- TYHJENNETÄÄN VANHA DATA JA ALUSTETAAN VAALIKAUSI 2023-2027 ---');
+  
+  // Tyhjennetään kaikki taulut jotta saamme puhtaan alun
+  await supabase.from('mp_profiles').delete().neq('parliament_id', 0);
+  await supabase.from('mp_votes').delete().neq('mp_id', 0);
+  await supabase.from('voting_events').delete().neq('id', '0');
+  await supabase.from('mps').delete().neq('id', 0);
+  
+  log('Tietokanta tyhjennetty.');
+}
+
 async function fetchAndSaveMPs() {
-  log('--- Haetaan kansanedustajat (MemberOfParliament) ---');
+  log('--- Haetaan kansanedustajat ---');
   let page = 0;
   const perPage = 100;
   let hasMore = true;
@@ -33,10 +46,6 @@ async function fetchAndSaveMPs() {
       
       const columnNames = response.data.columnNames || [];
       const rowData = response.data.rowData;
-      
-      if (page === 0) {
-        log('MP-taulun sarakkeet:', columnNames);
-      }
       
       if (!rowData || rowData.length === 0) {
         hasMore = false;
@@ -54,18 +63,17 @@ async function fetchAndSaveMPs() {
           party: getVal('party')?.trim() || 'Tuntematon',
           constituency: '', 
           image_url: `https://www.eduskunta.fi/FI/kansanedustajat/Images/${personId}.jpg`,
-          is_active: false // Default to false, will mark active later
+          is_active: false // Merkitään aktiiviseksi vain jos löytyy ääniä tältä kaudelta
         };
       }).filter((mp: any) => !isNaN(mp.id));
 
       const { error } = await supabase.from('mps').upsert(formattedMps);
       if (error) throw error;
       
-      log(`Tallennettu ${formattedMps.length} kansanedustajaa (yhteensä haettu: ${(page + 1) * perPage}).`);
+      log(`Haettu ${formattedMps.length} kansanedustajaa profiilikirjastoon.`);
       page++;
       
-      // Stop after 20 pages (2000 MPs) for now
-      if (page >= 20) hasMore = false;
+      if (page >= 30) hasMore = false; 
     } catch (err: any) {
       log('VIRHE MP-haussa:', err.message);
       hasMore = false;
@@ -74,22 +82,16 @@ async function fetchAndSaveMPs() {
 }
 
 async function fetchAndSaveVotingEvents(limit = 100) {
-  log('--- Haetaan äänestystapahtumat (SaliDBAanestys - TUOREIMMAT) ---');
-  let page = 0;
+  log(`--- Haetaan äänestystapahtumat (Alkaen ${TERM_START_DATE}) ---`);
+  
+  let page = 360; 
   let hasMore = true;
+  let foundNewData = false;
 
   while (hasMore) {
     try {
       const url = `${API_BASE}/SaliDBAanestys/rows`;
-      const response = await axios.get(url, { 
-        params: { 
-          perPage: limit, 
-          page,
-          // The API might not use $orderby for this specific endpoint if it's not OData
-          // but let's try a different approach if page 0 is old.
-          // Let's try to jump to a very high page or look for a sorting param.
-        } 
-      });
+      const response = await axios.get(url, { params: { perPage: limit, page } });
 
       const columnNames = response.data.columnNames || [];
       const rows = response.data.rowData;
@@ -101,6 +103,10 @@ async function fetchAndSaveVotingEvents(limit = 100) {
 
       const events = rows.map((row: any) => {
         const getVal = (col: string) => row[columnNames.indexOf(col)];
+        const date = getVal('IstuntoPvm');
+        
+        if (!date || date < TERM_START_DATE) return null;
+
         const heRaw = getVal('AanestysValtiopaivaasia') || '';
         const heMatch = heRaw.match(/HE\s+\d+\/\d+/i);
         const heId = heMatch ? heMatch[0] : null;
@@ -108,22 +114,24 @@ async function fetchAndSaveVotingEvents(limit = 100) {
         return {
           id: getVal('AanestysId')?.toString(),
           title_fi: getVal('KohtaOtsikko') || getVal('AanestysOtsikko') || 'Ei otsikkoa',
-          voting_date: getVal('IstuntoPvm'),
+          voting_date: date,
           he_id: heId,
           ayes: parseInt(getVal('AanestysTulosJaa')) || 0,
           noes: parseInt(getVal('AanestysTulosEi')) || 0,
           blanks: parseInt(getVal('AanestysTulosTyhjia')) || 0,
           absent: parseInt(getVal('AanestysTulosPoissa')) || 0
         };
-      }).filter((e: any) => e.id);
+      }).filter((e: any) => e !== null && e.id);
 
-      const { error } = await supabase.from('voting_events').upsert(events);
-      if (error) throw error;
-
-      log(`Tallennettu ${events.length} äänestystä (yhteensä: ${(page + 1) * limit}).`);
-      page++;
+      if (events.length > 0) {
+        foundNewData = true;
+        const { error } = await supabase.from('voting_events').upsert(events);
+        if (error) throw error;
+        log(`Sivu ${page}: Tallennettu ${events.length} äänestystä.`);
+      }
       
-      if (page >= 5) hasMore = false;
+      page++;
+      if (page >= 450) hasMore = false; 
     } catch (err: any) {
       log('VIRHE äänestysten haussa:', err.message);
       hasMore = false;
@@ -132,9 +140,20 @@ async function fetchAndSaveVotingEvents(limit = 100) {
 }
 
 async function fetchAndSaveMPVotes(limit = 100) {
-  log('--- Haetaan yksittäiset äänet (SaliDBAanestysEdustaja) ---');
-  let page = 0;
+  log('--- Haetaan yksittäiset äänet (Nykyinen vaalikausi) ---');
+  
+  const { data: existingEvents } = await supabase.from('voting_events').select('id');
+  const eventIdSet = new Set(existingEvents?.map(e => e.id));
+  
+  if (eventIdSet.size === 0) {
+    log('Ei äänestystapahtumia, ohitetaan yksittäiset äänet.');
+    return;
+  }
+
+  let page = 75000; // 2023-2025 alkaa täältä
   let hasMore = true;
+  let matchesFound = 0;
+  let emptyStrike = 0;
 
   while (hasMore) {
     try {
@@ -151,38 +170,42 @@ async function fetchAndSaveMPVotes(limit = 100) {
 
       const votes = rows.map((row: any) => {
         const getVal = (col: string) => row[columnNames.indexOf(col)];
-        const voteVal = getVal('EdustajaAanestys')?.trim().toLowerCase();
+        const eventId = getVal('AanestysId')?.toString();
         
+        if (!eventIdSet.has(eventId)) return null;
+
+        const voteVal = getVal('EdustajaAanestys')?.trim().toLowerCase();
         return {
           mp_id: parseInt(getVal('EdustajaHenkiloNumero')),
-          event_id: getVal('AanestysId')?.toString(),
+          event_id: eventId,
           vote_type: voteVal === 'jaa' ? 'jaa' : 
                      voteVal === 'ei' ? 'ei' : 
                      voteVal === 'tyhjää' ? 'tyhjaa' : 'poissa'
         };
-      }).filter((v: any) => !isNaN(v.mp_id) && v.event_id);
+      }).filter((v: any) => v !== null && !isNaN(v.mp_id));
 
-      const { error } = await supabase.from('mp_votes').upsert(votes, { onConflict: 'mp_id,event_id' });
-      if (error) {
-        log('Supabase VIRHE yksittäisissä äänissä:', error.message);
+      if (votes.length > 0) {
+        matchesFound += votes.length;
+        emptyStrike = 0;
+        const { error } = await supabase.from('mp_votes').upsert(votes, { onConflict: 'mp_id,event_id' });
+        if (!error) log(`Sivu ${page}: Tallennettu ${votes.length} uutta ääntä.`);
       } else {
-        log(`✅ Tallennettu ${votes.length} ääntä (yhteensä: ${(page + 1) * limit}).`);
+        emptyStrike++;
+        if (matchesFound > 0 && emptyStrike > 50) hasMore = false;
       }
-
+      
       page++;
-      if (page >= 10) hasMore = false;
+      if (page >= 95000) hasMore = false;
     } catch (err: any) {
-      log('VIRHE yksittäisten äänien haussa:', err.message);
+      log('VIRHE äänien haussa:', err.message);
       hasMore = false;
     }
   }
 }
 
 async function markActiveMPs() {
-  log('--- Merkitään nykyiset kansanedustajat aktiivisiksi (viimeisimpien äänien perusteella) ---');
+  log('--- Merkitään nykyiset kansanedustajat aktiivisiksi ---');
   
-  // Haetaan MP:t, jotka ovat äänestäneet missä tahansa tietokannassa olevassa äänestyksessä
-  // Koska haemme vain tuoreita äänestyksiä, tämä suodattaa pois historialliset MP:t
   const { data: activeMpIds, error } = await supabase
     .from('mp_votes')
     .select('mp_id');
@@ -193,39 +216,32 @@ async function markActiveMPs() {
   }
 
   const uniqueIds = Array.from(new Set(activeMpIds.map(v => v.mp_id)));
-  log(`Löytyi ${uniqueIds.length} aktiivista kansanedustajaa.`);
+  log(`Löytyi ${uniqueIds.length} aktiivista kansanedustajaa tältä vaalikaudelta.`);
 
   if (uniqueIds.length > 0) {
-    // Päivitetään mps-taulu erissä
     const batchSize = 100;
     for (let i = 0; i < uniqueIds.length; i += batchSize) {
       const batch = uniqueIds.slice(i, i + batchSize);
-      const { error: updateError } = await supabase
-        .from('mps')
-        .update({ is_active: true })
-        .in('id', batch);
-        
-      if (updateError) {
-        log(`VIRHE MP-erän ${i} päivityksessä:`, updateError.message);
-      }
+      await supabase.from('mps').update({ is_active: true }).in('id', batch);
     }
   }
 }
 
 async function main() {
-  log('🚀 Aloitetaan Eduskunnan massadatan haku (FINAL FIX)...');
+  log('🚀 Aloitetaan Eduskunnan massadatan haku (PUHDISTUS + NYKYINEN KAUSI)...');
   
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     log('VIRHE: Supabase-asetukset puuttuvat!');
     process.exit(1);
   }
 
+  await cleanupOldData();
   await fetchAndSaveMPs();
   await fetchAndSaveVotingEvents();
   await fetchAndSaveMPVotes();
   await markActiveMPs();
   
-  log('🏁 Kaikki valmista!');
+  log('🏁 Kaikki valmista! Nyt vain nykyisen vaalikauden data on käytössä.');
 }
 
 main();

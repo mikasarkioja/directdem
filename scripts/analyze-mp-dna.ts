@@ -76,13 +76,14 @@ async function categorizeVotes() {
 async function calculateMPProfiles() {
   console.log('--- Lasketaan kansanedustajien DNA-pisteet ---');
   
-  const { data: mps, error: mpsError } = await supabase.from('mps').select('id');
+  const { data: mps, error: mpsError } = await supabase.from('mps').select('id, first_name, last_name, party');
   if (mpsError || !mps) {
     console.error('Virhe haettaessa kansanedustajia:', mpsError?.message);
     return;
   }
 
-  console.log(`Lasketaan profiilit ${mps.length} edustajalle...`);
+  console.log(`Lasketaan raakapisteet ${mps.length} edustajalle...`);
+  const rawProfiles: any[] = [];
 
   for (const mp of mps) {
     const { data: votes, error: votesError } = await supabase
@@ -98,12 +99,7 @@ async function calculateMPProfiles() {
       `)
       .eq('mp_id', mp.id);
 
-    if (votesError) {
-      console.error(`Virhe haettaessa ääniä edustajalle ${mp.id}:`, votesError.message);
-      continue;
-    }
-
-    if (!votes || votes.length === 0) continue;
+    if (votesError || !votes || votes.length === 0) continue;
 
     let economic = 0, liberal = 0, env = 0;
     let counts = { economic: 0, liberal: 0, env: 0 };
@@ -115,55 +111,79 @@ async function calculateMPProfiles() {
       if (parts.length < 2) return;
       
       const aiWeight = parseFloat(parts[1]);
-      if (isNaN(aiWeight)) return;
-
-      // Calculate controversy score (0...1)
-      // 0 = everyone agrees, 1 = 50/50 split
       const jaa = v.voting_events.ayes || 0;
       const ei = v.voting_events.noes || 0;
       const total = jaa + ei;
       
-      let controversyWeight = 0;
-      if (total > 0) {
-        // Linear scaling: if 100/0 -> 0, if 50/50 -> 1
-        controversyWeight = 1 - Math.abs(jaa - ei) / total;
-      }
+      if (total === 0) return;
 
-      // If controversy is very low (e.g. < 0.1), ignore the vote for profiling
-      if (controversyWeight < 0.1) return;
+      // Controversy score: higher when vote is closer to 50/50
+      const controversy = 1 - Math.abs(jaa - ei) / total;
+      
+      // Filter out low controversy (consensus) votes
+      if (controversy < 0.15) return;
 
       const voteVal = v.vote_type === 'jaa' ? 1 : v.vote_type === 'ei' ? -1 : 0;
-      
-      // Final weight combines AI relevance and political controversy
-      const finalWeight = aiWeight * controversyWeight;
-      const score = voteVal * finalWeight;
+      const score = voteVal * aiWeight * Math.pow(controversy, 2); // Squared controversy for more impact
 
       if (v.voting_events.category === 'Talous') {
-        economic += score;
-        counts.economic++;
+        economic += score; counts.economic++;
       } else if (v.voting_events.category === 'Arvot') {
-        liberal += score;
-        counts.liberal++;
+        liberal += score; counts.liberal++;
       } else if (v.voting_events.category === 'Ympäristö') {
-        env += score;
-        counts.env++;
+        env += score; counts.env++;
       }
     });
 
-    const { error: upsertError } = await supabase.from('mp_profiles').upsert({
+    rawProfiles.push({
       mp_id: mp.id,
-      economic_score: counts.economic ? economic / counts.economic : 0,
-      liberal_conservative_score: counts.liberal ? liberal / counts.liberal : 0,
-      environmental_score: counts.env ? env / counts.env : 0,
-      total_votes_analyzed: votes.length,
+      full_name: `${mp.first_name} ${mp.last_name}`,
+      party: mp.party,
+      scores: {
+        economic: counts.economic ? economic / counts.economic : 0,
+        liberal: counts.liberal ? liberal / counts.liberal : 0,
+        env: counts.env ? env / counts.env : 0
+      },
+      vote_count: votes.length
+    });
+  }
+
+  // --- AXIS STRETCHING ---
+  console.log('Venytetään akselit maksimikontrastin saavuttamiseksi...');
+  
+  const findMinMax = (key: string) => {
+    const vals = rawProfiles.map(p => p.scores[key]);
+    return { min: Math.min(...vals), max: Math.max(...vals) };
+  };
+
+  const econBounds = findMinMax('economic');
+  const libBounds = findMinMax('liberal');
+  const envBounds = findMinMax('env');
+
+  const stretch = (val: number, bounds: { min: number, max: number }) => {
+    if (bounds.max === bounds.min) return 0;
+    // Map current range [min, max] to [-1, 1]
+    return ((val - bounds.min) / (bounds.max - bounds.min)) * 2 - 1;
+  };
+
+  for (const p of rawProfiles) {
+    const stretchedEcon = stretch(p.scores.economic, econBounds);
+    const stretchedLib = stretch(p.scores.liberal, libBounds);
+    const stretchedEnv = stretch(p.scores.env, envBounds);
+
+    const { error: upsertError } = await supabase.from('mp_profiles').upsert({
+      mp_id: p.mp_id,
+      economic_score: stretchedEcon,
+      liberal_conservative_score: stretchedLib,
+      environmental_score: stretchedEnv,
+      total_votes_analyzed: p.vote_count,
       last_updated: new Date().toISOString()
     }, { onConflict: 'mp_id' });
 
-    if (upsertError) {
-      console.error(`Virhe päivitettäessä profiilia edustajalle ${mp.id}:`, upsertError.message);
-    }
+    if (upsertError) console.error(`Virhe MP ${p.mp_id}:`, upsertError.message);
   }
-  console.log('DNA-pisteet päivitetty kaikille edustajille.');
+
+  console.log('DNA-pisteet päivitetty kontrastivahvistuksella.');
 }
 
 async function main() {

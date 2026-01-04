@@ -126,13 +126,25 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
     }
 
     // Rebel Detection: DNA is opposite to Party Line
-    const isOppositeToParty = (score > 0.4 && partyLine === -1) || (score < -0.4 && partyLine === 1);
+    const isOppositeToParty = (score > 0.35 && partyLine === -1) || (score < -0.35 && partyLine === 1);
     if (isOppositeToParty) {
+      // Probability depends on:
+      // 1. How far the DNA score is from the party line (magnitude of score)
+      // 2. The party's cohesion (group discipline)
+      // We use a non-linear scale to make it more interesting
+      const distance = Math.abs(score - partyLine); // range [0.7, 2.0]
+      const cohesionImpact = 1.2 - cohesion; // e.g., 1.2 - 0.95 = 0.25 (low risk) or 1.2 - 0.7 = 0.5 (high risk)
+      
+      // Calculate a more nuanced risk percentage
+      // We want range roughly 40% - 98% for those who actually trigger the check
+      let riskProb = (distance / 2.0) * cohesionImpact * 150; 
+      riskProb = Math.max(30, Math.min(98, Math.round(riskProb)));
+
       rebels.push({
         mpId: mp.id,
         name: `${mp.first_name} ${mp.last_name}`,
         party: party,
-        probability: Math.round(Math.abs(score) * 90)
+        probability: riskProb
       });
     }
   });

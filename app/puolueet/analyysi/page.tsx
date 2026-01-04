@@ -13,13 +13,17 @@ import {
   Info, 
   Loader2,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Users,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function PartyAnalysisPage() {
   const [data, setData] = useState<PartyAnalysisData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedParty, setExpandedParty] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -145,6 +149,40 @@ export default function PartyAnalysisPage() {
                   <p className="text-xs text-slate-300 font-medium italic leading-relaxed relative z-10">
                     "{p.aiInsight}"
                   </p>
+                </div>
+
+                {/* MP List Toggle */}
+                <div className="pt-2 border-t border-slate-100">
+                  <button 
+                    onClick={() => setExpandedParty(expandedParty === p.name ? null : p.name)}
+                    className="flex items-center justify-between w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Users size={14} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Näytä kansanedustajat</span>
+                    </div>
+                    {expandedParty === p.name ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+
+                  <AnimatePresence>
+                    {expandedParty === p.name && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 p-4 mt-2">
+                          {p.mps.map(mp => (
+                            <div key={mp.id} className="text-[11px] font-medium text-slate-600 hover:text-purple-600 cursor-default transition-colors flex items-center gap-1.5">
+                              <div className="w-1 h-1 rounded-full bg-slate-300" />
+                              {mp.name}
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             ))}

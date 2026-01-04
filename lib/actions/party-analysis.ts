@@ -12,6 +12,7 @@ export interface PartyAnalysisData {
   topCategories: string[];
   mpCount: number;
   aiInsight: string;
+  mps: { id: number; name: string }[];
 }
 
 export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
@@ -21,20 +22,21 @@ export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
   );
 
   // 1. Hae kaikki aktiiviset MP:t ja heidän puolueensa
-  const { data: mps } = await supabase
+  const { data: mpsData } = await supabase
     .from('mps')
     .select('id, party, first_name, last_name')
     .eq('is_active', true);
 
-  if (!mps) return [];
+  if (!mpsData) return [];
 
   // Ryhmittele MP:t puolueittain
-  const parties: Record<string, number[]> = {};
-  mps.forEach(mp => {
+  const parties: Record<string, { ids: number[], mps: { id: number; name: string }[] }> = {};
+  mpsData.forEach(mp => {
     const pName = formatParty(mp.party);
     if (pName === 'N/A' || pName === 'Sit') return;
-    if (!parties[pName]) parties[pName] = [];
-    parties[pName].push(mp.id);
+    if (!parties[pName]) parties[pName] = { ids: [], mps: [] };
+    parties[pName].ids.push(mp.id);
+    parties[pName].mps.push({ id: mp.id, name: `${mp.first_name} ${mp.last_name}` });
   });
 
   // 2. Laske Rice Index ja Topic Ownership (tämä on raskasta, haetaan kootusti)
@@ -52,7 +54,8 @@ export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
 
   const analysis: PartyAnalysisData[] = [];
 
-  for (const [pName, mpIds] of Object.entries(parties)) {
+  for (const [pName, partyData] of Object.entries(parties)) {
+    const mpIds = partyData.ids;
     // Rice Index
     const pVotes = votes.filter(v => formatParty((v as any).mps.party) === pName);
     const votesByEvent: Record<string, { jaa: number, ei: number }> = {};
@@ -118,7 +121,8 @@ export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
       riceIndex: Math.round(riceIndex),
       topCategories,
       mpCount: mpIds.length,
-      aiInsight: insight
+      aiInsight: insight,
+      mps: partyData.mps.sort((a, b) => a.name.localeCompare(b.name))
     });
   }
 

@@ -91,7 +91,8 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
       return;
     }
 
-    const party = formatParty(mp.party);
+    const fullName = `${mp.first_name} ${mp.last_name}`;
+    const party = formatParty(mp.party, fullName);
     const score = (profile as any)[axis] || 0;
     const cohesion = partyCohesion[party] || 0.8;
 

@@ -95,29 +95,43 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
     const score = (profile as any)[axis] || 0;
     const cohesion = partyCohesion[party] || 0.8;
 
-    // Simulation logic:
-    // DNA score > 0 means tends to JAA (depending on axis definition)
-    let probJaa = 0.5 + (score * 0.4); 
-    
     // 4. Party Line Detection
-    // Government: Kok, PS, RKP, KD
     const isGov = ['Kok', 'PS', 'RKP', 'KD'].includes(party);
     const partyLine = isGov ? 1 : -1; 
     
-    const correctedProb = (probJaa * (1 - cohesion)) + (partyLine === 1 ? cohesion : 0);
+    // Base probability from party line
+    let probJaa = partyLine === 1 ? 0.9 : 0.1;
+    
+    // DNA influence: DNA score can shift the probability by up to 40%
+    // If score is high (1.0) and party line is JAA (1), prob stays high.
+    // If score is low (-1.0) and party line is JAA (1), prob drops significantly.
+    const dnaInfluence = score * 0.4;
+    probJaa = Math.max(0.05, Math.min(0.95, probJaa + dnaInfluence));
 
-    if (correctedProb > 0.55) jaa++;
-    else if (correctedProb < 0.45) ei++;
-    else abstain++;
+    // Final Vote Simulation (Stochastic)
+    // We use a small amount of randomness to make every prediction unique
+    const randomFactor = (Math.random() - 0.5) * 0.1; // +/- 5% randomness
+    const finalProb = Math.max(0, Math.min(1, probJaa + randomFactor));
+
+    if (finalProb > 0.6) {
+      jaa++;
+    } else if (finalProb < 0.4) {
+      ei++;
+    } else {
+      // In the "uncertain" zone, we flip a coin or abstain
+      if (Math.random() > 0.5) abstain++;
+      else if (isGov) jaa++;
+      else ei++;
+    }
 
     // Rebel Detection: DNA is opposite to Party Line
-    const isOppositeToParty = (score > 0.3 && partyLine === -1) || (score < -0.3 && partyLine === 1);
-    if (isOppositeToParty && cohesion < 0.9) {
+    const isOppositeToParty = (score > 0.4 && partyLine === -1) || (score < -0.4 && partyLine === 1);
+    if (isOppositeToParty) {
       rebels.push({
         mpId: mp.id,
         name: `${mp.first_name} ${mp.last_name}`,
         party: party,
-        probability: Math.round(Math.abs(score) * 80)
+        probability: Math.round(Math.abs(score) * 90)
       });
     }
   });

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { Bill, UserProfile } from "@/lib/types";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
+import Link from "next/link";
 
 interface MPWorkspaceProps {
   user: UserProfile | null;
@@ -175,9 +176,12 @@ export default function MPWorkspace({ user }: MPWorkspaceProps) {
                         <p className="text-xs text-slate-500 font-medium leading-relaxed line-clamp-2">
                           {bill.summary || "Tämä esitys odottaa analyysia ja lausuntoa Varjoparlamentilta."}
                         </p>
-                        <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37] hover:text-[#8B0000] transition-colors">
-                          Lue lakiteksti <ChevronRight size={12} />
-                        </button>
+                        <Link 
+                          href={`/lausunnot/${bill.id}`}
+                          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37] hover:text-[#8B0000] transition-colors"
+                        >
+                          Luo kansan lausunto <ChevronRight size={12} />
+                        </Link>
                       </div>
                       <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-[#8B0000]/10 group-hover:text-[#8B0000] transition-all shrink-0">
                         <FileText size={24} />

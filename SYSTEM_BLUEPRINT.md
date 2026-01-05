@@ -69,7 +69,7 @@ Tämä dokumentti sisältää DirectDem-alustan täydellisen arkkitehtuurikuvauk
 1.  **DB**: Aja SQL-migraatiot `supabase/` kansiosta (expand-dna, dna-evolution, pivot-index, promise-watch, weather-forecast).
 2.  **Types**: Kopioi `lib/types.ts`.
 3.  **Data**: Aja `scripts/fetch-eduskunta-data.ts`, `scripts/import-vaalikone-data.ts` ja `scripts/analyze-mp-dna.ts`.
-4.  **UI**: Toteuta `Dashboard.tsx` Cyber Nordic -teemalla. Luo reitit `/testi`, `/demo/harkimo`, `/ranking`, `/puolueet/analyysi`.
-5.  **Logic**: Implementoi Server Actionit `verifyOtpAction` (auth), `findMatchesForScores` (DNA) ja `predictVoteOutcome` (weather)."
+4.  **UI**: Toteuta `Dashboard.tsx` Cyber Nordic -teemalla. Luo reitit `/testi`, `/demo/harkimo`, `/ranking`, `/puolueet/analyysi`, `/lausunnot/[billId]`.
+5.  **Logic**: Implementoi Server Actionit `verifyOtpAction` (auth), `findMatchesForScores` (DNA), `predictVoteOutcome` (weather) ja `getVoteStats` (lausunnot)."
 
 ---

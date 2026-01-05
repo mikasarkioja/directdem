@@ -19,6 +19,7 @@ import {
 import type { Bill, UserProfile } from "@/lib/types";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
 import Link from "next/link";
+import EffectivenessFeed from "./EffectivenessFeed";
 
 interface MPWorkspaceProps {
   user: UserProfile | null;
@@ -133,6 +134,9 @@ export default function MPWorkspace({ user }: MPWorkspaceProps) {
               ))}
             </div>
           </div>
+
+          {/* Effectiveness Feed integration */}
+          {user && <EffectivenessFeed userId={user.id} />}
         </div>
 
         {/* Middle Column: Processing Pile */}
@@ -194,11 +198,11 @@ export default function MPWorkspace({ user }: MPWorkspaceProps) {
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-slate-50 rounded-[2rem] border border-slate-200 p-8 space-y-4">
               <div className="flex items-center gap-2 text-[#8B0000]">
                 <TrendingUp size={18} />
-                <h4 className="text-xs font-black uppercase tracking-widest">Vaikuttavuus-mittari</h4>
+                <h4 className="text-xs font-black uppercase tracking-widest">Asiantuntemus-taso</h4>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-end">
@@ -213,6 +217,32 @@ export default function MPWorkspace({ user }: MPWorkspaceProps) {
                   />
                 </div>
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest text-right italic">Seuraava taso: Valtiomies</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[2rem] border border-purple-500/20 p-8 space-y-4 shadow-xl shadow-purple-500/5 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Zap size={48} className="text-purple-600" />
+              </div>
+              <div className="flex items-center gap-2 text-purple-600">
+                <Sparkles size={18} />
+                <h4 className="text-xs font-black uppercase tracking-widest">Vaikuttavuus-indeksi</h4>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-end">
+                  <p className="text-3xl font-black text-slate-900">84 <span className="text-xs text-slate-400 font-black tracking-widest uppercase">/ 100</span></p>
+                  <p className="text-[10px] font-black text-purple-500 uppercase">Korkea</p>
+                </div>
+                <div className="h-2 w-full bg-purple-50 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: "84%" }}
+                    className="h-full bg-purple-600 shadow-[0_0_10px_rgba(168,85,247,0.5)]" 
+                  />
+                </div>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-tight">
+                  Argumenttisi heijastuvat eduskuntapuheissa
+                </p>
               </div>
             </div>
 

@@ -20,6 +20,7 @@ import type { Bill, UserProfile } from "@/lib/types";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
 import Link from "next/link";
 import EffectivenessFeed from "./EffectivenessFeed";
+import LiveParallelPlenary from "./LiveParallelPlenary";
 
 interface MPWorkspaceProps {
   user: UserProfile | null;
@@ -83,33 +84,8 @@ export default function MPWorkspace({ user }: MPWorkspaceProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Committees & Live */}
         <div className="space-y-8">
-          {/* Live Plenary Hall Widget */}
-          <div className="bg-slate-900 rounded-[2.5rem] border border-white/10 p-8 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Radio size={64} className="text-[#D4AF37]" />
-            </div>
-            <div className="relative z-10 space-y-6">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/60">Istuntosali LIVE</h3>
-              </div>
-              <div className="space-y-2">
-                <p className="text-2xl font-black text-white uppercase tracking-tight leading-tight">
-                  Täysistunto <br/><span className="text-[#D4AF37]">Menossa</span>
-                </p>
-                <p className="text-xs text-white/40 font-medium italic">"Hallituksen esitys EU-direktiivin täytäntöönpanosta..."</p>
-              </div>
-              <div className="pt-4 border-t border-white/5 space-y-3">
-                <p className="text-[10px] font-black uppercase text-[#D4AF37] tracking-widest">Päivän asialista</p>
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="flex items-center gap-2 text-[10px] text-white/60 font-bold uppercase tracking-tight">
-                    <span className="text-white/20">{i}.</span>
-                    <span>Kohta {i}: Lakiehdotus {i*123}/2024</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* Live Plenary Hall Widget (Actual Logic) */}
+          <LiveParallelPlenary embedded={true} />
 
           {/* Committees */}
           <div className="space-y-4">

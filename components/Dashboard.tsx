@@ -213,7 +213,29 @@ export default function Dashboard({ user, initialView = "workspace" }: Dashboard
                       ? <ActiveBills user={user} /> 
                       : <MunicipalDashboard user={user} initialMunicipality={selectedMunicipality} />
                   )}
-                  {activeView === "municipal" && user && <ShadowDashboard user={user} />}
+                  {activeView === "municipal" && (
+                    user ? <ShadowDashboard user={user} /> : (
+                      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8 bg-white/5 border border-dashed border-white/10 rounded-[3rem] p-12 backdrop-blur-sm">
+                        <div className="w-24 h-24 rounded-3xl bg-purple-600/20 flex items-center justify-center text-purple-500 border border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.2)]">
+                          <Shield size={48} />
+                        </div>
+                        <div className="space-y-3">
+                          <h2 className="text-3xl font-black uppercase tracking-tighter text-command-dark leading-none">
+                            Liity <span className="text-purple-600">Varjoparlamenttiin</span>
+                          </h2>
+                          <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em] max-w-xs mx-auto leading-relaxed">
+                            Kirjaudu sisään aloittaaksesi työskentelyn valiokunnissa ja vaikuttaaksesi lakiesityksiin.
+                          </p>
+                        </div>
+                        <button 
+                          onClick={() => window.location.href = '/?auth=login'}
+                          className="px-10 py-5 bg-purple-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-purple-600/20"
+                        >
+                          Kirjaudu sisään
+                        </button>
+                      </div>
+                    )
+                  )}
                   {activeView === "consensus" && <ConsensusMap />}
                   {activeView === "profile" && <MyProfile user={user} />}
                   {activeView === "parties" && <PartiesView user={user} />}
@@ -247,7 +269,6 @@ export default function Dashboard({ user, initialView = "workspace" }: Dashboard
         </main>
       </div>
       <BottomNav activeView={activeView} onViewChange={setActiveView} />
-      <LiveParallelPlenary />
     </>
   );
 }

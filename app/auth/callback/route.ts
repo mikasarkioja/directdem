@@ -12,62 +12,59 @@ export async function GET(request: Request) {
   const type = requestUrl.searchParams.get("type") || "magiclink";
   const next = requestUrl.searchParams.get("next") ?? "/";
 
-  // Create redirect response
-  const response = NextResponse.redirect(new URL(next, requestUrl.origin));
+  // Create response first to set cookies on it
+  const response = NextResponse.redirect(new URL(next, request.url));
   
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const cookieStore = await cookies();
 
-  // Create a special client for this handler that updates our redirect response
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.headers.get('cookie')?.split(';').map(c => {
-          const [name, ...value] = c.trim().split('=');
-          return { name, value: value.join('=') };
-        }) ?? [];
-      },
-      setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          // Explicitly set cookies on the redirect response
-          response.cookies.set(name, value, {
-            ...options,
-            // Ensure cookies work on localhost
-            secure: requestUrl.hostname === 'localhost' ? false : options?.secure,
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+            // Also set on response for immediate effect during redirect
+            response.cookies.set(name, value, options);
           });
-        });
+        },
       },
-    },
-  });
+    }
+  );
 
   try {
     if (code) {
       console.log("[Auth Callback] Exchanging code for session...");
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      if (!error && data.session) {
+      if (error) throw error;
+      
+      if (data.session) {
         console.log("[Auth Callback] exchangeCodeForSession SUCCESS.");
         await upsertUserProfile(data.session.user.id);
         return response;
       }
-      if (error) console.error("[Auth Callback] exchangeCodeForSession error:", error.message);
     } else if (token_hash) {
       console.log("[Auth Callback] Verifying OTP token_hash...");
       const { data, error } = await supabase.auth.verifyOtp({
         token_hash,
         type: type as any,
       });
+      if (error) throw error;
 
-      if (!error && data.session) {
+      if (data.session) {
         console.log("[Auth Callback] verifyOtp SUCCESS.");
         await upsertUserProfile(data.session.user.id);
         return response;
       }
-      if (error) console.error("[Auth Callback] verifyOtp error:", error.message);
     }
-  } catch (err) {
-    console.error("[Auth Callback] Unexpected error:", err);
+  } catch (err: any) {
+    console.error("[Auth Callback] Auth error:", err.message);
   }
 
-  // Fallback redirect if something fails
-  return NextResponse.redirect(new URL("/", requestUrl.origin));
+  // If something fails, redirect home but maybe with an error flag
+  return NextResponse.redirect(new URL("/?error=auth_failed", request.url));
 }

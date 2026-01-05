@@ -151,11 +151,12 @@ export async function verifyOtpAction(token_hash: string, type: any) {
 
   console.log("[verifyOtpAction] SUCCESS. Session created for:", data.session.user.email);
 
-  // Update profile
-  await upsertUserProfile(data.session.user.id);
-
-  // Force cookie update by calling getUser
-  await supabase.auth.getUser();
+  // Update profile - wrapping in try/catch to ensure we don't break login if profile fails
+  try {
+    await upsertUserProfile(data.session.user.id);
+  } catch (profileErr) {
+    console.error("[verifyOtpAction] Profile upsert error (non-fatal):", profileErr);
+  }
 
   return { success: true };
 }

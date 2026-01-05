@@ -13,6 +13,8 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-tap-highlight-color: transparent;
   letter-spacing: -0.011em;
+  /* Pakotettu päivitys grafiikoiden palauttamiseksi */
+  min-height: 100vh;
 }
 
 /* Cyber Nordic Utilities */

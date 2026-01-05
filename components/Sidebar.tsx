@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Map, User, LayoutGrid, Users, Radio, BarChart3, TrendingUp, Activity, Sparkles } from "lucide-react";
+import { FileText, Map, User, LayoutGrid, Users, Radio, BarChart3, TrendingUp, Activity, Sparkles, Briefcase, Shield } from "lucide-react";
 import type { DashboardView, UserProfile } from "@/lib/types";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";

@@ -5,8 +5,8 @@ import { ChevronRight, Download, Mail, Shield, Building2, Users, Scale, FileText
 import Link from "next/link";
 import ClauseDiffView from "@/components/ClauseDiffView";
 
-export default async function ShadowMinutesPage({ params }: { params: { billId: string } }) {
-  const { billId } = params;
+export default async function ShadowMinutesPage({ params }: { params: Promise<{ billId: string }> }) {
+  const { billId } = await params;
   const supabase = await createClient();
 
   const { data: bill } = await supabase.from('bills').select('*').eq('id', billId).single();

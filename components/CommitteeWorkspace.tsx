@@ -16,7 +16,8 @@ import {
   Plus,
   Zap,
   Layout,
-  FileEdit
+  FileEdit,
+  Radio
 } from "lucide-react";
 import type { Bill, BillTask, BillAmendment, UserProfile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";

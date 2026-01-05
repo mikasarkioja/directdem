@@ -4,6 +4,7 @@ import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { checkParliamentaryLanguage } from "@/lib/moderation/speaker";
 
 /**
  * Uses AI to format a proposal into professional legal language.
@@ -65,6 +66,33 @@ export async function proposeSectionEdit(
   sectionTitle: string
 ) {
   const supabase = await createClient();
+
+  // 1. Check User Trust Score
+  const { data: userProfile } = await supabase
+    .from('profiles')
+    .select('trust_score')
+    .eq('id', userId)
+    .single();
+
+  if (!userProfile || (userProfile.trust_score || 0) < 30) {
+    return { 
+      success: false, 
+      error: "Luottamusindeksisi on liian alhainen (alle 30). Osallistu muihin tehtäviin nostaaksesi sitä." 
+    };
+  }
+
+  // 2. AI Moderation Check
+  const modCheck = await checkParliamentaryLanguage(proposedText + " " + justification);
+  if (!modCheck.is_parliamentary) {
+    // Punish user's trust score for unparliamentary behavior
+    await supabase.rpc('decrement_trust_score', { user_id: userId, amount: 10 });
+    
+    return { 
+      success: false, 
+      error: `Puhemies on hylännyt ehdotuksesi epäasiallisen kielen vuoksi. Syy: ${modCheck.reason}. Ehdotus: ${modCheck.suggestion}`,
+      is_moderated: true
+    };
+  }
   
   const { error } = await supabase.from('bill_amendments').insert({
     section_id: sectionId,

@@ -100,6 +100,8 @@ export interface UserProfile {
   international_national_score?: number;
   security_score?: number;
   initialized_from_mp?: string;
+  trust_score?: number;
+  organization_tag?: string;
 }
 
 // Party stance types

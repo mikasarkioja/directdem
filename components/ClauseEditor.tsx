@@ -15,12 +15,16 @@ import {
   History,
   CheckCircle2,
   XCircle,
-  Wand2
+  Wand2,
+  Flag,
+  Briefcase
 } from "lucide-react";
 import type { Bill, BillSection, BillAmendment, UserProfile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { formatLegalLanguage, proposeSectionEdit, voteSectionAmendment, ensureBillSections } from "@/lib/actions/clause-actions";
 import ClauseDiffView from "./ClauseDiffView";
+import { toast } from "react-hot-toast";
+import SpeakerReprimand from "./SpeakerReprimand";
 
 interface ClauseEditorProps {
   bill: Bill;
@@ -35,6 +39,7 @@ export default function ClauseEditor({ bill, user }: ClauseEditorProps) {
   const [proposal, setProposal] = useState({ text: "", justification: "" });
   const [isFormatting, setIsFormatting] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [reprimand, setReprimand] = useState<{ isVisible: boolean, message: string }>({ isVisible: false, message: "" });
 
   const supabase = createClient();
 
@@ -81,7 +86,7 @@ export default function ClauseEditor({ bill, user }: ClauseEditorProps) {
 
   const handleSubmit = async () => {
     if (!editingSection) return;
-    await proposeSectionEdit(
+    const result = await proposeSectionEdit(
       editingSection.id, 
       bill.id, 
       proposal.text, 
@@ -89,8 +94,19 @@ export default function ClauseEditor({ bill, user }: ClauseEditorProps) {
       user.id, 
       editingSection.section_number
     );
+    
+    if (result && !result.success) {
+      if (result.is_moderated) {
+        setReprimand({ isVisible: true, message: result.error || "" });
+      } else {
+        toast.error(result.error || "Virhe ehdotuksen lähetyksessä");
+      }
+      return;
+    }
+
     setEditingSection(null);
     setProposal({ text: "", justification: "" });
+    toast.success("Ehdotus lähetetty käsiteltäväksi!");
   };
 
   return (
@@ -152,10 +168,18 @@ export default function ClauseEditor({ bill, user }: ClauseEditorProps) {
 
                   <div className="space-y-3">
                     {amendments.filter(a => a.section_id === section.id).slice(0, expandedSection === section.id ? 10 : 2).map((am) => (
-                      <div key={am.id} className="p-4 bg-black/20 border border-white/5 rounded-2xl space-y-3 group/am">
-                        <div className="flex justify-between items-start">
-                          <p className="text-[10px] text-slate-400 italic line-clamp-2">"{am.proposed_text}"</p>
-                          {am.status === 'accepted' ? <CheckCircle2 size={12} className="text-emerald-500 shrink-0" /> : <Clock size={12} className="text-slate-600 shrink-0" />}
+                      <div key={am.id} className="p-4 bg-black/20 border border-white/5 rounded-2xl space-y-3 group/am relative">
+                        {am.status === 'accepted' ? <CheckCircle2 size={12} className="text-emerald-500 absolute top-4 right-4" /> : <Clock size={12} className="text-slate-600 absolute top-4 right-4" />}
+                        <div className="flex flex-col gap-2">
+                          <p className="text-[10px] text-slate-400 italic line-clamp-2 pr-6">"{am.proposed_text}"</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Varjo-MP</span>
+                            {user.organization_tag && (
+                              <span className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[7px] font-black uppercase rounded flex items-center gap-1">
+                                <Briefcase size={8} /> {user.organization_tag}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button 
@@ -169,6 +193,12 @@ export default function ClauseEditor({ bill, user }: ClauseEditorProps) {
                             className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-rose-500/5 hover:bg-rose-500/20 border border-rose-500/10 rounded-lg text-rose-400 text-[8px] font-black"
                           >
                             <ThumbsDown size={10} /> {am.votes_against}
+                          </button>
+                          <button 
+                            title="Lippua epäasiallisena"
+                            className="p-1.5 bg-white/5 hover:bg-rose-500/20 rounded-lg text-slate-600 hover:text-rose-400 transition-all"
+                          >
+                            <Flag size={10} />
                           </button>
                         </div>
                       </div>
@@ -252,6 +282,12 @@ export default function ClauseEditor({ bill, user }: ClauseEditorProps) {
           </div>
         )}
       </AnimatePresence>
+
+      <SpeakerReprimand 
+        isVisible={reprimand.isVisible} 
+        message={reprimand.message} 
+        onClose={() => setReprimand({ ...reprimand, isVisible: false })} 
+      />
     </div>
   );
 }

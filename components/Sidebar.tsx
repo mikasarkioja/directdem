@@ -48,7 +48,8 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
   };
 
   const menuItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
-    { id: "overview", label: "Keskus", icon: LayoutGrid, href: "/?view=overview" },
+    { id: "workspace", label: "Työhuone", icon: LayoutGrid, href: "/?view=workspace" },
+    { id: "overview", label: "Keskus", icon: Activity, href: "/?view=overview" },
     { id: "bills", label: "Äänestysareena", icon: FileText, href: "/?view=bills" },
     { id: "profile", label: "DNA-Testi", icon: Sparkles, href: "/testi" },
     { id: "consensus", label: "Konsensuskartta", icon: Map, href: "/?view=consensus" },

@@ -12,16 +12,17 @@ import ImpactStats from "./ImpactStats";
 import QuestLog from "./QuestLog";
 import PartiesView from "./PartiesView";
 import DebateArena from "./DebateArena";
+import MPWorkspace from "./MPWorkspace";
 import type { DashboardView, UserProfile } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, Radio } from "lucide-react";
+import { LayoutDashboard, Radio, Briefcase } from "lucide-react";
 
 interface DashboardProps {
   user: UserProfile | null;
   initialView?: DashboardView;
 }
 
-export default function Dashboard({ user, initialView = "overview" }: DashboardProps) {
+export default function Dashboard({ user, initialView = "workspace" }: DashboardProps) {
   const [activeView, setActiveView] = useState<DashboardView>(initialView);
   const [viewContext, setViewContext] = useState<ViewContext>("parliament");
   const [selectedMunicipality, setSelectedMunicipality] = useState(user?.municipality || "Espoo");
@@ -64,6 +65,15 @@ export default function Dashboard({ user, initialView = "overview" }: DashboardP
 
               <div className="flex items-center gap-2 p-1 bg-white rounded-xl border border-slate-200 shadow-sm">
                 <button
+                  onClick={() => setActiveView("workspace")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    activeView === "workspace" ? "bg-slate-900 text-white shadow-md" : "text-command-gray hover:bg-slate-50"
+                  }`}
+                >
+                  <Briefcase size={14} />
+                  Työhuone
+                </button>
+                <button
                   onClick={() => setActiveView("overview")}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                     activeView === "overview" ? "bg-command-neon text-white shadow-md" : "text-command-gray hover:bg-slate-50"
@@ -75,7 +85,7 @@ export default function Dashboard({ user, initialView = "overview" }: DashboardP
                 <button
                   onClick={() => setActiveView("bills")}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    activeView !== "overview" ? "bg-command-neon text-white shadow-md" : "text-command-gray hover:bg-slate-50"
+                    activeView === "bills" ? "bg-command-neon text-white shadow-md" : "text-command-gray hover:bg-slate-50"
                   }`}
                 >
                   <Radio size={14} />
@@ -85,7 +95,16 @@ export default function Dashboard({ user, initialView = "overview" }: DashboardP
             </div>
 
             <AnimatePresence mode="wait">
-              {activeView === "overview" ? (
+              {activeView === "workspace" ? (
+                <motion.div
+                  key="workspace"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <MPWorkspace user={user} />
+                </motion.div>
+              ) : activeView === "overview" ? (
                 <motion.div
                   key="overview"
                   initial={{ opacity: 0 }}

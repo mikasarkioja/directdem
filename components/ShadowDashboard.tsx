@@ -21,6 +21,7 @@ import type { Bill, UserProfile } from "@/lib/types";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
 import ShadowIDCard from "./ShadowIDCard";
 import ExpertHearing from "./ExpertHearing";
+import CommitteeWorkspace from "./CommitteeWorkspace";
 
 interface ShadowDashboardProps {
   user: UserProfile;
@@ -134,43 +135,8 @@ export default function ShadowDashboard({ user }: ShadowDashboardProps) {
                   </h2>
                 </div>
 
-                {/* Expert Hearing */}
-                <ExpertHearing billTitle={selectedBill.title} billSummary={selectedBill.summary || ""} />
-
-                {/* Sandbox Editor / Amendment */}
-                <div className="space-y-6 pt-6 border-t border-white/5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-blue-400">
-                      <Edit3 size={20} />
-                      <h3 className="text-xs font-black uppercase tracking-[0.2em]">Sandbox Editor (Muutosehdotus)</h3>
-                    </div>
-                    <button 
-                      onClick={() => setIsEditing(!isEditing)}
-                      className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 border border-white/5 transition-all"
-                    >
-                      {isEditing ? "Peruuta" : "Avaa editori"}
-                    </button>
-                  </div>
-
-                  {isEditing ? (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-                      <textarea 
-                        className="w-full h-64 bg-black/40 border border-white/10 rounded-3xl p-6 font-mono text-xs text-slate-300 focus:border-blue-500 outline-none transition-all placeholder:text-slate-700"
-                        placeholder="# Ehdotus muutokseksi pykälään 4...
-Tässä tekstissä kuvataan miten kansalaisten tulisi huomioida..."
-                      />
-                      <div className="flex justify-end gap-3 mt-4">
-                        <button className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-500 shadow-xl shadow-blue-600/20">
-                          Tallenna Varjo-muutos (+15 XP)
-                        </button>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <div className="p-8 bg-black/20 rounded-3xl border border-dashed border-white/5 text-center">
-                      <p className="text-xs text-slate-600 font-medium italic">Klikkaa 'Avaa editori' muokataksesi lakitekstiä digitaalisessa kaksosessa.</p>
-                    </div>
-                  )}
-                </div>
+                {/* Committee Workspace (Includes Tasks, Amendments, Context) */}
+                <CommitteeWorkspace bill={selectedBill} user={user} />
 
                 {/* Submit Action */}
                 <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">

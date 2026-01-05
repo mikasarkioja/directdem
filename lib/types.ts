@@ -91,6 +91,7 @@ export interface UserProfile {
   level?: number;
   committee_assignment?: string;
   rank_level?: number;
+  expertise_points?: number;
   shadow_id_url?: string;
   economic_score?: number;
   liberal_conservative_score?: number;
@@ -226,6 +227,50 @@ export interface IntegrityAlert {
   vote_type: string;
   deviation_score: number;
   severity: 'low' | 'medium' | 'high';
+  created_at: string;
+}
+
+export interface BillUserSubmission {
+  id: string;
+  bill_id: string;
+  user_id: string;
+  stance: "pro" | "con" | "neutral";
+  justification: string;
+  focus_area: string;
+  created_at: string;
+}
+
+export interface BillTask {
+  id: string;
+  bill_id: string;
+  title: string;
+  description: string;
+  status: 'todo' | 'in_progress' | 'completed';
+  assigned_to?: string;
+  created_at: string;
+}
+
+export interface BillAmendment {
+  id: string;
+  bill_id: string;
+  section_title: string;
+  original_text?: string;
+  proposed_text: string;
+  author_id: string;
+  votes_for: number;
+  votes_against: number;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+}
+
+export interface UserImpactCitation {
+  id: string;
+  user_id: string;
+  bill_id: string;
+  mp_name: string;
+  mp_speech_snippet: string;
+  impact_explanation: string;
+  matched_argument: string;
   created_at: string;
 }
 

@@ -89,6 +89,9 @@ export interface UserProfile {
   impact_points?: number;
   xp?: number;
   level?: number;
+  committee_assignment?: string;
+  rank_level?: number;
+  shadow_id_url?: string;
   economic_score?: number;
   liberal_conservative_score?: number;
   environmental_score?: number;

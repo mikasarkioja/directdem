@@ -13,9 +13,11 @@ import QuestLog from "./QuestLog";
 import PartiesView from "./PartiesView";
 import DebateArena from "./DebateArena";
 import MPWorkspace from "./MPWorkspace";
+import ShadowDashboard from "./ShadowDashboard";
+import LiveParallelPlenary from "./LiveParallelPlenary";
 import type { DashboardView, UserProfile } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, Radio, Briefcase } from "lucide-react";
+import { LayoutDashboard, Radio, Briefcase, Shield } from "lucide-react";
 
 interface DashboardProps {
   user: UserProfile | null;
@@ -72,6 +74,15 @@ export default function Dashboard({ user, initialView = "workspace" }: Dashboard
                 >
                   <Briefcase size={14} />
                   Työhuone
+                </button>
+                <button
+                  onClick={() => setActiveView("municipal")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    activeView === "municipal" ? "bg-purple-600 text-white shadow-md shadow-purple-500/20" : "text-command-gray hover:bg-slate-50"
+                  }`}
+                >
+                  <Shield size={14} />
+                  Varjokansanedustaja
                 </button>
                 <button
                   onClick={() => setActiveView("overview")}
@@ -202,6 +213,7 @@ export default function Dashboard({ user, initialView = "workspace" }: Dashboard
                       ? <ActiveBills user={user} /> 
                       : <MunicipalDashboard user={user} initialMunicipality={selectedMunicipality} />
                   )}
+                  {activeView === "municipal" && user && <ShadowDashboard user={user} />}
                   {activeView === "consensus" && <ConsensusMap />}
                   {activeView === "profile" && <MyProfile user={user} />}
                   {activeView === "parties" && <PartiesView user={user} />}
@@ -235,6 +247,7 @@ export default function Dashboard({ user, initialView = "workspace" }: Dashboard
         </main>
       </div>
       <BottomNav activeView={activeView} onViewChange={setActiveView} />
+      <LiveParallelPlenary />
     </>
   );
 }

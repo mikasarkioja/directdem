@@ -257,6 +257,7 @@ export interface BillSection {
   title: string;
   content: string;
   current_shadow_text?: string;
+  real_final_text?: string;
   order_index: number;
 }
 

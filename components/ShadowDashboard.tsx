@@ -140,7 +140,7 @@ export default function ShadowDashboard({ user }: ShadowDashboardProps) {
                 </div>
 
                 {/* Workspace Navigation Tabs */}
-                <div className="flex gap-4 p-1 bg-slate-900 rounded-2xl border border-white/5 w-fit">
+                <div className="flex flex-col md:flex-row gap-4 p-1 bg-slate-900 rounded-2xl border border-white/5 w-fit">
                   <button 
                     onClick={() => setActiveWorkspaceTab('workspace')}
                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -159,6 +159,13 @@ export default function ShadowDashboard({ user }: ShadowDashboardProps) {
                     <FileEdit size={14} />
                     Pykälä-editori
                   </button>
+                  <Link 
+                    href={`/poytakirjat/${selectedBill.id}`}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all text-slate-500 hover:text-white"
+                  >
+                    <FileText size={14} />
+                    Varjopöytäkirja
+                  </Link>
                 </div>
 
                 <AnimatePresence mode="wait">

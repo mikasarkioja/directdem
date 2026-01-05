@@ -15,13 +15,16 @@ import {
   ChevronRight, 
   Sparkles,
   Lock,
-  Edit3
+  Edit3,
+  Layout,
+  FileEdit
 } from "lucide-react";
 import type { Bill, UserProfile } from "@/lib/types";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
 import ShadowIDCard from "./ShadowIDCard";
 import ExpertHearing from "./ExpertHearing";
 import CommitteeWorkspace from "./CommitteeWorkspace";
+import ClauseEditor from "./ClauseEditor";
 
 interface ShadowDashboardProps {
   user: UserProfile;
@@ -32,6 +35,7 @@ export default function ShadowDashboard({ user }: ShadowDashboardProps) {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'workspace' | 'clauses'>('workspace');
 
   useEffect(() => {
     fetchBillsFromSupabase().then(data => {
@@ -135,8 +139,39 @@ export default function ShadowDashboard({ user }: ShadowDashboardProps) {
                   </h2>
                 </div>
 
-                {/* Committee Workspace (Includes Tasks, Amendments, Context) */}
-                <CommitteeWorkspace bill={selectedBill} user={user} />
+                {/* Workspace Navigation Tabs */}
+                <div className="flex gap-4 p-1 bg-slate-900 rounded-2xl border border-white/5 w-fit">
+                  <button 
+                    onClick={() => setActiveWorkspaceTab('workspace')}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      activeWorkspaceTab === 'workspace' ? "bg-purple-600 text-white shadow-lg shadow-purple-600/20" : "text-slate-500 hover:text-white"
+                    }`}
+                  >
+                    <Layout size={14} />
+                    Työasema
+                  </button>
+                  <button 
+                    onClick={() => setActiveWorkspaceTab('clauses')}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      activeWorkspaceTab === 'clauses' ? "bg-purple-600 text-white shadow-lg shadow-purple-600/20" : "text-slate-500 hover:text-white"
+                    }`}
+                  >
+                    <FileEdit size={14} />
+                    Pykälä-editori
+                  </button>
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {activeWorkspaceTab === 'workspace' ? (
+                    <motion.div key="workspace" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
+                      <CommitteeWorkspace bill={selectedBill} user={user} />
+                    </motion.div>
+                  ) : (
+                    <motion.div key="clauses" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}>
+                      <ClauseEditor bill={selectedBill} user={user} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Submit Action */}
                 <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">

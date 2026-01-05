@@ -250,12 +250,24 @@ export interface BillTask {
   created_at: string;
 }
 
+export interface BillSection {
+  id: string;
+  bill_id: string;
+  section_number: string;
+  title: string;
+  content: string;
+  current_shadow_text?: string;
+  order_index: number;
+}
+
 export interface BillAmendment {
   id: string;
   bill_id: string;
+  section_id?: string;
   section_title: string;
   original_text?: string;
   proposed_text: string;
+  justification?: string;
   author_id: string;
   votes_for: number;
   votes_against: number;

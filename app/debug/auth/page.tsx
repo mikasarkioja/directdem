@@ -29,9 +29,15 @@ export default function DebugAuthPage() {
     checkAuth();
   }, []);
 
+  // Helper to check if actual auth token exists (not just verifier)
+  const hasActualAuthToken = cookies.split(';').some(c => {
+    const name = c.trim().split('=')[0];
+    return name.includes('auth-token') && !name.includes('code-verifier');
+  });
+
   return (
     <div className="p-10 font-mono text-xs bg-slate-950 text-emerald-400 min-h-screen">
-      <h1 className="text-xl font-black mb-6 text-white uppercase tracking-widest">Auth Diagnostiikka</h1>
+      <h1 className="text-xl font-black mb-6 text-white uppercase tracking-widest">Auth Diagnostiikka v2</h1>
       
       <div className="space-y-8">
         <section>
@@ -62,11 +68,15 @@ export default function DebugAuthPage() {
           <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 break-all overflow-y-auto max-h-40 font-mono text-[10px]">
             {cookies ? (
               <ul className="space-y-1">
-                {cookies.split(';').map((c, i) => (
-                  <li key={i} className={c.includes('auth-token') ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                    {c.trim()}
-                  </li>
-                ))}
+                {cookies.split(';').map((c, i) => {
+                  const isToken = c.includes('auth-token') && !c.includes('code-verifier');
+                  const isVerifier = c.includes('code-verifier');
+                  return (
+                    <li key={i} className={isToken ? 'text-emerald-400 font-bold' : isVerifier ? 'text-amber-400/50' : 'text-slate-500'}>
+                      {c.trim()} {isToken ? ' <--- TÄMÄ PUUTTUI AIEMMIN' : ''}
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <span className="text-rose-500 italic">Ei evästeitä löytynyt selaimesi muistista.</span>
@@ -85,16 +95,16 @@ export default function DebugAuthPage() {
             <h2 className="text-amber-400 font-bold mb-2 uppercase tracking-tight">4. Tarkistuslista</h2>
             <ul className="space-y-2 text-[10px]">
               <li className="flex gap-2">
-                <span>{cookies.includes('auth-token') ? '✅' : '❌'}</span>
-                <span>Auth Token eväste</span>
+                <span>{hasActualAuthToken ? '✅' : '❌'}</span>
+                <span>Oikea Auth Token eväste (Session)</span>
               </li>
               <li className="flex gap-2">
                 <span>{cookies.includes('code-verifier') ? '✅' : '❌'}</span>
-                <span>PKCE Code Verifier</span>
+                <span>PKCE Code Verifier (Väliaikainen)</span>
               </li>
               <li className="flex gap-2">
-                <span>{typeof window !== 'undefined' ? '✅' : '❌'}</span>
-                <span>Window Context</span>
+                <span>{session ? '✅' : '❌'}</span>
+                <span>Supabase Session Active</span>
               </li>
             </ul>
           </div>
@@ -121,11 +131,11 @@ export default function DebugAuthPage() {
       </div>
 
       <div className="mt-10 p-6 bg-blue-900/20 rounded-2xl border border-blue-500/30 text-blue-300">
-        <p className="font-black uppercase tracking-widest text-xs mb-3">Mitä seuraavaksi?</p>
+        <p className="font-black uppercase tracking-widest text-xs mb-3">Mitä jos edelleen ❌?</p>
         <ol className="list-decimal ml-5 space-y-2 text-[10px] font-bold">
-          <li>Jos "Auth Token eväste" on ❌: Kokeile toista selainta (esim. Chrome).</li>
-          <li>Jos käytät Incognito-tilaa, Magic Link on avattava SAMASSA Incognito-ikkunassa.</li>
-          <li>Varmista, ettei selaimesi estä "First-party cookies" -asetusta.</li>
+          <li>Kokeile Chromen "Vierastilaa" (Guest Mode) tai muuta selainta, jossa ei ole laajennuksia (esim. uBlock).</li>
+          <li>Varmista, ettei Vercelin kello ole väärässä (erittäin harvinaista).</li>
+          <li>Tämä uusi versio v2 yrittää pakottaa evästeet läpi manuaalisesti.</li>
         </ol>
       </div>
     </div>

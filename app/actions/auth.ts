@@ -151,12 +151,13 @@ export async function verifyOtpAction(token_hash: string, type: any) {
 
   console.log("[verifyOtpAction] SUCCESS. Session created for:", data.session.user.email);
 
-  // Update profile - wrapping in try/catch to ensure we don't break login if profile fails
-  try {
-    await upsertUserProfile(data.session.user.id);
-  } catch (profileErr) {
-    console.error("[verifyOtpAction] Profile upsert error (non-fatal):", profileErr);
-  }
+  // Force cookie persistence by getting user immediately
+  await supabase.auth.getUser();
+
+  // Update profile - non-blocking
+  upsertUserProfile(data.session.user.id).catch(e => 
+    console.error("[verifyOtpAction] Profile upsert deferred error:", e)
+  );
 
   return { success: true };
 }

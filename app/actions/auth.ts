@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import type { UserProfile } from "@/lib/types";
 
 /**
@@ -20,16 +21,11 @@ export async function getUser(): Promise<UserProfile | null> {
       return null;
     }
 
-    // Fetch profile data
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", user.id)
       .single();
-
-    if (profileError && profileError.code !== "PGRST116") {
-      console.error("[getUser] Profile error:", profileError);
-    }
 
     return {
       id: user.id,
@@ -62,24 +58,16 @@ export async function getUser(): Promise<UserProfile | null> {
  */
 export async function sendOtpAction(email: string) {
   const supabase = await createClient();
-  
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: {
-      shouldCreateUser: true,
-    },
+    options: { shouldCreateUser: true },
   });
-
-  if (error) {
-    console.error("[sendOtpAction] Error:", error.message);
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return { success: true };
 }
 
 /**
- * Verifies the 6-digit OTP code
+ * Verifies the 6-digit OTP code and forces session synchronization
  */
 export async function verifyOtpCodeAction(email: string, token: string) {
   const supabase = await createClient();
@@ -90,79 +78,48 @@ export async function verifyOtpCodeAction(email: string, token: string) {
     type: 'email',
   });
 
-  if (error) {
-    console.error("[verifyOtpCodeAction] Error:", error.message);
-    throw new Error(error.message);
-  }
-
-  if (!data.session) {
-    throw new Error("Istunnon luonti epäonnistui.");
-  }
-
-  // Initialize profile with defaults for new users
-  await upsertUserProfile(data.session.user.id, {
-    email: data.session.user.email,
-    is_new_user: true
-  }).catch(() => {});
-
-  return { success: true };
-}
-
-/**
- * Creates or updates user profile after login
- */
-export async function upsertUserProfile(userId: string, metadata?: any) {
-  try {
-    const supabase = await createClient();
-    
-    const profileData: any = {
-      id: userId,
-      last_login: new Date().toISOString(),
-    };
-
-    if (metadata) {
-      if (metadata.accepted_terms !== undefined) profileData.accepted_terms = metadata.accepted_terms;
-      if (metadata.full_name) profileData.full_name = metadata.full_name;
-      if (metadata.email) profileData.email = metadata.email;
-      
-      // Set defaults only for new users
-      if (metadata.is_new_user) {
-        profileData.trust_score = 10;
-        profileData.level = 1;
-        profileData.xp = 0;
-        profileData.impact_points = 0;
-        profileData.economic_score = 0;
-        profileData.liberal_conservative_score = 0;
-        profileData.environmental_score = 0;
-        profileData.urban_rural_score = 0;
-        profileData.international_national_score = 0;
-        profileData.security_score = 0;
-      }
-    }
-
-    await supabase.from("profiles").upsert(profileData, { onConflict: 'id' });
-    
-  } catch (err: any) {
-    console.error("[upsertUserProfile] Error:", err.message);
-  }
-}
-
-/**
- * Verifies OTP on the server side
- */
-export async function verifyOtpAction(token_hash: string, type: any) {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase.auth.verifyOtp({
-    token_hash,
-    type,
-  });
-
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   if (!data.session) throw new Error("Istunnon luonti epäonnistui.");
 
-  // Profile update is secondary, don't let it block
-  upsertUserProfile(data.session.user.id).catch(() => {});
+  // Update profile with defaults
+  await upsertUserProfileWithClient(supabase, data.session.user.id, {
+    email: data.session.user.email,
+    is_new_user: true
+  });
 
+  // CRITICAL: Force Next.js to purge all caches and recognize the new session
+  revalidatePath("/", "layout");
+  
   return { success: true };
+}
+
+/**
+ * Internal helper that uses an existing supabase client to avoid cookie conflicts
+ */
+async function upsertUserProfileWithClient(supabase: any, userId: string, metadata?: any) {
+  const profileData: any = {
+    id: userId,
+    last_login: new Date().toISOString(),
+  };
+
+  if (metadata) {
+    if (metadata.accepted_terms !== undefined) profileData.accepted_terms = metadata.accepted_terms;
+    if (metadata.full_name) profileData.full_name = metadata.full_name;
+    if (metadata.email) profileData.email = metadata.email;
+    if (metadata.is_new_user) {
+      profileData.trust_score = 10;
+      profileData.level = 1;
+    }
+  }
+
+  await supabase.from("profiles").upsert(profileData, { onConflict: 'id' });
+}
+
+/**
+ * Public profile update
+ */
+export async function upsertUserProfile(userId: string, metadata?: any) {
+  const supabase = await createClient();
+  await upsertUserProfileWithClient(supabase, userId, metadata);
+  revalidatePath("/", "layout");
 }

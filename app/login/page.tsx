@@ -37,9 +37,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await verifyOtpCodeAction(email, otp);
-      toast.success('Kirjautuminen onnistui!');
-      // Direct redirect to workspace/dashboard as requested
-      window.location.href = '/?view=workspace';
+      toast.success('Kirjautuminen onnistui! Ohjataan Työhuoneeseen...');
+      
+      // Wait a small bit for cookies to persist in the browser
+      setTimeout(() => {
+        // Direct redirect using window.location to force a fresh server-side load
+        window.location.href = '/?view=workspace';
+      }, 800);
     } catch (error: any) {
       toast.error('Virheellinen tai vanhentunut koodi.');
     } finally {

@@ -37,14 +37,14 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await verifyOtpCodeAction(email, otp);
-      toast.success('Kirjautuminen onnistui! Ohjataan Työhuoneeseen...');
-      
-      // Wait a small bit for cookies to persist in the browser
-      setTimeout(() => {
-        // Direct redirect using window.location to force a fresh server-side load
-        window.location.href = '/?view=workspace';
-      }, 800);
+      // If we reach here, verifyOtpCodeAction failed to redirect (which shouldn't happen)
+      toast.success('Kirjautuminen onnistui! Päivitetään näkymää...');
+      window.location.href = '/?view=workspace';
     } catch (error: any) {
+      if (error.message === 'NEXT_REDIRECT') {
+        // This is a special Next.js internal error used for redirection, ignore it
+        return;
+      }
       toast.error('Virheellinen tai vanhentunut koodi.');
     } finally {
       setLoading(false);

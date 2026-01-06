@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { UserProfile } from "@/lib/types";
 
 /**
@@ -17,11 +18,9 @@ export async function getUser(): Promise<UserProfile | null> {
       error: authError,
     } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return null;
-    }
+    if (authError || !user) return null;
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", user.id)
@@ -54,7 +53,7 @@ export async function getUser(): Promise<UserProfile | null> {
 }
 
 /**
- * Sends a 6-digit OTP code to the user's email
+ * Sends a 6-digit OTP code
  */
 export async function sendOtpAction(email: string) {
   const supabase = await createClient();
@@ -67,7 +66,8 @@ export async function sendOtpAction(email: string) {
 }
 
 /**
- * Verifies the 6-digit OTP code and forces session synchronization
+ * Verifies the 6-digit OTP code and redirects immediately
+ * This is the MOST reliable pattern for Next.js 15
  */
 export async function verifyOtpCodeAction(email: string, token: string) {
   const supabase = await createClient();
@@ -81,21 +81,19 @@ export async function verifyOtpCodeAction(email: string, token: string) {
   if (error) throw new Error(error.message);
   if (!data.session) throw new Error("Istunnon luonti epäonnistui.");
 
-  // Update profile with defaults
+  // Initialize profile
   await upsertUserProfileWithClient(supabase, data.session.user.id, {
     email: data.session.user.email,
     is_new_user: true
-  });
+  }).catch(() => {});
 
-  // CRITICAL: Force Next.js to purge all caches and recognize the new session
+  // FORCE Next.js to flush cookies and revalidate everything
   revalidatePath("/", "layout");
   
-  return { success: true };
+  // Official Next.js 15 redirect - this ensures cookies are sent to the browser
+  redirect("/?view=workspace&auth=success");
 }
 
-/**
- * Internal helper that uses an existing supabase client to avoid cookie conflicts
- */
 async function upsertUserProfileWithClient(supabase: any, userId: string, metadata?: any) {
   const profileData: any = {
     id: userId,
@@ -112,12 +110,9 @@ async function upsertUserProfileWithClient(supabase: any, userId: string, metada
     }
   }
 
-  await supabase.from("profiles").upsert(profileData, { onConflict: 'id' });
+  return await supabase.from("profiles").upsert(profileData, { onConflict: 'id' });
 }
 
-/**
- * Public profile update
- */
 export async function upsertUserProfile(userId: string, metadata?: any) {
   const supabase = await createClient();
   await upsertUserProfileWithClient(supabase, userId, metadata);

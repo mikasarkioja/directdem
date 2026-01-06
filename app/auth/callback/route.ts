@@ -14,14 +14,11 @@ export async function GET(request: Request) {
   const origin = requestUrl.origin;
 
   const cookieStore = await cookies();
-  
-  // 1. Create the final destination URL
   const redirectTo = new URL(next, origin);
   
-  // 2. Create the response object
+  // Create a base response
   const response = NextResponse.redirect(redirectTo);
 
-  // 3. Create Supabase client with a dual-set strategy
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -32,18 +29,10 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            // Force safe defaults for all cookies
-            const cookieOptions = { 
-              ...options, 
-              path: '/', 
-              sameSite: 'lax' as const,
-              secure: true // Vercel is always HTTPS
-            };
-            
-            // Set on cookie store (for server-side immediate use)
-            cookieStore.set(name, value, cookieOptions);
-            // Set on response (for browser-side persistence)
-            response.cookies.set(name, value, cookieOptions);
+            // Set for server-side
+            cookieStore.set(name, value, { ...options, path: '/', sameSite: 'lax', secure: true });
+            // Set for browser-side
+            response.cookies.set(name, value, { ...options, path: '/', sameSite: 'lax', secure: true });
           });
         },
       },
@@ -54,47 +43,55 @@ export async function GET(request: Request) {
     if (code) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) throw error;
+      
       if (data.session) {
         await upsertUserProfile(data.session.user.id).catch(() => {});
         
-        // Add success flag
-        const successUrl = new URL(next, origin);
-        successUrl.searchParams.set('auth', 'success');
+        // Add success flag to the final redirect
+        const finalUrl = new URL(next, origin);
+        finalUrl.searchParams.set('auth', 'success');
         
-        // IMPORTANT: We must return the 'response' object we created 
-        // because it contains the cookies set during exchangeCodeForSession
-        const finalResponse = NextResponse.redirect(successUrl);
-        
-        // Copy cookies from our working response to the final redirect response
+        // Create a final response and copy ALL cookies gathered during the exchange
+        const finalResponse = NextResponse.redirect(finalUrl);
         response.cookies.getAll().forEach(cookie => {
           finalResponse.cookies.set(cookie.name, cookie.value, {
             path: '/',
             sameSite: 'lax',
             secure: true,
-            httpOnly: cookie.name.includes('refresh-token') // Only refresh token needs to be httpOnly
+            maxAge: 60 * 60 * 24 * 7 // 1 week
           });
         });
-
+        
         return finalResponse;
       }
     } else if (token_hash) {
       const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
       if (error) throw error;
+      
       if (data.session) {
         await upsertUserProfile(data.session.user.id).catch(() => {});
-        const successUrl = new URL(next, origin);
-        successUrl.searchParams.set('auth', 'success');
-        const finalResponse = NextResponse.redirect(successUrl);
+        const finalUrl = new URL(next, origin);
+        finalUrl.searchParams.set('auth', 'success');
+        
+        const finalResponse = NextResponse.redirect(finalUrl);
         response.cookies.getAll().forEach(cookie => {
-          finalResponse.cookies.set(cookie.name, cookie.value, { path: '/', sameSite: 'lax', secure: true });
+          finalResponse.cookies.set(cookie.name, cookie.value, {
+            path: '/',
+            sameSite: 'lax',
+            secure: true,
+            maxAge: 60 * 60 * 24 * 7
+          });
         });
+        
         return finalResponse;
       }
     }
     
-    return NextResponse.redirect(new URL("/?error=no_session", origin));
+    return NextResponse.redirect(new URL("/?error=auth_failed", origin));
   } catch (err: any) {
-    console.error("[Auth Callback] Fatal Error:", err.message);
-    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(err.message)}`, origin));
+    console.error("[Auth Callback] Error:", err.message);
+    const errorUrl = new URL("/", origin);
+    errorUrl.searchParams.set('error', err.message);
+    return NextResponse.redirect(errorUrl);
   }
 }

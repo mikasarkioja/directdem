@@ -31,43 +31,44 @@ export interface RankingResult {
 }
 
 export async function getPoliticalRanking(): Promise<RankingResult> {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-  // 1. Fetch active MP profiles and their parties
-  const { data: mpData, error: mpError } = await supabase
-    .from("mp_profiles")
-    .select(`
-      *,
-      mps!inner (
-        id,
-        first_name,
-        last_name,
-        party,
-        is_active
-      )
-    `)
-    .eq("mps.is_active", true);
+    // 1. Fetch active MP profiles and their parties
+    const { data: mpData, error: mpError } = await supabase
+      .from("mp_profiles")
+      .select(`
+        *,
+        mps!inner (
+          id,
+          first_name,
+          last_name,
+          party,
+          is_active
+        )
+      `)
+      .eq("mps.is_active", true);
 
-  if (mpError || !mpData) throw new Error("Could not fetch MP data for ranking");
+    if (mpError || !mpData) throw new Error("Could not fetch MP data: " + mpError?.message);
 
-  // 2. Fetch voting data for cohesion (Rice Index) and activity
-  // Fetching 20,000 most recent votes for a representative sample
-  const { data: voteAgg, error: voteError } = await supabase
-    .from("mp_votes")
-    .select(`
-      vote_type,
-      event_id,
-      mps!inner ( id, party, is_active, first_name, last_name ),
-      voting_events!inner ( category )
-    `)
-    .eq("mps.is_active", true)
-    .order('created_at', { ascending: false })
-    .limit(20000);
+    // 2. Fetch voting data for cohesion (Rice Index) and activity
+    // Fetching 10,000 most recent votes for performance on Vercel
+    const { data: voteAgg, error: voteError } = await supabase
+      .from("mp_votes")
+      .select(`
+        vote_type,
+        event_id,
+        mps!inner ( id, party, is_active, first_name, last_name ),
+        voting_events!inner ( category )
+      `)
+      .eq("mps.is_active", true)
+      .order('created_at', { ascending: false })
+      .limit(10000);
 
-  if (voteError || !voteAgg) throw new Error("Could not fetch vote data");
+    if (voteError || !voteAgg) throw new Error("Could not fetch vote data: " + voteError?.message);
 
   // Group votes by party and event
   const partyVotes: Record<string, Record<string, { jaa: number; ei: number }>> = {};
@@ -183,12 +184,16 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
     let totalPivot = 0;
     let pivotCount = 0;
     
-    // Use a sample of up to 10 MPs per party for performance, or all if less
-    for (const mpId of mpIds.slice(0, 10)) {
-      const score = await calculatePivotScore(mpId);
-      if (score > 0) {
-        totalPivot += score;
-        pivotCount++;
+    // Reduce sample size to 3 per party for Vercel performance (prevent timeout)
+    for (const mpId of mpIds.slice(0, 3)) {
+      try {
+        const score = await calculatePivotScore(mpId);
+        if (score > 0) {
+          totalPivot += score;
+          pivotCount++;
+        }
+      } catch (e) {
+        console.error(`Error calculating pivot for MP ${mpId}:`, e);
       }
     }
     partyPivot[party] = pivotCount > 0 ? Math.round(totalPivot / pivotCount) : 0;
@@ -239,5 +244,18 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
     parties, 
     leaderboards: leaders
   };
+ } catch (error: any) {
+    console.error("Critical error in getPoliticalRanking:", error);
+    // Return empty result instead of crashing
+    return {
+      parties: [],
+      leaderboards: {
+        disciplined: [],
+        flipFlops: [],
+        owners: [],
+        activity: []
+      }
+    };
+  }
 }
 

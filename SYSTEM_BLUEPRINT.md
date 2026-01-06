@@ -24,6 +24,7 @@ Tämä dokumentti sisältää DirectDem-alustan täydellisen arkkitehtuurikuvauk
 ### Profiles & Auth
 - **profiles**: `id (uuid, PK)`, `full_name`, `email`, `is_verified`, `vaalipiiri`, `municipality`, `xp`, `level`, `impact_points`, `economic_score`, `liberal_conservative_score`, `environmental_score`, `urban_rural_score`, `international_national_score`, `security_score`, `initialized_from_mp`, `public_stance (bool)`, `trust_score`.
 - **user_profile_history**: `id`, `user_id`, `scores_json`, `archetype`, `timestamp`.
+- **user_profiles**: `id`, `shadow_id_number`, `committee_assignment`, `impact_points`.
 
 ### Legislative Data
 - **bills**: `id (uuid, PK)`, `parliament_id`, `title`, `summary`, `status`, `published_date`, `processing_date`, `url`, `category`.

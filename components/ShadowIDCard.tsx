@@ -85,7 +85,7 @@ export default function ShadowIDCard({ user }: ShadowIDCardProps) {
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10">
             <Radio size={10} className="text-rose-500 animate-ping" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">ID: {user.id.substring(0, 8)}</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">ID: {user.shadow_id_number || user.id.substring(0, 8)}</span>
           </div>
         </div>
       </div>

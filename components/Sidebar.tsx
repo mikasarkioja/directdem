@@ -48,7 +48,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
   };
 
   const menuItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
-    { id: "workspace", label: "Työhuone", icon: Briefcase, href: "/?view=workspace" },
+    { id: "workspace", label: "Työhuone", icon: Briefcase, href: "/dashboard" },
     { id: "municipal", label: "Varjoedustaja", icon: Shield, href: "/?view=municipal" },
     { id: "overview", label: "Keskus", icon: Activity, href: "/?view=overview" },
     { id: "bills", label: "Äänestysareena", icon: FileText, href: "/?view=bills" },

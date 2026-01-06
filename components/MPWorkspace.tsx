@@ -46,7 +46,7 @@ export default function MPWorkspace({ user }: MPWorkspaceProps) {
   }, []);
 
   const committees = [
-    { name: "Sivistysvaliokunta", icon: "🎓", status: "Käynnissä" },
+    { name: user?.committee_assignment || "Sivistysvaliokunta", icon: "🎓", status: "Käynnissä" },
     { name: "Talousvaliokunta", icon: "💰", status: "Odottaa" },
     { name: "Ympäristövaliokunta", icon: "🌿", status: "Huomenna" }
   ];
@@ -206,7 +206,7 @@ export default function MPWorkspace({ user }: MPWorkspaceProps) {
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-end">
-                  <p className="text-3xl font-black text-slate-900">84 <span className="text-xs text-slate-400 font-black tracking-widest uppercase">/ 100</span></p>
+                  <p className="text-3xl font-black text-slate-900">{user?.impact_points || 0} <span className="text-xs text-slate-400 font-black tracking-widest uppercase">/ 100</span></p>
                   <p className="text-[10px] font-black text-purple-500 uppercase">Korkea</p>
                 </div>
                 <div className="h-2 w-full bg-purple-50 rounded-full overflow-hidden">

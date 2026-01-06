@@ -6,62 +6,60 @@ import { upsertUserProfile } from "@/app/actions/auth";
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") ?? "/";
-  const origin = requestUrl.origin;
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
+  const token_hash = searchParams.get("token_hash");
+  const type = searchParams.get("type") || "magiclink";
+  const next = searchParams.get("next") ?? "/";
 
-  // 1. Create the response object FIRST. This is our "carrier" for cookies.
-  const response = NextResponse.redirect(new URL(`${next}?auth=success`, origin));
+  // 1. Create the base response early
+  const redirectTo = new URL(next, origin);
+  redirectTo.searchParams.set('auth', 'success');
+  const response = NextResponse.redirect(redirectTo);
 
-  if (code) {
-    const cookieStore = await cookies();
-    
-    // 2. Create the Supabase client and bind it to BOTH the cookieStore AND our response object.
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              // Set on the server-side store
-              try {
-                cookieStore.set(name, value, { ...options, path: '/', sameSite: 'lax', secure: true });
-              } catch (e) {}
-              
-              // Set on the response object that goes to the browser (CRITICAL)
-              response.cookies.set(name, value, { 
-                ...options, 
-                path: '/', 
-                sameSite: 'lax', 
-                secure: true 
-              });
-            });
-          },
+  const cookieStore = await cookies();
+
+  // 2. Setup Supabase with explicit cookie handling bound to our response
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
         },
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Set on both the store and the redirect response
+            cookieStore.set(name, value, { ...options, path: '/', sameSite: 'lax' });
+            response.cookies.set(name, value, { ...options, path: '/', sameSite: 'lax' });
+          });
+        },
+      },
+    }
+  );
+
+  try {
+    if (code) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+      if (data.session) {
+        // NON-BLOCKING profile update
+        upsertUserProfile(data.session.user.id).catch(() => {});
+        return response;
       }
-    );
-
-    // 3. Perform the exchange. This will trigger setAll() above.
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    } else if (token_hash) {
+      const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
+      if (error) throw error;
+      if (data.session) {
+        upsertUserProfile(data.session.user.id).catch(() => {});
+        return response;
+      }
+    }
     
-    if (error) {
-      console.error("[Auth Callback] Exchange error:", error.message);
-      return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(error.message)}`, origin));
-    }
-
-    if (data.session) {
-      // Background profile update - don't block the response
-      upsertUserProfile(data.session.user.id).catch(() => {});
-      
-      // 4. Return the specific response object we created!
-      return response;
-    }
+    return NextResponse.redirect(new URL("/?error=no_session_found", origin));
+  } catch (err: any) {
+    console.error("[Auth Callback] Error:", err.message);
+    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(err.message)}`, origin));
   }
-
-  return NextResponse.redirect(new URL("/?error=no_session", origin));
 }

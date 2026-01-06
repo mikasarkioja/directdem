@@ -13,26 +13,26 @@ function ConfirmContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Auto-handle confirmation on mount
     if (token_hash && status === 'idle') {
-      handleConfirm();
+      const runVerification = async () => {
+        setStatus('loading');
+        try {
+          const result = await verifyOtpAction(token_hash, type);
+          if (result.success) {
+            setStatus('success');
+            // Hard redirect to home to pick up new cookies
+            window.location.href = '/?auth=success';
+          }
+        } catch (err: any) {
+          console.error("[ConfirmPage] Error:", err);
+          setStatus('error');
+          setError(err.message || "Vahvistus epäonnistui. Linkki on ehkä jo käytetty tai se on avattu väärässä selaimessa.");
+        }
+      };
+      runVerification();
     }
-  }, [token_hash]);
-
-  const handleConfirm = async () => {
-    setStatus('loading');
-    try {
-      const result = await verifyOtpAction(token_hash!, type);
-      if (result.success) {
-        setStatus('success');
-        // Use window.location for the most reliable redirect that clears all state
-        window.location.href = '/?auth=success';
-      }
-    } catch (err: any) {
-      console.error("[Confirm] Error:", err);
-      setStatus('error');
-      setError(err.message || "Vahvistus epäonnistui. Linkki on ehkä jo käytetty tai se on avattu väärässä selaimessa.");
-    }
-  };
+  }, [token_hash, status, type]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-950 text-white">
@@ -60,7 +60,7 @@ function ConfirmContent() {
         </p>
 
         {status === 'loading' && (
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 py-4">
             <Loader2 size={32} className="animate-spin text-emerald-500" />
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Käsitellään koodia...</p>
           </div>
@@ -68,7 +68,7 @@ function ConfirmContent() {
 
         {status === 'error' && (
           <div className="space-y-4">
-            <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-400 font-bold">
+            <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-[10px] text-rose-400 font-bold leading-relaxed">
               {error}
             </div>
             <button 
@@ -81,7 +81,7 @@ function ConfirmContent() {
         )}
 
         {status === 'success' && (
-          <p className="text-emerald-400 font-bold animate-pulse">Ohjataan etusivulle...</p>
+          <p className="text-emerald-400 font-bold animate-pulse uppercase tracking-widest text-xs">Ohjataan etusivulle...</p>
         )}
       </div>
     </div>
@@ -90,7 +90,11 @@ function ConfirmContent() {
 
 export default function ConfirmPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+        <Loader2 className="animate-spin text-white opacity-20" size={40} />
+      </div>
+    }>
       <ConfirmContent />
     </Suspense>
   );

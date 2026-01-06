@@ -31,9 +31,18 @@ export default async function Home({
       <Navbar user={user} />
       {user && <FirstTimeGDPR userId={user.id} />}
       
+      {/* Client-side auto-refresh script if auth success but user is null */}
+      {auth === 'success' && !user && (
+        <script dangerouslySetInnerHTML={{ __html: `
+          setTimeout(() => {
+            console.log("Auth success detected but no user session. Retrying...");
+            window.location.reload();
+          }, 2000);
+        `}} />
+      )}
+
       {/* 
         DEBUG STATUS BAR - Only visible if there are parameters 
-        Helps identify if the redirect is working even if the toast fails.
       */}
       {(error || auth) && (
         <div className="bg-slate-900 text-white text-[8px] font-mono py-1 px-4 flex gap-4 uppercase tracking-tighter opacity-50">
@@ -51,11 +60,11 @@ export default async function Home({
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] w-full max-w-lg px-4">
           <div className="bg-amber-500 text-white p-6 rounded-[2rem] shadow-2xl border border-amber-400 flex items-start gap-4">
             <div className="bg-white/20 p-3 rounded-2xl">
-              <span className="text-2xl">🔄</span>
+              <span className="text-2xl animate-spin inline-block">🔄</span>
             </div>
             <div className="flex-1 space-y-1">
               <p className="font-black uppercase text-[10px] tracking-widest">Istuntoa alustetaan</p>
-              <p className="font-bold text-sm">Kirjautuminen onnistui, mutta istunto ei vielä näy. Päivitä sivu (F5).</p>
+              <p className="font-bold text-sm">Kirjautuminen onnistui! Viimeistellään asetuksia, sivu päivittyy hetken kuluttua automaattisesti...</p>
             </div>
           </div>
         </div>

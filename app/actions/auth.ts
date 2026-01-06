@@ -1,22 +1,14 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { UserProfile } from "@/lib/types";
 
-/**
- * Gets the current user with profile data
- */
 export async function getUser(): Promise<UserProfile | null> {
   try {
     const supabase = await createClient();
-    
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) return null;
 
@@ -52,9 +44,6 @@ export async function getUser(): Promise<UserProfile | null> {
   }
 }
 
-/**
- * Sends a 6-digit OTP code
- */
 export async function sendOtpAction(email: string) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
@@ -65,10 +54,6 @@ export async function sendOtpAction(email: string) {
   return { success: true };
 }
 
-/**
- * Verifies the 6-digit OTP code and redirects immediately
- * This is the MOST reliable pattern for Next.js 15
- */
 export async function verifyOtpCodeAction(email: string, token: string) {
   const supabase = await createClient();
   
@@ -78,30 +63,34 @@ export async function verifyOtpCodeAction(email: string, token: string) {
     type: 'email',
   });
 
-  if (error) throw new Error(error.message);
-  if (!data.session) throw new Error("Istunnon luonti epäonnistui.");
-
-  // Initialize profile
-  await upsertUserProfileWithClient(supabase, data.session.user.id, {
-    email: data.session.user.email,
-    is_new_user: true
-  }).catch(() => {});
-
-  // FORCE Next.js to flush cookies and revalidate everything
-  revalidatePath("/", "layout");
+  if (error) {
+    console.error("[OTP] Verification error:", error.message);
+    throw new Error(error.message);
+  }
   
-  // Official Next.js 15 redirect - this ensures cookies are sent to the browser
+  if (!data.session) {
+    throw new Error("Istunnon luonti epäonnistui.");
+  }
+
+  console.log("[OTP] Success for user:", data.session.user.id);
+
+  // Background task for profile initialization
+  // Using another client specifically for this to avoid blocking
+  upsertUserProfile(data.session.user.id, { email: data.session.user.email, is_new_user: true }).catch(() => {});
+
+  // This is critical: clear cache and redirect
+  revalidatePath("/", "layout");
   redirect("/?view=workspace&auth=success");
 }
 
-async function upsertUserProfileWithClient(supabase: any, userId: string, metadata?: any) {
+export async function upsertUserProfile(userId: string, metadata?: any) {
+  const supabase = await createClient();
   const profileData: any = {
     id: userId,
     last_login: new Date().toISOString(),
   };
 
   if (metadata) {
-    if (metadata.accepted_terms !== undefined) profileData.accepted_terms = metadata.accepted_terms;
     if (metadata.full_name) profileData.full_name = metadata.full_name;
     if (metadata.email) profileData.email = metadata.email;
     if (metadata.is_new_user) {
@@ -110,11 +99,5 @@ async function upsertUserProfileWithClient(supabase: any, userId: string, metada
     }
   }
 
-  return await supabase.from("profiles").upsert(profileData, { onConflict: 'id' });
-}
-
-export async function upsertUserProfile(userId: string, metadata?: any) {
-  const supabase = await createClient();
-  await upsertUserProfileWithClient(supabase, userId, metadata);
-  revalidatePath("/", "layout");
+  await supabase.from("profiles").upsert(profileData, { onConflict: 'id' });
 }

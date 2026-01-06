@@ -13,11 +13,9 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get("next") ?? "/";
   const origin = requestUrl.origin;
 
-  console.log("[Auth Callback] Request received:", { code: !!code, token_hash: !!token_hash, type });
-
   const cookieStore = await cookies();
   
-  // Create the final redirect response early so we can attach cookies to it
+  // Prepare redirect response
   const successUrl = new URL(next, origin);
   successUrl.searchParams.set('auth', 'success');
   const response = NextResponse.redirect(successUrl);
@@ -32,23 +30,16 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            console.log(`[Auth Callback] Setting cookie: ${name}`);
-            
+            // HIGH COMPATIBILITY SETTINGS
             const cookieOptions = { 
               ...options, 
               path: '/', 
               sameSite: 'lax' as const,
               secure: true,
-              // Explicitly NOT setting domain to let browser handle it for current host
+              domain: undefined // Let browser handle domain for .vercel.app
             };
             
-            // Set on both the cookie store (for this server instance) 
-            // and the redirect response (for the browser)
-            try {
-              cookieStore.set(name, value, cookieOptions);
-            } catch (e) {
-              // Ignore cookie store errors in middleware/callback
-            }
+            cookieStore.set(name, value, cookieOptions);
             response.cookies.set(name, value, cookieOptions);
           });
         },
@@ -58,38 +49,24 @@ export async function GET(request: Request) {
 
   try {
     if (code) {
-      console.log("[Auth Callback] Exchanging code for session...");
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) {
-        console.error("[Auth Callback] Exchange error:", error.message);
-        throw error;
-      }
+      if (error) throw error;
       if (data.session) {
-        console.log("[Auth Callback] Session created for:", data.session.user.email);
-        // Fire and forget profile update
-        upsertUserProfile(data.session.user.id).catch(e => console.error("[Auth Callback] Profile error:", e));
+        await upsertUserProfile(data.session.user.id).catch(() => {});
         return response;
       }
     } else if (token_hash) {
-      console.log("[Auth Callback] Verifying OTP...");
       const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
-      if (error) {
-        console.error("[Auth Callback] OTP error:", error.message);
-        throw error;
-      }
+      if (error) throw error;
       if (data.session) {
-        console.log("[Auth Callback] Session created for:", data.session.user.email);
-        upsertUserProfile(data.session.user.id).catch(e => console.error("[Auth Callback] Profile error:", e));
+        await upsertUserProfile(data.session.user.id).catch(() => {});
         return response;
       }
     }
     
-    console.warn("[Auth Callback] No session was created");
     return NextResponse.redirect(new URL("/?error=no_session_created", origin));
   } catch (err: any) {
-    console.error("[Auth Callback] Fatal error:", err.message);
-    const errorUrl = new URL("/", origin);
-    errorUrl.searchParams.set('error', err.message || 'unknown_auth_error');
-    return NextResponse.redirect(errorUrl);
+    console.error("[Auth Callback] Error:", err.message);
+    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(err.message)}`, origin));
   }
 }

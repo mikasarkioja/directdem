@@ -14,9 +14,14 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+        setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            const finalOptions = { ...options, path: '/', sameSite: 'lax' as const };
+            const finalOptions = { 
+              ...options, 
+              path: '/', 
+              sameSite: 'lax' as const,
+              secure: process.env.NODE_ENV === 'production' ? true : options?.secure
+            };
             request.cookies.set(name, value);
             supabaseResponse.cookies.set(name, value, finalOptions);
           });
@@ -25,9 +30,8 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Tämä on kriittinen: getUser() päivittää evästeet vastaukseen, jos ne ovat muuttuneet
+  // Refresh session if expired
   await supabase.auth.getUser();
 
   return supabaseResponse;
 }
-

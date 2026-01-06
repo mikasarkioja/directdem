@@ -154,11 +154,20 @@ export async function calculateAndStorePartyRankings(supabase: SupabaseClient) {
     }
     const avgPivot = pivotCount > 0 ? Math.round(totalPivot / pivotCount) : 0;
 
-    // Topic Ownership Intensity
+    // Topic Ownership Intensity - Ensure all 6 core categories are represented
+    const coreCategories = ["Talous", "Arvot", "Ympäristö", "Aluepolitiikka", "Kansainvälisyys", "Turvallisuus"];
     const cats = partyActivity[party] || {};
     const topicOwnership: Record<string, number> = {};
+    
+    coreCategories.forEach(cat => {
+      topicOwnership[cat] = (cats[cat] || 0) / profiles.length;
+    });
+
+    // Also include any other categories found
     Object.entries(cats).forEach(([cat, count]) => {
-      topicOwnership[cat] = count / profiles.length;
+      if (!coreCategories.includes(cat)) {
+        topicOwnership[cat] = count / profiles.length;
+      }
     });
 
     const topCat = Object.entries(topicOwnership)

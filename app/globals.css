@@ -13,7 +13,7 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-tap-highlight-color: transparent;
   letter-spacing: -0.011em;
-  /* Pakotettu päivitys grafiikoiden palauttamiseksi */
+  /* Pakotettu päivitys grafiikoiden palauttamiseksi - v2 */
   min-height: 100vh;
 }
 

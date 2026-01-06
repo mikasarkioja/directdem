@@ -23,6 +23,7 @@ export default function RankingPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedParty, setSelectedParty] = useState<string | null>(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -228,16 +229,16 @@ export default function RankingPage() {
                   <p className="text-sm font-black uppercase text-slate-900">Topic Ownership</p>
                 </div>
               </div>
-              <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[250px]">
+              <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[300px]">
                 {data.leaderboards.owners.map((o) => (
                   <div key={o.category} className="flex items-center justify-between group border-b border-slate-50 pb-2">
                     <div className="flex flex-col">
-                      <span className="font-black uppercase text-[8px] text-slate-400 tracking-wider">{o.category}</span>
+                      <span className="font-black uppercase text-[8px] text-slate-400 tracking-wider leading-tight">{o.category}</span>
                       <span className="font-black uppercase text-xs text-slate-700">{o.party}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-purple-400 italic">int. {o.score}</span>
-                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
+                      <span className="text-[9px] font-bold text-purple-400 italic">int. {o.score}</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)] transition-transform group-hover:scale-150" />
                     </div>
                   </div>
                 ))}
@@ -256,65 +257,104 @@ export default function RankingPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      setSelectedParty(null);
+                      setShowHeatmap(!showHeatmap);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase transition-colors ${showHeatmap ? 'bg-purple-600 text-white' : 'bg-slate-100 hover:bg-slate-200'}`}
+                  >
+                    {showHeatmap ? 'Bar Chart' : '6D Heatmap'}
+                  </button>
                   {selectedParty && (
                     <button 
                       onClick={() => setSelectedParty(null)}
                       className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-black uppercase transition-colors"
                     >
-                      Takaisin listaan
+                      Takaisin
                     </button>
                   )}
                   <TrendingUp className="text-purple-600" size={24} />
                 </div>
               </div>
               
-              <div className="flex-1 w-full min-h-[300px]">
+              <div className="flex-1 w-full min-h-[350px]">
                 {selectedParty ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart data={[
-                      { 
-                        subject: "Talous", 
-                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.economic || 0) * 100, 
-                        fullMark: 100 
-                      },
-                      { 
-                        subject: "Arvot", 
-                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.liberal || 0) * 100, 
-                        fullMark: 100 
-                      },
-                      { 
-                        subject: "Ympäristö", 
-                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.env || 0) * 100, 
-                        fullMark: 100 
-                      },
-                      { 
-                        subject: "Alue", 
-                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.urban || 0) * 100, 
-                        fullMark: 100 
-                      },
-                      { 
-                        subject: "Global", 
-                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.global || 0) * 100, 
-                        fullMark: 100 
-                      },
-                      { 
-                        subject: "Turv.", 
-                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.security || 0) * 100, 
-                        fullMark: 100 
-                      },
-                    ]}>
-                      <PolarGrid stroke="#F1F5F9" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: '900' }} />
-                      <Radar
-                        name={selectedParty}
-                        dataKey="A"
-                        stroke="#A855F7"
-                        fill="#A855F7"
-                        fillOpacity={0.6}
-                      />
-                      <Tooltip />
-                    </RadarChart>
-                  </ResponsiveContainer>
+                  <div className="h-full flex flex-col items-center">
+                    <div className="w-full h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={[
+                          { subject: "Talous", A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.economic || 0) * 100 },
+                          { subject: "Arvot", A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.liberal || 0) * 100 },
+                          { subject: "Ympäristö", A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.env || 0) * 100 },
+                          { subject: "Alue", A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.urban || 0) * 100 },
+                          { subject: "Global", A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.global || 0) * 100 },
+                          { subject: "Turv.", A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.security || 0) * 100 },
+                        ]}>
+                          <PolarGrid stroke="#F1F5F9" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: '900' }} />
+                          <Radar
+                            name={selectedParty}
+                            dataKey="A"
+                            stroke="#A855F7"
+                            fill="#A855F7"
+                            fillOpacity={0.6}
+                          />
+                          <Tooltip />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 w-full mt-4">
+                      {Object.entries(filteredParties.find(p => p.name === selectedParty)?.polarizationVector || {}).map(([key, val]) => (
+                        <div key={key} className="p-2 bg-slate-50 rounded-xl border border-slate-100 flex flex-col items-center text-center">
+                          <span className="text-[7px] font-black uppercase text-slate-400 truncate w-full">{key}</span>
+                          <span className={`text-[10px] font-black ${(val as number) > 0 ? 'text-purple-600' : 'text-slate-600'}`}>
+                            {(val as number) > 0 ? '+' : ''}{Math.round((val as number) * 100)}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : showHeatmap ? (
+                  <div className="h-full w-full overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-[10px] font-bold">
+                      <thead>
+                        <tr className="text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                          <th className="text-left pb-4 pr-4">Puolue</th>
+                          <th className="pb-4">Talous</th>
+                          <th className="pb-4">Arvot</th>
+                          <th className="pb-4">Ymp.</th>
+                          <th className="pb-4">Alue</th>
+                          <th className="pb-4">Glo.</th>
+                          <th className="pb-4">Turv.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredParties.map(p => (
+                          <tr key={p.name} className="border-b border-slate-50 group hover:bg-slate-50 transition-colors">
+                            <td className="py-3 pr-4 font-black uppercase text-slate-700">{p.name}</td>
+                            {[
+                              p.polarizationVector.economic,
+                              p.polarizationVector.liberal,
+                              p.polarizationVector.env,
+                              p.polarizationVector.urban,
+                              p.polarizationVector.global,
+                              p.polarizationVector.security
+                            ].map((val, idx) => (
+                              <td key={idx} className="py-2 text-center">
+                                <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center
+                                  ${Math.abs(val) > 0.3 ? 'bg-purple-600 text-white shadow-lg' : 
+                                    Math.abs(val) > 0.15 ? 'bg-purple-200 text-purple-700' : 'bg-slate-100 text-slate-400'}`}
+                                >
+                                  {val > 0 ? '+' : ''}{Math.round(val * 10)}
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart 

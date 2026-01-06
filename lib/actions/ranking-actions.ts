@@ -67,8 +67,15 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
       score: Math.round(r.activity_score)
     })).sort((a, b) => b.score - a.score);
 
-    // Topic Ownership: Get categories from the first party's ownership object
-    const categories = Object.keys(rankings[0].topic_ownership || {}).filter(c => c !== 'Muu');
+    // Topic Ownership: Collect all unique categories across ALL parties
+    const allCategories = new Set<string>();
+    rankings.forEach(r => {
+      Object.keys(r.topic_ownership || {}).forEach(cat => {
+        if (cat !== 'Muu' && cat !== 'Yleinen') allCategories.add(cat);
+      });
+    });
+
+    const categories = Array.from(allCategories);
     const owners = categories.sort().map(cat => {
       const partyOwnership = rankings.map(r => ({
         party: r.party_name,
@@ -76,8 +83,19 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
       })).sort((a, b) => b.intensity - a.intensity);
 
       const best = partyOwnership[0];
+      
+      // Map category keys to Finnish display names
+      const displayNames: Record<string, string> = {
+        "Talous": "Talous",
+        "Arvot": "Arvot",
+        "Ympäristö": "Ympäristö",
+        "Aluepolitiikka": "Alueet",
+        "Kansainvälisyys": "Globalismi",
+        "Turvallisuus": "Turvallisuus"
+      };
+
       return {
-        category: cat,
+        category: displayNames[cat] || cat,
         party: best?.intensity > 0 ? best.party : "Ei dataa",
         score: best ? Math.round(best.intensity * 10) / 10 : 0
       };

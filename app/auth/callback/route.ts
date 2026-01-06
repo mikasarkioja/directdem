@@ -14,9 +14,15 @@ export async function GET(request: Request) {
   const origin = requestUrl.origin;
 
   const cookieStore = await cookies();
-  const redirectTo = new URL(next, origin);
-  const response = NextResponse.redirect(redirectTo);
+  
+  // 1. Prepare the final URL
+  const successUrl = new URL(next, origin);
+  successUrl.searchParams.set('auth', 'success');
+  
+  // 2. Create the response object FIRST and use it throughout
+  const response = NextResponse.redirect(successUrl);
 
+  // 3. Initialize Supabase client bound to THIS specific response
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,18 +33,19 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            // FORCE HIGHEST PERSISTENCE
-            const cookieOptions = { 
+            // Set on the current cookie store for immediate server use
+            try {
+              cookieStore.set(name, value, { ...options, path: '/', sameSite: 'lax', secure: true });
+            } catch (e) { /* Ignore read-only errors */ }
+            
+            // Set on the actual response that goes to the browser
+            response.cookies.set(name, value, { 
               ...options, 
               path: '/', 
-              sameSite: 'lax' as const,
+              sameSite: 'lax', 
               secure: true,
-              httpOnly: name.includes('refresh-token'), // Security best practice
-              maxAge: 60 * 60 * 24 * 365 // 1 year session if browser allows
-            };
-            
-            cookieStore.set(name, value, cookieOptions);
-            response.cookies.set(name, value, cookieOptions);
+              maxAge: 60 * 60 * 24 * 7 // Ensure 1 week persistence
+            });
           });
         },
       },
@@ -52,36 +59,14 @@ export async function GET(request: Request) {
       if (data.session) {
         // Essential: upsert happens but don't block the redirect
         upsertUserProfile(data.session.user.id).catch(() => {});
-        
-        // Final verification: we MUST return the 'response' object that 
-        // contains the cookies from setAll!
-        const successUrl = new URL(next, origin);
-        successUrl.searchParams.set('auth', 'success');
-        
-        // Copy cookies to a fresh redirect to ensure they are the very last thing set
-        const finalResponse = NextResponse.redirect(successUrl);
-        response.cookies.getAll().forEach(c => {
-          finalResponse.cookies.set(c.name, c.value, {
-            path: '/', sameSite: 'lax', secure: true, maxAge: 60*60*24*7
-          });
-        });
-        
-        return finalResponse;
+        return response; // Return the response that now has cookies attached
       }
     } else if (token_hash) {
       const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
       if (error) throw error;
       if (data.session) {
         upsertUserProfile(data.session.user.id).catch(() => {});
-        const successUrl = new URL(next, origin);
-        successUrl.searchParams.set('auth', 'success');
-        const finalResponse = NextResponse.redirect(successUrl);
-        response.cookies.getAll().forEach(c => {
-          finalResponse.cookies.set(c.name, c.value, {
-            path: '/', sameSite: 'lax', secure: true, maxAge: 60*60*24*7
-          });
-        });
-        return finalResponse;
+        return response;
       }
     }
     

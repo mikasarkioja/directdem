@@ -3,6 +3,7 @@ import Navbar from "@/components/Navbar";
 import { getUser } from "@/app/actions/auth";
 import { Suspense } from "react";
 
+// Pakotettu build-päivitys sessio-ongelmien ratkaisemiseksi
 export const dynamic = "force-dynamic";
 
 export default async function Home(props: {

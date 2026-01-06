@@ -115,17 +115,26 @@ export async function findMatchesForScores(inputScores: {
   };
 
   const stdDevs = {
-    eco: Math.sqrt(Math.max(0.01, stats.eco.sqSum / count - Math.pow(means.eco, 2))),
-    lib: Math.sqrt(Math.max(0.01, stats.lib.sqSum / count - Math.pow(means.lib, 2))),
-    env: Math.sqrt(Math.max(0.01, stats.env.sqSum / count - Math.pow(means.env, 2))),
-    urb: Math.sqrt(Math.max(0.01, stats.urb.sqSum / count - Math.pow(means.urb, 2))),
-    glo: Math.sqrt(Math.max(0.01, stats.glo.sqSum / count - Math.pow(means.glo, 2))),
-    sec: Math.sqrt(Math.max(0.01, stats.sec.sqSum / count - Math.pow(means.sec, 2)))
+    eco: Math.sqrt(Math.max(0.15, stats.eco.sqSum / count - Math.pow(means.eco, 2))),
+    lib: Math.sqrt(Math.max(0.15, stats.lib.sqSum / count - Math.pow(means.lib, 2))),
+    env: Math.sqrt(Math.max(0.15, stats.env.sqSum / count - Math.pow(means.env, 2))),
+    urb: Math.sqrt(Math.max(0.15, stats.urb.sqSum / count - Math.pow(means.urb, 2))),
+    glo: Math.sqrt(Math.max(0.15, stats.glo.sqSum / count - Math.pow(means.glo, 2))),
+    sec: Math.sqrt(Math.max(0.15, stats.sec.sqSum / count - Math.pow(means.sec, 2)))
   };
 
   const getZ = (val: number, mean: number, sd: number) => (val - mean) / sd;
 
   const matches = uniqueProfiles.map((p: any) => {
+    // Calculate raw distance for fallback/blending
+    const rawDistSq = 
+      Math.pow((p.economic_score - inputScores.economic), 2) +
+      Math.pow((p.liberal_conservative_score - inputScores.liberal), 2) +
+      Math.pow((p.environmental_score - inputScores.env), 2) +
+      Math.pow((p.urban_rural_score || 0) - (inputScores.urban || 0), 2) +
+      Math.pow((p.international_national_score || 0) - (inputScores.global || 0), 2) +
+      Math.pow((p.security_score || 0) - (inputScores.security || 0), 2);
+
     const dEco = getZ(p.economic_score, means.eco, stdDevs.eco) - getZ(inputScores.economic, means.eco, stdDevs.eco);
     const dLib = getZ(p.liberal_conservative_score, means.lib, stdDevs.lib) - getZ(inputScores.liberal, means.lib, stdDevs.lib);
     const dEnv = getZ(p.environmental_score, means.env, stdDevs.env) - getZ(inputScores.env, means.env, stdDevs.env);
@@ -133,14 +142,21 @@ export async function findMatchesForScores(inputScores: {
     const dGlo = getZ(p.international_national_score || 0, means.glo, stdDevs.glo) - getZ(inputScores.global, means.glo, stdDevs.glo);
     const dSec = getZ(p.security_score || 0, means.sec, stdDevs.sec) - getZ(inputScores.security, means.sec, stdDevs.sec);
 
-    const distance = Math.sqrt(
+    const zDistance = Math.sqrt(
       Math.pow(dEco, 2) + Math.pow(dLib, 2) + Math.pow(dEnv, 2) +
       Math.pow(dUrb, 2) + Math.pow(dGlo, 2) + Math.pow(dSec, 2)
     );
 
-    const maxZDist = 10.0; 
-    const normalizedDist = Math.min(1, distance / maxZDist);
-    const compatibility = Math.max(0, Math.round(Math.pow(1 - normalizedDist, 1.5) * 100));
+    // Use a mix of Z-distance and raw distance to prevent 0% matches
+    const maxRawDist = 4.9;
+    const rawCompatibility = Math.max(0, 1 - (Math.sqrt(rawDistSq) / maxRawDist));
+    
+    // Increase maxZDist significantly to ensure more variation even for outliers
+    const maxZDist = 25.0; 
+    const zCompatibility = Math.max(0, 1 - (zDistance / maxZDist));
+
+    // Weighted average: Z-score (relative position) + Raw distance (absolute agreement)
+    const compatibility = Math.max(1, Math.round((zCompatibility * 0.6 + rawCompatibility * 0.4) * 100));
 
     const fullName = `${p.mps.first_name} ${p.mps.last_name}`;
     return {
@@ -148,6 +164,7 @@ export async function findMatchesForScores(inputScores: {
       full_name: fullName,
       party: formatParty(p.mps.party, fullName),
       compatibility,
+      distance: zDistance, // Store for sorting
       scores: {
         economic: p.economic_score,
         liberal: p.liberal_conservative_score,
@@ -157,7 +174,10 @@ export async function findMatchesForScores(inputScores: {
         security: p.security_score || 0
       }
     };
-  }).sort((a, b) => b.compatibility - a.compatibility);
+  }).sort((a, b) => {
+    if (b.compatibility !== a.compatibility) return b.compatibility - a.compatibility;
+    return (a as any).distance - (b as any).distance;
+  });
 
   const partyScores: Record<string, { totalComp: number, count: number, mps: any[] }> = {};
   matches.forEach(m => {

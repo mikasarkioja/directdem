@@ -61,15 +61,22 @@ export async function getUser(): Promise<UserProfile | null> {
  * Creates or updates user profile after login
  * Optimized to NOT interfere with auth cookies
  */
-export async function upsertUserProfile(userId: string) {
+export async function upsertUserProfile(userId: string, metadata?: any) {
   try {
     // We use a direct client here to avoid any cookie side-effects during auth callback
     const supabase = await createClient();
     
-    await supabase.from("profiles").upsert({
+    const profileData: any = {
       id: userId,
       last_login: new Date().toISOString(),
-    }, { onConflict: 'id' });
+    };
+
+    if (metadata) {
+      if (metadata.accepted_terms !== undefined) profileData.accepted_terms = metadata.accepted_terms;
+      if (metadata.full_name) profileData.full_name = metadata.full_name;
+    }
+
+    await supabase.from("profiles").upsert(profileData, { onConflict: 'id' });
     
   } catch (err: any) {
     console.error("[upsertUserProfile] Error:", err.message);

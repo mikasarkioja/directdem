@@ -31,25 +31,16 @@ export default async function Home({
       <Navbar user={user} />
       {user && <FirstTimeGDPR userId={user.id} />}
       
-      {/* Client-side auto-refresh script if auth success but user is null */}
-      {auth === 'success' && !user && (
-        <script dangerouslySetInnerHTML={{ __html: `
-          setTimeout(() => {
-            console.log("Auth success detected but no user session. Retrying...");
-            window.location.reload();
-          }, 2000);
-        `}} />
-      )}
-
       {/* 
         DEBUG STATUS BAR - Only visible if there are parameters 
       */}
       {(error || auth) && (
-        <div className="bg-slate-900 text-white text-[8px] font-mono py-1 px-4 flex gap-4 uppercase tracking-tighter opacity-50">
-          <span>Debug:</span>
+        <div className="bg-slate-900 text-white text-[8px] font-mono py-1 px-4 flex gap-4 uppercase tracking-tighter opacity-50 sticky top-16 z-50">
+          <span>Debug Mode:</span>
           {error && <span className="text-rose-400">Error: {error}</span>}
           {auth && <span className="text-emerald-400">Auth: {auth}</span>}
           <span>User: {user ? 'Logged In' : 'Guest'}</span>
+          <span>Cookies: {user ? 'Active' : 'Missing/Rejected'}</span>
         </div>
       )}
 
@@ -58,15 +49,37 @@ export default async function Home({
       
       {auth === 'success' && !user && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] w-full max-w-lg px-4">
-          <div className="bg-amber-500 text-white p-6 rounded-[2rem] shadow-2xl border border-amber-400 flex items-start gap-4">
-            <div className="bg-white/20 p-3 rounded-2xl">
-              <span className="text-2xl animate-spin inline-block">🔄</span>
+          <div className="bg-amber-500 text-white p-6 rounded-[2rem] shadow-2xl border border-amber-400 flex flex-col gap-4">
+            <div className="flex items-start gap-4">
+              <div className="bg-white/20 p-3 rounded-2xl">
+                <span className="text-2xl animate-spin inline-block">🔄</span>
+              </div>
+              <div className="flex-1 space-y-1">
+                <p className="font-black uppercase text-[10px] tracking-widest">Istuntoa alustetaan</p>
+                <p className="font-bold text-sm">Kirjautuminen onnistui! Odotetaan evästeiden vahvistusta...</p>
+                <p className="text-[10px] opacity-80">Jos sivu ei päivity 5 sekunnissa, paina alla olevaa nappia.</p>
+              </div>
             </div>
-            <div className="flex-1 space-y-1">
-              <p className="font-black uppercase text-[10px] tracking-widest">Istuntoa alustetaan</p>
-              <p className="font-bold text-sm">Kirjautuminen onnistui! Viimeistellään asetuksia, sivu päivittyy hetken kuluttua automaattisesti...</p>
-            </div>
+            <button 
+              onClick={() => window.location.href = '/'}
+              className="w-full py-3 bg-white/20 hover:bg-white/30 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all border border-white/10"
+            >
+              Päivitä sivu manuaalisesti
+            </button>
           </div>
+          
+          <script dangerouslySetInnerHTML={{ __html: `
+            // Only reload if we haven't tried recently to avoid infinite loops
+            const lastReload = sessionStorage.getItem('auth_reload_time');
+            const now = Date.now();
+            if (!lastReload || (now - parseInt(lastReload)) > 10000) {
+              sessionStorage.setItem('auth_reload_time', now.toString());
+              setTimeout(() => {
+                console.log("Auto-refreshing to activate session...");
+                window.location.href = '/';
+              }, 3000);
+            }
+          `}} />
         </div>
       )}
 

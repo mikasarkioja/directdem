@@ -12,11 +12,11 @@ export async function GET(request: Request) {
   const type = requestUrl.searchParams.get("type") || "magiclink";
   const next = requestUrl.searchParams.get("next") ?? "/";
 
-  // Create a base response for redirects
-  const cookieStore = await cookies();
-  const redirectTo = new URL(next, request.url);
+  // Use absolute URL for redirect to avoid relative path issues
+  const origin = requestUrl.origin;
+  const redirectTo = new URL(next, origin);
   
-  // Use a temporary response to collect cookies from Supabase
+  const cookieStore = await cookies();
   const response = NextResponse.redirect(redirectTo);
 
   const supabase = createServerClient(
@@ -29,9 +29,7 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            // 1. Set on the incoming request cookies (for immediate server-side state)
             cookieStore.set(name, value, { ...options, path: '/', sameSite: 'lax' });
-            // 2. Set on the outgoing response (for the browser to save them)
             response.cookies.set(name, value, { ...options, path: '/', sameSite: 'lax' });
           });
         },
@@ -46,10 +44,14 @@ export async function GET(request: Request) {
       
       if (data.session) {
         await upsertUserProfile(data.session.user.id).catch(() => {});
-        // Add success flag to URL
-        redirectTo.searchParams.set('auth', 'success');
-        return NextResponse.redirect(redirectTo, {
-          headers: response.headers // Ensure cookies are included in the final redirect
+        // Explicitly set the auth parameter on the absolute URL
+        const finalUrl = new URL(next, origin);
+        finalUrl.searchParams.set('auth', 'success');
+        
+        console.log("[Auth Callback] Success, redirecting to:", finalUrl.toString());
+        
+        return NextResponse.redirect(finalUrl, {
+          headers: response.headers
         });
       }
     } else if (token_hash) {
@@ -58,16 +60,22 @@ export async function GET(request: Request) {
       
       if (data.session) {
         await upsertUserProfile(data.session.user.id).catch(() => {});
-        redirectTo.searchParams.set('auth', 'success');
-        return NextResponse.redirect(redirectTo, {
+        const finalUrl = new URL(next, origin);
+        finalUrl.searchParams.set('auth', 'success');
+        
+        return NextResponse.redirect(finalUrl, {
           headers: response.headers
         });
       }
     }
     
-    return NextResponse.redirect(new URL("/?error=no_session_created", request.url));
+    const errorUrl = new URL("/", origin);
+    errorUrl.searchParams.set('error', 'no_session_created');
+    return NextResponse.redirect(errorUrl);
   } catch (err: any) {
     console.error("[Auth Callback] Error:", err.message);
-    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(err.message)}`, request.url));
+    const errorUrl = new URL("/", origin);
+    errorUrl.searchParams.set('error', err.message);
+    return NextResponse.redirect(errorUrl);
   }
 }

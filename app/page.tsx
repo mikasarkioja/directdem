@@ -31,6 +31,19 @@ export default async function Home({
       <Navbar user={user} />
       {user && <FirstTimeGDPR userId={user.id} />}
       
+      {/* 
+        DEBUG STATUS BAR - Only visible if there are parameters 
+        Helps identify if the redirect is working even if the toast fails.
+      */}
+      {(error || auth) && (
+        <div className="bg-slate-900 text-white text-[8px] font-mono py-1 px-4 flex gap-4 uppercase tracking-tighter opacity-50">
+          <span>Debug:</span>
+          {error && <span className="text-rose-400">Error: {error}</span>}
+          {auth && <span className="text-emerald-400">Auth: {auth}</span>}
+          <span>User: {user ? 'Logged In' : 'Guest'}</span>
+        </div>
+      )}
+
       {/* Auth State Display */}
       <AuthErrorToast error={error} />
       

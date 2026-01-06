@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  // Create an unmodified response
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -16,21 +17,20 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            const finalOptions = { 
-              ...options, 
-              path: '/', 
-              sameSite: 'lax' as const,
-              secure: process.env.NODE_ENV === 'production' ? true : options?.secure
-            };
             request.cookies.set(name, value);
-            supabaseResponse.cookies.set(name, value, finalOptions);
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              path: '/',
+              sameSite: 'lax',
+              secure: true,
+            });
           });
         },
       },
     }
   );
 
-  // Refresh session if expired
+  // This will refresh the session if it's expired
   await supabase.auth.getUser();
 
   return supabaseResponse;

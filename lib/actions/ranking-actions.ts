@@ -3,6 +3,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { formatParty } from "@/lib/utils/party-utils";
+import { calculatePivotScore } from "@/lib/analysis/pivot-engine";
 
 export interface RankingResult {
   parties: {
@@ -17,6 +18,7 @@ export interface RankingResult {
     disciplined: { name: string; score: number }[];
     flipFlops: { name: string; score: number }[];
     owners: { category: string; party: string; score: number }[];
+    activity: { name: string; score: number }[]; // New leaderboard
   };
 }
 
@@ -157,15 +159,23 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
     partyActivity[party][cat] = (partyActivity[party][cat] || 0) + 1;
   });
 
-  // 5. Pivot Score (Mocking for now as we don't have separate candidate response table)
-  // In a real scenario, compare mp_candidate_responses values vs final profile
+  // 5. Pivot Score (Using actual engine)
   const partyPivot: Record<string, number> = {};
-  Object.keys(partyProfiles).forEach(party => {
-    // Generate a semi-realistic pivot score based on party
-    // (In reality, this would be a real calculation)
-    const seed = party.length;
-    partyPivot[party] = Math.round((seed % 15) + 5); 
-  });
+  for (const party of Object.keys(partyProfiles)) {
+    const mpIds = partyProfiles[party].map(p => p.mp_id);
+    let totalPivot = 0;
+    let pivotCount = 0;
+    
+    // Use a sample of up to 10 MPs per party for performance, or all if less
+    for (const mpId of mpIds.slice(0, 10)) {
+      const score = await calculatePivotScore(mpId);
+      if (score > 0) {
+        totalPivot += score;
+        pivotCount++;
+      }
+    }
+    partyPivot[party] = pivotCount > 0 ? Math.round(totalPivot / pivotCount) : 0;
+  }
 
   const parties = Object.keys(partyProfiles).map(name => {
     const cats = partyActivity[name] || {};
@@ -183,20 +193,25 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
 
   // Leaderboards
   const leaders = {
-    disciplined: [...parties].sort((a, b) => b.cohesion - a.cohesion).slice(0, 3).map(p => ({ name: p.name, score: p.cohesion })),
-    flipFlops: [...parties].sort((a, b) => b.pivotScore - a.pivotScore).slice(0, 3).map(p => ({ name: p.name, score: p.pivotScore })),
+    disciplined: [...parties].sort((a, b) => b.cohesion - a.cohesion).map(p => ({ name: p.name, score: p.cohesion })),
+    flipFlops: [...parties].sort((a, b) => b.pivotScore - a.pivotScore).map(p => ({ name: p.name, score: p.pivotScore })),
+    activity: Object.entries(partyActivity).map(([name, cats]) => ({
+      name,
+      score: Math.round(Object.values(cats).reduce((a, b) => a + b, 0) / (partyProfiles[name]?.length || 1))
+    })).sort((a, b) => b.score - a.score),
     owners: ["Talous", "Arvot", "Ympäristö", "Aluepolitiikka", "Kansainvälisyys", "Turvallisuus"].map(cat => {
       // Calculate ownership by INTENSITY: (votes in category / party MP count)
-      // This ensures smaller active parties can "own" a topic
-      const best = parties.map(p => ({ 
+      const partyOwnership = parties.map(p => ({ 
         party: p.name, 
         intensity: (partyActivity[p.name]?.[cat] || 0) / (p.mpCount || 1)
-      })).sort((a, b) => b.intensity - a.intensity)[0];
+      })).sort((a, b) => b.intensity - a.intensity);
+      
+      const best = partyOwnership[0];
       
       return { 
         category: cat, 
-        party: best.party, 
-        score: Math.round(best.intensity * 10) / 10 // Rounded intensity for transparency
+        party: best?.intensity > 0 ? best.party : "Ei dataa", 
+        score: best ? Math.round(best.intensity * 10) / 10 : 0
       };
     })
   };
@@ -204,11 +219,7 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
   // Return ALL parties for leaderboards if requested, or just keep them sorted
   return { 
     parties, 
-    leaderboards: {
-      ...leaders,
-      disciplined: [...parties].sort((a, b) => b.cohesion - a.cohesion).map(p => ({ name: p.name, score: p.cohesion })),
-      flipFlops: [...parties].sort((a, b) => b.pivotScore - a.pivotScore).map(p => ({ name: p.name, score: p.pivotScore })),
-    } 
+    leaderboards: leaders
   };
 }
 

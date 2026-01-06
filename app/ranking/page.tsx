@@ -90,7 +90,7 @@ export default function RankingPage() {
           </div>
 
           {/* Leaderboards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
             {/* Cohesion - Rice Index */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -103,13 +103,10 @@ export default function RankingPage() {
                 </div>
                 <div>
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ryhmäkuri</h3>
-                  <p className="text-sm font-black uppercase text-slate-900">Rice Index (Koheesio)</p>
+                  <p className="text-sm font-black uppercase text-slate-900">Rice Index</p>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic">
-                Mittaa kuinka yhtenäisesti puolue äänestää. 100% tarkoittaa, että koko ryhmä painaa aina samaa nappia.
-              </p>
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar flex-1">
                 {data.leaderboards.disciplined.map((p, i) => (
                   <div key={p.name} className="flex items-center justify-between group">
                     <div className="flex items-center gap-3">
@@ -138,10 +135,7 @@ export default function RankingPage() {
                   <p className="text-sm font-black uppercase text-slate-900">Pivot Score</p>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic">
-                Mittaa eroa vaalikonevastausten ja todellisten äänestysten välillä. Korkea luku kertoo pragmaattisuudesta tai takinkäännöstä.
-              </p>
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar flex-1">
                 {data.leaderboards.flipFlops.map((p, i) => (
                   <div key={p.name} className="flex items-center justify-between group">
                     <div className="flex items-center gap-3">
@@ -149,6 +143,35 @@ export default function RankingPage() {
                       <span className="font-black uppercase text-[11px] text-slate-700">{p.name}</span>
                     </div>
                     <span className="font-black text-[11px] text-amber-600">+{p.score}%</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Activity Leaderboard */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm space-y-6 flex flex-col"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                  <TrendingUp size={20} />
+                </div>
+                <div>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Aktiivisuus</h3>
+                  <p className="text-sm font-black uppercase text-slate-900">Äänet per edustaja</p>
+                </div>
+              </div>
+              <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar flex-1">
+                {data.leaderboards.activity.map((p, i) => (
+                  <div key={p.name} className="flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">{i+1}</span>
+                      <span className="font-black uppercase text-[11px] text-slate-700">{p.name}</span>
+                    </div>
+                    <span className="font-black text-[11px] text-blue-600">{p.score}</span>
                   </div>
                 ))}
               </div>
@@ -170,10 +193,7 @@ export default function RankingPage() {
                   <p className="text-sm font-black uppercase text-slate-900">Topic Ownership</p>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic">
-                Osoittaa, mikä puolue on suhteellisesti aktiivisin eri teemoissa. Laskenta perustuu äänestysaktiivisuuteen per edustaja.
-              </p>
-              <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[250px]">
                 {data.leaderboards.owners.map((o) => (
                   <div key={o.category} className="flex items-center justify-between group border-b border-slate-50 pb-2">
                     <div className="flex flex-col">

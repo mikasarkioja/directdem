@@ -186,14 +186,29 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
     disciplined: [...parties].sort((a, b) => b.cohesion - a.cohesion).slice(0, 3).map(p => ({ name: p.name, score: p.cohesion })),
     flipFlops: [...parties].sort((a, b) => b.pivotScore - a.pivotScore).slice(0, 3).map(p => ({ name: p.name, score: p.pivotScore })),
     owners: ["Talous", "Arvot", "Ympäristö", "Aluepolitiikka", "Kansainvälisyys", "Turvallisuus"].map(cat => {
+      // Calculate ownership by INTENSITY: (votes in category / party MP count)
+      // This ensures smaller active parties can "own" a topic
       const best = parties.map(p => ({ 
         party: p.name, 
-        score: partyActivity[p.name]?.[cat] || 0 
-      })).sort((a, b) => b.score - a.score)[0];
-      return { category: cat, party: best.party, score: best.score };
+        intensity: (partyActivity[p.name]?.[cat] || 0) / (p.mpCount || 1)
+      })).sort((a, b) => b.intensity - a.intensity)[0];
+      
+      return { 
+        category: cat, 
+        party: best.party, 
+        score: Math.round(best.intensity * 10) / 10 // Rounded intensity for transparency
+      };
     })
   };
 
-  return { parties, leaderboards: leaders };
+  // Return ALL parties for leaderboards if requested, or just keep them sorted
+  return { 
+    parties, 
+    leaderboards: {
+      ...leaders,
+      disciplined: [...parties].sort((a, b) => b.cohesion - a.cohesion).map(p => ({ name: p.name, score: p.cohesion })),
+      flipFlops: [...parties].sort((a, b) => b.pivotScore - a.pivotScore).map(p => ({ name: p.name, score: p.pivotScore })),
+    } 
+  };
 }
 

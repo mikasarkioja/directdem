@@ -13,8 +13,6 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get("next") ?? "/";
 
   const cookieStore = await cookies();
-
-  // Create an initial response object for the redirect
   const response = NextResponse.redirect(new URL(next, request.url));
 
   const supabase = createServerClient(
@@ -27,10 +25,9 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            // 1. Set on the cookie store (for server-side immediate use)
-            cookieStore.set(name, value, options);
-            // 2. Set on the response object (for browser to receive after redirect)
-            response.cookies.set(name, value, options);
+            const cookieOptions = { ...options, path: '/', sameSite: 'lax' as const };
+            cookieStore.set(name, value, cookieOptions);
+            response.cookies.set(name, value, cookieOptions);
           });
         },
       },
@@ -39,49 +36,24 @@ export async function GET(request: Request) {
 
   try {
     if (code) {
-      console.log("[Auth Callback] Exchanging code for session...");
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) {
-        console.error("[Auth Callback] Code exchange error:", error.message);
-        return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(error.message)}`, request.url));
-      }
-      
+      if (error) throw error;
       if (data.session) {
-        console.log("[Auth Callback] exchangeCodeForSession SUCCESS for:", data.session.user.email);
-        try {
-          await upsertUserProfile(data.session.user.id);
-        } catch (dbErr) {
-          console.error("[Auth Callback] Profile update failed (non-fatal):", dbErr);
-        }
+        await upsertUserProfile(data.session.user.id).catch(() => {});
         return response;
       }
     } else if (token_hash) {
-      console.log("[Auth Callback] Verifying OTP token_hash...");
-      const { data, error } = await supabase.auth.verifyOtp({
-        token_hash,
-        type: type as any,
-      });
-      if (error) {
-        console.error("[Auth Callback] OTP verify error:", error.message);
-        return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(error.message)}`, request.url));
-      }
-
+      const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
+      if (error) throw error;
       if (data.session) {
-        console.log("[Auth Callback] verifyOtp SUCCESS for:", data.session.user.email);
-        try {
-          await upsertUserProfile(data.session.user.id);
-        } catch (dbErr) {
-          console.error("[Auth Callback] Profile update failed (non-fatal):", dbErr);
-        }
+        await upsertUserProfile(data.session.user.id).catch(() => {});
         return response;
       }
     }
     
-    console.warn("[Auth Callback] No code or token_hash found in URL.");
-    return NextResponse.redirect(new URL("/?error=missing_auth_data", request.url));
-
+    return NextResponse.redirect(new URL("/?error=no_session_created", request.url));
   } catch (err: any) {
-    console.error("[Auth Callback] Unexpected error:", err.message);
+    console.error("[Auth Callback] Error:", err.message);
     return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(err.message)}`, request.url));
   }
 }

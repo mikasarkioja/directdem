@@ -30,9 +30,10 @@ export async function createClient() {
       async setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
         try {
           for (const { name, value, options } of cookiesToSet) {
-            // Force secure: false on localhost to avoid cookie rejection
             const finalOptions = {
               ...options,
+              path: '/',
+              sameSite: 'lax' as const,
               secure: process.env.NODE_ENV === 'development' ? false : options?.secure,
             };
             await cookieStore.set(name, value, finalOptions);

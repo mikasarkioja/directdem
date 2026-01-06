@@ -16,10 +16,9 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            // Päivitä evästeet pyyntöön (request) middlewarelle
+            const finalOptions = { ...options, path: '/', sameSite: 'lax' as const };
             request.cookies.set(name, value);
-            // Päivitä evästeet vastaukseen (response) selaimelle
-            supabaseResponse.cookies.set(name, value, options);
+            supabaseResponse.cookies.set(name, value, finalOptions);
           });
         },
       },

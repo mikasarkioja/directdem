@@ -11,12 +11,12 @@ export async function GET(request: Request) {
   const token_hash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type") || "magiclink";
   const next = requestUrl.searchParams.get("next") ?? "/";
-
-  // Use absolute URL for redirect to avoid relative path issues
   const origin = requestUrl.origin;
-  const redirectTo = new URL(next, origin);
-  
+
   const cookieStore = await cookies();
+  
+  // Create a response object first
+  const redirectTo = new URL(next, origin);
   const response = NextResponse.redirect(redirectTo);
 
   const supabase = createServerClient(
@@ -29,7 +29,9 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
+            // SET ON COOKIE STORE (Server-side persistence)
             cookieStore.set(name, value, { ...options, path: '/', sameSite: 'lax' });
+            // SET ON RESPONSE (Browser-side persistence)
             response.cookies.set(name, value, { ...options, path: '/', sameSite: 'lax' });
           });
         },
@@ -41,41 +43,43 @@ export async function GET(request: Request) {
     if (code) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) throw error;
-      
       if (data.session) {
-        await upsertUserProfile(data.session.user.id).catch(() => {});
-        // Explicitly set the auth parameter on the absolute URL
+        // Non-blocking profile update
+        upsertUserProfile(data.session.user.id).catch(() => {});
+        
+        // Ensure success param is added to the REDIRECT response
         const finalUrl = new URL(next, origin);
         finalUrl.searchParams.set('auth', 'success');
         
-        console.log("[Auth Callback] Success, redirecting to:", finalUrl.toString());
-        
-        return NextResponse.redirect(finalUrl, {
-          headers: response.headers
+        // Return the modified response object which NOW HAS THE COOKIES
+        const finalResponse = NextResponse.redirect(finalUrl);
+        // Copy all cookies from our 'response' helper to the final response
+        response.cookies.getAll().forEach(cookie => {
+          finalResponse.cookies.set(cookie.name, cookie.value, { path: '/', sameSite: 'lax' });
         });
+        
+        return finalResponse;
       }
     } else if (token_hash) {
       const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
       if (error) throw error;
-      
       if (data.session) {
-        await upsertUserProfile(data.session.user.id).catch(() => {});
+        upsertUserProfile(data.session.user.id).catch(() => {});
         const finalUrl = new URL(next, origin);
         finalUrl.searchParams.set('auth', 'success');
         
-        return NextResponse.redirect(finalUrl, {
-          headers: response.headers
+        const finalResponse = NextResponse.redirect(finalUrl);
+        response.cookies.getAll().forEach(cookie => {
+          finalResponse.cookies.set(cookie.name, cookie.value, { path: '/', sameSite: 'lax' });
         });
+        
+        return finalResponse;
       }
     }
     
-    const errorUrl = new URL("/", origin);
-    errorUrl.searchParams.set('error', 'no_session_created');
-    return NextResponse.redirect(errorUrl);
+    return NextResponse.redirect(new URL("/?error=exchange_failed", origin));
   } catch (err: any) {
     console.error("[Auth Callback] Error:", err.message);
-    const errorUrl = new URL("/", origin);
-    errorUrl.searchParams.set('error', err.message);
-    return NextResponse.redirect(errorUrl);
+    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(err.message)}`, origin));
   }
 }

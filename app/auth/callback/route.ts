@@ -44,7 +44,11 @@ export async function GET(request: Request) {
       
       if (data.session) {
         console.log("[Auth Callback] exchangeCodeForSession SUCCESS.");
-        await upsertUserProfile(data.session.user.id);
+        try {
+          await upsertUserProfile(data.session.user.id);
+        } catch (dbErr) {
+          console.error("[Auth Callback] Profile update failed:", dbErr);
+        }
         return response;
       }
     } else if (token_hash) {
@@ -57,12 +61,18 @@ export async function GET(request: Request) {
 
       if (data.session) {
         console.log("[Auth Callback] verifyOtp SUCCESS.");
-        await upsertUserProfile(data.session.user.id);
+        try {
+          await upsertUserProfile(data.session.user.id);
+        } catch (dbErr) {
+          console.error("[Auth Callback] Profile update failed:", dbErr);
+        }
         return response;
       }
     }
   } catch (err: any) {
     console.error("[Auth Callback] Auth error:", err.message);
+    // Redirect with error message for debugging
+    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(err.message)}`, request.url));
   }
 
   // If something fails, redirect home but maybe with an error flag

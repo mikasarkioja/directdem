@@ -1,142 +1,88 @@
-'use client';
+import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import DebugAuthClient from './DebugAuthClient';
 
-import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+export const dynamic = 'force-dynamic';
 
-export default function DebugAuthPage() {
-  const [session, setSession] = useState<any>(null);
-  const [cookies, setCookies] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [envInfo, setEnvInfo] = useState<any>({ url: '', key: '' });
+export default async function DebugAuthPage() {
+  const supabase = await createClient();
+  const cookieStore = await cookies();
+  const allCookies = cookieStore.getAll();
+  
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    async function checkAuth() {
-      if (typeof window === 'undefined') return;
-
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setCookies(document.cookie);
-      
-      setEnvInfo({
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'MISSING',
-        key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'MISSING',
-        browser: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown'
-      });
-      
-      setLoading(false);
-    }
-    checkAuth();
-  }, []);
-
-  // Helper to check if actual auth token exists (not just verifier)
-  const hasActualAuthToken = cookies.split(';').some(c => {
-    const name = c.trim().split('=')[0];
-    return name.includes('auth-token') && !name.includes('code-verifier');
-  });
+  const serverData = {
+    session: session ? 'Löytyy' : 'Ei löydy',
+    user: user ? user.email : 'Ei löydy',
+    sessionError: sessionError?.message || null,
+    userError: userError?.message || null,
+    cookieCount: allCookies.length,
+    authCookies: allCookies
+      .filter(c => c.name.includes('auth-token'))
+      .map(c => ({ name: c.name, value: c.value.substring(0, 10) + '...' }))
+  };
 
   return (
     <div className="p-10 font-mono text-xs bg-slate-950 text-emerald-400 min-h-screen">
-      <h1 className="text-xl font-black mb-6 text-white uppercase tracking-widest">Auth Diagnostiikka v2</h1>
+      <h1 className="text-xl font-black mb-6 text-white uppercase tracking-widest">Auth Diagnostiikka v3 (Full Stack)</h1>
       
-      <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <section>
-          <h2 className="text-amber-400 font-bold mb-2 uppercase tracking-tight">1. Selainpohjainen istunto (Client Side)</h2>
-          {loading ? (
-            <p className="animate-pulse">Ladataan...</p>
-          ) : (
-            <div className={`p-4 rounded-xl border ${session ? 'bg-emerald-900/20 border-emerald-500/50 text-emerald-300' : 'bg-rose-900/20 border-rose-500/50 text-rose-300'}`}>
-              {session ? (
-                <pre className="overflow-auto max-h-40">
-                  {JSON.stringify({ 
-                    user: session.user.email,
-                    expires: new Date(session.expires_at * 1000).toLocaleString()
-                  }, null, 2)}
-                </pre>
+          <h2 className="text-amber-400 font-bold mb-2 uppercase tracking-tight">1. Palvelimen tila (Server Side)</h2>
+          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-4">
+            <pre className="text-emerald-300">
+              {JSON.stringify(serverData, null, 2)}
+            </pre>
+            <div className="p-3 bg-black/40 rounded-lg text-[10px]">
+              <p className="text-slate-500 mb-1">Palvelimen näkemät evästeet:</p>
+              {serverData.authCookies.length > 0 ? (
+                <ul className="space-y-1">
+                  {serverData.authCookies.map((c, i) => (
+                    <li key={i} className="text-emerald-500">✅ {c.name}</li>
+                  ))}
+                </ul>
               ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">❌</span>
-                  <span className="font-bold uppercase tracking-widest">Ei istuntoa löydetty</span>
-                </div>
+                <p className="text-rose-500">❌ Palvelin ei näe yhtään auth-evästettä.</p>
               )}
             </div>
-          )}
+          </div>
         </section>
 
         <section>
-          <h2 className="text-amber-400 font-bold mb-2 uppercase tracking-tight">2. Evästeet (Raw Cookies)</h2>
-          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 break-all overflow-y-auto max-h-40 font-mono text-[10px]">
-            {cookies ? (
-              <ul className="space-y-1">
-                {cookies.split(';').map((c, i) => {
-                  const isToken = c.includes('auth-token') && !c.includes('code-verifier');
-                  const isVerifier = c.includes('code-verifier');
-                  return (
-                    <li key={i} className={isToken ? 'text-emerald-400 font-bold' : isVerifier ? 'text-amber-400/50' : 'text-slate-500'}>
-                      {c.trim()} {isToken ? ' <--- TÄMÄ PUUTTUI AIEMMIN' : ''}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <span className="text-rose-500 italic">Ei evästeitä löytynyt selaimesi muistista.</span>
-            )}
-          </div>
+          <h2 className="text-amber-400 font-bold mb-2 uppercase tracking-tight">2. Selaimen tila (Client Side)</h2>
+          <DebugAuthClient />
         </section>
-
-        <section className="grid grid-cols-2 gap-4">
-          <div>
-            <h2 className="text-amber-400 font-bold mb-2 uppercase tracking-tight">3. Järjestelmä</h2>
-            <pre className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-[10px]">
-              {JSON.stringify(envInfo, null, 2)}
-            </pre>
-          </div>
-          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-            <h2 className="text-amber-400 font-bold mb-2 uppercase tracking-tight">4. Tarkistuslista</h2>
-            <ul className="space-y-2 text-[10px]">
-              <li className="flex gap-2">
-                <span>{hasActualAuthToken ? '✅' : '❌'}</span>
-                <span>Oikea Auth Token eväste (Session)</span>
-              </li>
-              <li className="flex gap-2">
-                <span>{cookies.includes('code-verifier') ? '✅' : '❌'}</span>
-                <span>PKCE Code Verifier (Väliaikainen)</span>
-              </li>
-              <li className="flex gap-2">
-                <span>{session ? '✅' : '❌'}</span>
-                <span>Supabase Session Active</span>
-              </li>
-            </ul>
-          </div>
-        </section>
-
-        <div className="pt-6 border-t border-slate-800 flex flex-wrap gap-4">
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/20"
-          >
-            Palaa etusivulle
-          </button>
-          <button 
-            onClick={async () => {
-              const supabase = createClient();
-              await supabase.auth.signOut();
-              window.location.reload();
-            }}
-            className="px-6 py-3 bg-rose-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20"
-          >
-            Nollaa istunto (Sign Out)
-          </button>
-        </div>
       </div>
 
-      <div className="mt-10 p-6 bg-blue-900/20 rounded-2xl border border-blue-500/30 text-blue-300">
-        <p className="font-black uppercase tracking-widest text-xs mb-3">Mitä jos edelleen ❌?</p>
-        <ol className="list-decimal ml-5 space-y-2 text-[10px] font-bold">
-          <li>Kokeile Chromen "Vierastilaa" (Guest Mode) tai muuta selainta, jossa ei ole laajennuksia (esim. uBlock).</li>
-          <li>Varmista, ettei Vercelin kello ole väärässä (erittäin harvinaista).</li>
-          <li>Tämä uusi versio v2 yrittää pakottaa evästeet läpi manuaalisesti.</li>
-        </ol>
+      <div className="mt-10 p-6 bg-slate-900 rounded-2xl border border-slate-800">
+        <h3 className="text-white font-bold mb-4">Vianetsintä-matriisi</h3>
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="text-slate-500 border-b border-slate-800">
+              <th className="pb-2">Skenaario</th>
+              <th className="pb-2">Syy</th>
+              <th className="pb-2">Ratkaisu</th>
+            </tr>
+          </thead>
+          <tbody className="text-[10px]">
+            <tr className="border-b border-slate-800/50">
+              <td className="py-3 pr-4">Selain ✅ / Palvelin ❌</td>
+              <td className="py-3 pr-4 text-rose-400">Middleware ei välitä evästeitä</td>
+              <td className="py-3">Tarkista middleware.ts</td>
+            </tr>
+            <tr className="border-b border-slate-800/50">
+              <td className="py-3 pr-4">Selain ❌ / Palvelin ❌</td>
+              <td className="py-3 pr-4 text-rose-400">Evästeet eivät tallennu selaimen muistiin</td>
+              <td className="py-3">Domain/Secure/SameSite ongelma</td>
+            </tr>
+            <tr>
+              <td className="py-3 pr-4">Molemmat ✅ muttei toimi</td>
+              <td className="py-3 pr-4 text-rose-400">Next.js reititysvälimuisti (Cache)</td>
+              <td className="py-3 text-emerald-400">Paina CTRL + F5</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );

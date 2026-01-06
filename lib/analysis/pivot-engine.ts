@@ -63,7 +63,9 @@ export async function calculatePivotScore(mpId: number): Promise<number> {
     // Normalisoi vaalikonevastaus (1-5) -> (-1 ... 1)
     // 1 -> 1.0, 3 -> 0.0, 5 -> -1.0
     const normalized = (3 - r.response_value) / 2;
-    categoryResponses[r.category].sum += normalized * r.weight;
+    // Käytetään painokerrointa 1.0 jos saraketta ei ole
+    const weight = (r as any).weight || 1.0;
+    categoryResponses[r.category].sum += normalized * weight;
     categoryResponses[r.category].count++;
   });
 

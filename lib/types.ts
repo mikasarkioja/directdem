@@ -91,6 +91,7 @@ export interface UserProfile {
   level?: number;
   committee_assignment?: string;
   shadow_id_number?: string;
+  rank_title?: string;
   rank_level?: number;
   expertise_points?: number;
   shadow_id_url?: string;

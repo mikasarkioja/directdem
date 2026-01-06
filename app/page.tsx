@@ -39,12 +39,3 @@ export default async function Home({
     </div>
   );
 }
-
-      <Suspense fallback={<div className="flex h-screen items-center justify-center bg-slate-950 text-white font-black uppercase tracking-widest text-xs">Ladataan keskusta...</div>}>
-        <Dashboard user={user} initialView={view || "overview"} />
-      </Suspense>
-    </div>
-  );
-}
-
-

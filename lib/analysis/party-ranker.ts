@@ -46,7 +46,7 @@ export async function calculateAndStorePartyRankings(supabase: SupabaseClient) {
   voteAgg.forEach((v: any) => {
     const mp = v.mps;
     const party = formatParty(mp.party, `${mp.first_name} ${mp.last_name}`);
-    const cat = v.voting_events?.category;
+    const cat = v.voting_events?.category?.trim(); // Trim category name
 
     if (!partyVotes[party]) partyVotes[party] = {};
     if (!partyVotes[party][v.event_id]) partyVotes[party][v.event_id] = { jaa: 0, ei: 0 };
@@ -56,6 +56,10 @@ export async function calculateAndStorePartyRankings(supabase: SupabaseClient) {
     if (cat) {
       if (!partyActivity[party]) partyActivity[party] = {};
       partyActivity[party][cat] = (partyActivity[party][cat] || 0) + 1;
+      // Add debug logging for category mapping
+      if (party === "KOK" || party === "Kok") {
+        console.log(`Mapping vote: Party=${party}, Category=${cat}`);
+      }
     }
   });
 

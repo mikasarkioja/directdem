@@ -21,7 +21,7 @@ export default function DebugAuthClient() {
       setEnvInfo({
         url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'MISSING',
         key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'MISSING',
-        browser: typeof navigator !== 'undefined' ? navigator.navigator.userAgent : 'Unknown'
+        browser: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown'
       });
       
       setLoading(false);

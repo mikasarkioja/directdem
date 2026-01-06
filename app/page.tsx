@@ -8,27 +8,30 @@ export const dynamic = "force-dynamic";
 export default async function Home(props: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  // Await params as required by Next.js 15
   const searchParams = await props.searchParams;
   const view = (searchParams.view as string) || "overview";
   const auth = searchParams.auth as string;
   
-  // Minimalistic user fetch
   let user = null;
   try {
     user = await getUser();
-  } catch (e) {
-    // Silently fail to keep the page alive
-  }
+  } catch (e) {}
 
   return (
     <div className="min-h-screen bg-nordic-white">
       <Navbar user={user} />
       
-      {/* Basic success indicator */}
       {auth === 'success' && !user && (
-        <div className="bg-amber-500 text-white p-4 text-center text-xs font-black uppercase tracking-widest shadow-lg">
-          Kirjautuminen onnistui! Päivitä sivu (F5) aktivoitaksesi istunnon.
+        <div className="bg-amber-500 text-white p-4 flex flex-col items-center gap-2 shadow-lg">
+          <p className="text-xs font-black uppercase tracking-widest">
+            Kirjautuminen onnistui! Istuntoa aktivoidaan...
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-white text-amber-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm"
+          >
+            Päivitä sivu (Hard Reload)
+          </button>
         </div>
       )}
 

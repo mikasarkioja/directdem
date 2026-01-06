@@ -15,11 +15,12 @@ export async function GET(request: Request) {
 
   const cookieStore = await cookies();
   
-  // Prepare redirect response
+  // 1. Create the final redirect response EARLY
   const successUrl = new URL(next, origin);
   successUrl.searchParams.set('auth', 'success');
   const response = NextResponse.redirect(successUrl);
 
+  // 2. Create Supabase client that writes directly to BOTH cookieStore and the Response
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,16 +31,21 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            // HIGH COMPATIBILITY SETTINGS
             const cookieOptions = { 
               ...options, 
               path: '/', 
               sameSite: 'lax' as const,
-              secure: true,
-              domain: undefined // Let browser handle domain for .vercel.app
+              secure: true 
             };
             
-            cookieStore.set(name, value, cookieOptions);
+            // Server-side persistence
+            try {
+              cookieStore.set(name, value, cookieOptions);
+            } catch (e) {
+              // Ignore if we can't set on cookieStore
+            }
+            
+            // Browser-side persistence (CRITICAL for Next.js 15 redirects)
             response.cookies.set(name, value, cookieOptions);
           });
         },
@@ -53,6 +59,7 @@ export async function GET(request: Request) {
       if (error) throw error;
       if (data.session) {
         await upsertUserProfile(data.session.user.id).catch(() => {});
+        // Return the response object that now has all the auth-token cookies attached!
         return response;
       }
     } else if (token_hash) {
@@ -67,6 +74,8 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/?error=no_session_created", origin));
   } catch (err: any) {
     console.error("[Auth Callback] Error:", err.message);
-    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(err.message)}`, origin));
+    const errorUrl = new URL("/", origin);
+    errorUrl.searchParams.set('error', err.message);
+    return NextResponse.redirect(errorUrl);
   }
 }

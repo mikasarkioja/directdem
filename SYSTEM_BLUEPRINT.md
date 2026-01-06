@@ -33,6 +33,7 @@ Tämä dokumentti sisältää DirectDem-alustan täydellisen arkkitehtuurikuvauk
 - **mps**: `id (personId)`, `first_name`, `last_name`, `party`, `is_active`.
 - **mp_candidate_responses**: `mp_id`, `question_id`, `answer_value (1-5)`.
 - **mp_profiles**: `mp_id`, `economic_score`, `liberal_conservative_score`, `environmental_score`, `urban_rural_score`, `international_national_score`, `security_score`, `total_votes_analyzed`.
+- **party_rankings**: `party_name (unique)`, `cohesion_score`, `polarization_score`, `polarization_vector`, `pivot_score`, `activity_score`, `mp_count`, `topic_ownership`, `top_category`.
 
 ---
 

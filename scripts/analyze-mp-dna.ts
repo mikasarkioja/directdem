@@ -6,6 +6,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { checkVoteIntegrity } from '../lib/analysis/promise-monitor';
 import { predictVoteOutcome } from '../lib/analysis/weather-engine';
+import { calculateAndStorePartyRankings } from '../lib/analysis/party-ranker';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
@@ -246,6 +247,9 @@ async function main() {
     
     // Lopuksi vielä kerran päivitys jos uusia luokitteluja tuli
     await calculateMPProfiles();
+
+    // Lasketaan puolueiden voimasuhteet (Pre-calculation)
+    await calculateAndStorePartyRankings(supabase);
 
     // Sääennusteet tuleville äänestyksille
     console.log('--- Generoidaan sääennusteet tuleville äänestyksille ---');

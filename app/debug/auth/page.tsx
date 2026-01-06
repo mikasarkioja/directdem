@@ -10,12 +10,14 @@ export default function AuthDebugPage() {
   const [session, setSession] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [envInfo, setEnvInfo] = useState<any>({});
+  const [envInfo, setEnvInfo] = useState<any>({ url: "", userAgent: "", supabaseUrl: "" });
   const [cookieInfo, setCookieInfo] = useState<string>("");
+  const [isMounted, setIsMounted] = useState(false);
 
   const supabase = createClient();
 
   async function checkAuth() {
+    if (typeof window === 'undefined') return;
     setLoading(true);
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -32,6 +34,7 @@ export default function AuthDebugPage() {
   }
 
   useEffect(() => {
+    setIsMounted(true);
     checkAuth();
   }, []);
 
@@ -161,7 +164,7 @@ export default function AuthDebugPage() {
               </li>
               <li className="flex gap-3">
                 <div className="w-5 h-5 rounded bg-slate-700 flex-shrink-0" />
-                <p><span className="text-white font-bold">Redirect URL</span>: Onko <code>{window.location.origin}/auth/callback</code> lisätty Supabase Dashboardin 'Redirect URLs' listaan?</p>
+                <p><span className="text-white font-bold">Redirect URL</span>: Onko <code>{envInfo.url || 'loading...'}/auth/callback</code> lisätty Supabase Dashboardin 'Redirect URLs' listaan?</p>
               </li>
             </ul>
             <ul className="space-y-3">

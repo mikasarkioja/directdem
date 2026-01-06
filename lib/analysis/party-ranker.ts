@@ -21,15 +21,17 @@ export async function calculateAndStorePartyRankings(supabase: SupabaseClient) {
   }
 
   // 2. Fetch LARGE sample of voting data (e.g., last 50,000 votes)
+  // Using !inner to ensure we only get votes for events that exist and have a category
   const { data: voteAgg, error: voteError } = await supabase
     .from("mp_votes")
     .select(`
       vote_type,
       event_id,
       mps!inner ( id, party, is_active, first_name, last_name ),
-      voting_events ( category )
+      voting_events!inner ( category )
     `)
     .eq("mps.is_active", true)
+    .not("voting_events.category", "is", null) // Only count votes for categorized events
     .limit(50000); 
 
   if (voteError || !voteAgg) {

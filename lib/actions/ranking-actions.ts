@@ -67,16 +67,26 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
       score: Math.round(r.activity_score)
     })).sort((a, b) => b.score - a.score);
 
-    // Topic Ownership: Collect all unique categories across ALL parties
-    const allCategories = new Set<string>();
+    // Topic Ownership: Collect categories from DB or use core categories as fallback
+    const allCategories = new Set<string>(["Talous", "Arvot", "Ympäristö", "Aluepolitiikka", "Kansainvälisyys", "Turvallisuus"]);
     rankings.forEach(r => {
       Object.keys(r.topic_ownership || {}).forEach(cat => {
         if (cat !== 'Muu' && cat !== 'Yleinen') allCategories.add(cat);
       });
     });
 
+    // Map category keys to Finnish display names
+    const displayNames: Record<string, string> = {
+      "Talous": "Talous",
+      "Arvot": "Arvot",
+      "Ympäristö": "Ympäristö",
+      "Aluepolitiikka": "Alueet",
+      "Kansainvälisyys": "Globalismi",
+      "Turvallisuus": "Turvallisuus"
+    };
+
     const categories = Array.from(allCategories);
-    const owners = categories.sort().map(cat => {
+    const owners = categories.sort((a, b) => (displayNames[a] || a).localeCompare(displayNames[b] || b)).map(cat => {
       const partyOwnership = rankings.map(r => ({
         party: r.party_name,
         intensity: r.topic_ownership?.[cat] || 0
@@ -84,16 +94,6 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
 
       const best = partyOwnership[0];
       
-      // Map category keys to Finnish display names
-      const displayNames: Record<string, string> = {
-        "Talous": "Talous",
-        "Arvot": "Arvot",
-        "Ympäristö": "Ympäristö",
-        "Aluepolitiikka": "Alueet",
-        "Kansainvälisyys": "Globalismi",
-        "Turvallisuus": "Turvallisuus"
-      };
-
       return {
         category: displayNames[cat] || cat,
         party: best?.intensity > 0 ? best.party : "Ei dataa",

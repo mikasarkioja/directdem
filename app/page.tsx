@@ -1,6 +1,5 @@
 import Dashboard from "@/components/Dashboard";
 import Navbar from "@/components/Navbar";
-import AuthStatusBanner from "@/components/AuthStatusBanner";
 import { getUser } from "@/app/actions/auth";
 import { Suspense } from "react";
 
@@ -11,23 +10,19 @@ export default async function Home(props: {
 }) {
   const searchParams = await props.searchParams;
   const view = (searchParams.view as string) || "overview";
-  const auth = searchParams.auth as string || null;
   
   let user = null;
   try {
     user = await getUser();
   } catch (e) {
-    console.error("[Home] Auth failed:", e);
+    // Silently fail to keep the page alive
   }
 
   return (
     <div className="min-h-screen bg-nordic-white">
       <Navbar user={user} />
       
-      {/* Safe client-side status banner */}
-      <AuthStatusBanner user={user} auth={auth} />
-
-      <Suspense fallback={<div className="flex h-screen items-center justify-center bg-slate-950 text-white font-black uppercase tracking-widest text-xs">Ladataan keskusta...</div>}>
+      <Suspense fallback={<div className="flex h-screen items-center justify-center bg-slate-950 text-white font-black uppercase tracking-widest text-xs">Ladataan...</div>}>
         <Dashboard user={user} initialView={view as any} />
       </Suspense>
     </div>

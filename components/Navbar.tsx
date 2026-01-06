@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, LogOut, Menu } from "lucide-react";
-import LoginModal from "./LoginModal";
+import { User, LogOut } from "lucide-react";
 import VerifiedBadge from "./VerifiedBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -13,7 +12,6 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user }: NavbarProps) {
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -31,7 +29,7 @@ export default function Navbar({ user }: NavbarProps) {
           <div className="flex justify-between items-center h-16">
             {/* Logo/Brand - Always visible */}
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-nordic-darker dark:text-nordic-white">
+              <h1 className="text-xl font-bold text-nordic-darker dark:text-nordic-white cursor-pointer" onClick={() => router.push('/')}>
                 Eduskuntavahti
               </h1>
             </div>
@@ -58,7 +56,7 @@ export default function Navbar({ user }: NavbarProps) {
                 </div>
               ) : (
                 <button
-                  onClick={() => setShowLoginModal(true)}
+                  onClick={() => router.push('/login')}
                   className="px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium touch-manipulation select-none"
                   style={{ minWidth: "44px", minHeight: "44px" }}
                 >
@@ -80,7 +78,7 @@ export default function Navbar({ user }: NavbarProps) {
                 </button>
               ) : (
                 <button
-                  onClick={() => setShowLoginModal(true)}
+                  onClick={() => router.push('/login')}
                   className="px-3 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium touch-manipulation select-none"
                   style={{ minWidth: "44px", minHeight: "44px" }}
                 >
@@ -114,7 +112,7 @@ export default function Navbar({ user }: NavbarProps) {
               ) : (
                 <button
                   onClick={() => {
-                    setShowLoginModal(true);
+                    router.push('/login');
                     setShowMobileMenu(false);
                   }}
                   className="w-full px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium"
@@ -126,17 +124,6 @@ export default function Navbar({ user }: NavbarProps) {
           )}
         </div>
       </nav>
-
-      {showLoginModal && (
-        <LoginModal
-          onClose={() => setShowLoginModal(false)}
-          onSuccess={() => {
-            setShowLoginModal(false);
-            router.refresh();
-          }}
-        />
-      )}
     </>
   );
 }
-

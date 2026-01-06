@@ -58,12 +58,61 @@ export async function getUser(): Promise<UserProfile | null> {
 }
 
 /**
+ * Sends a 6-digit OTP code to the user's email
+ */
+export async function sendOtpAction(email: string) {
+  const supabase = await createClient();
+  
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: true,
+    },
+  });
+
+  if (error) {
+    console.error("[sendOtpAction] Error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return { success: true };
+}
+
+/**
+ * Verifies the 6-digit OTP code
+ */
+export async function verifyOtpCodeAction(email: string, token: string) {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'email',
+  });
+
+  if (error) {
+    console.error("[verifyOtpCodeAction] Error:", error.message);
+    throw new Error(error.message);
+  }
+
+  if (!data.session) {
+    throw new Error("Istunnon luonti epäonnistui.");
+  }
+
+  // Initialize profile with defaults for new users
+  await upsertUserProfile(data.session.user.id, {
+    email: data.session.user.email,
+    is_new_user: true
+  }).catch(() => {});
+
+  return { success: true };
+}
+
+/**
  * Creates or updates user profile after login
- * Optimized to NOT interfere with auth cookies
  */
 export async function upsertUserProfile(userId: string, metadata?: any) {
   try {
-    // We use a direct client here to avoid any cookie side-effects during auth callback
     const supabase = await createClient();
     
     const profileData: any = {
@@ -74,6 +123,21 @@ export async function upsertUserProfile(userId: string, metadata?: any) {
     if (metadata) {
       if (metadata.accepted_terms !== undefined) profileData.accepted_terms = metadata.accepted_terms;
       if (metadata.full_name) profileData.full_name = metadata.full_name;
+      if (metadata.email) profileData.email = metadata.email;
+      
+      // Set defaults only for new users
+      if (metadata.is_new_user) {
+        profileData.trust_score = 10;
+        profileData.level = 1;
+        profileData.xp = 0;
+        profileData.impact_points = 0;
+        profileData.economic_score = 0;
+        profileData.liberal_conservative_score = 0;
+        profileData.environmental_score = 0;
+        profileData.urban_rural_score = 0;
+        profileData.international_national_score = 0;
+        profileData.security_score = 0;
+      }
     }
 
     await supabase.from("profiles").upsert(profileData, { onConflict: 'id' });

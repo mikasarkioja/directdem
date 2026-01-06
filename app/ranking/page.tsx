@@ -49,7 +49,38 @@ export default function RankingPage() {
     );
   }
 
-  if (!data) return <div>Virhe datan latauksessa.</div>;
+  if (data?.error) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="text-center space-y-6 max-w-md p-10 bg-white rounded-[2.5rem] shadow-xl border border-rose-100">
+          <div className="w-20 h-20 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto shadow-inner">
+            <Info size={40} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900">Hups! Jotain meni vikaan.</h2>
+            <p className="text-sm text-slate-500 font-medium leading-relaxed">
+              Palvelin palautti virheen: <span className="font-bold text-rose-600">"{data.error}"</span>
+            </p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-purple-600 transition-all shadow-lg"
+          >
+            Yritä uudelleen
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data || data.parties.length === 0) return (
+    <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="text-center space-y-4">
+        <p className="text-sm font-black uppercase tracking-widest text-slate-400 italic">Ei analysoitavaa dataa saatavilla.</p>
+        <button onClick={() => window.location.reload()} className="text-purple-600 font-black text-[10px] uppercase underline">Päivitä sivu</button>
+      </div>
+    </div>
+  );
 
   const filteredParties = data.parties.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase())

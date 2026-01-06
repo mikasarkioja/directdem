@@ -30,6 +30,18 @@ export interface RankingResult {
   };
 }
 
+export interface RankingResult {
+  parties: {
+    // ... same as before
+    mpCount: number;
+  }[];
+  leaderboards: {
+    // ... same as before
+    activity: { name: string; score: number }[];
+  };
+  error?: string; // Add optional error field
+}
+
 export async function getPoliticalRanking(): Promise<RankingResult> {
   try {
     const supabase = createClient(
@@ -37,38 +49,32 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 1. Fetch active MP profiles and their parties
+    // 1. Fetch active MP profiles
     const { data: mpData, error: mpError } = await supabase
       .from("mp_profiles")
       .select(`
         *,
-        mps!inner (
-          id,
-          first_name,
-          last_name,
-          party,
-          is_active
-        )
+        mps!inner ( id, first_name, last_name, party, is_active )
       `)
       .eq("mps.is_active", true);
 
-    if (mpError || !mpData) throw new Error("Could not fetch MP data: " + mpError?.message);
+    if (mpError) throw new Error(`MP haku epäonnistui: ${mpError.message}`);
+    if (!mpData || mpData.length === 0) throw new Error("Ei aktiivisia kansanedustajia.");
 
-    // 2. Fetch voting data for cohesion (Rice Index) and activity
-    // Fetching 10,000 most recent votes for performance on Vercel
+    // 2. Fetch voting data - Use a simpler query first to ensure we get data
     const { data: voteAgg, error: voteError } = await supabase
       .from("mp_votes")
       .select(`
         vote_type,
         event_id,
         mps!inner ( id, party, is_active, first_name, last_name ),
-        voting_events!inner ( category )
+        voting_events ( category )
       `)
       .eq("mps.is_active", true)
-      .order('created_at', { ascending: false })
-      .limit(10000);
+      .limit(5000); // Smaller limit for faster response
 
-    if (voteError || !voteAgg) throw new Error("Could not fetch vote data: " + voteError?.message);
+    if (voteError) throw new Error(`Äänten haku epäonnistui: ${voteError.message}`);
+    if (!voteAgg || voteAgg.length === 0) throw new Error("Äänestysdataa ei löytynyt.");
 
   // Group votes by party and event
   const partyVotes: Record<string, Record<string, { jaa: number; ei: number }>> = {};
@@ -180,12 +186,16 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
   // 5. Pivot Score (Using actual engine)
   const partyPivot: Record<string, number> = {};
   for (const party of Object.keys(partyProfiles)) {
+    // Only fetch for top 5 parties to save time, or use a cached version if this was real
+    // For now, let's keep it minimal to prevent timeout
+    partyPivot[party] = 0; // Default to 0
+    
     const mpIds = partyProfiles[party].map(p => p.mp_id);
     let totalPivot = 0;
     let pivotCount = 0;
     
-    // Reduce sample size to 3 per party for Vercel performance (prevent timeout)
-    for (const mpId of mpIds.slice(0, 3)) {
+    // Reduce to only 1 MP per party for absolute speed in Vercel environment
+    for (const mpId of mpIds.slice(0, 1)) {
       try {
         const score = await calculatePivotScore(mpId);
         if (score > 0) {
@@ -193,7 +203,7 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
           pivotCount++;
         }
       } catch (e) {
-        console.error(`Error calculating pivot for MP ${mpId}:`, e);
+        // Skip MP if it fails
       }
     }
     partyPivot[party] = pivotCount > 0 ? Math.round(totalPivot / pivotCount) : 0;
@@ -246,7 +256,7 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
   };
  } catch (error: any) {
     console.error("Critical error in getPoliticalRanking:", error);
-    // Return empty result instead of crashing
+    // Return empty result with error message
     return {
       parties: [],
       leaderboards: {
@@ -254,7 +264,8 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
         flipFlops: [],
         owners: [],
         activity: []
-      }
+      },
+      error: error.message || "Tuntematon virhe ladattaessa ranking-dataa."
     };
   }
 }

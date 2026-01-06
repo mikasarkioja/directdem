@@ -1,83 +1,87 @@
 'use client';
 
-import { useSearchParams, useRouter } from 'next/navigation';
-import { ShieldCheck, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 import { Suspense, useState, useEffect } from 'react';
 import { verifyOtpAction } from '@/app/actions/auth';
 
 function ConfirmContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const token_hash = searchParams.get('token_hash');
   const type = searchParams.get('type') || 'magiclink';
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-verify if we have the hash
   useEffect(() => {
-    if (token_hash && !loading && !error) {
+    if (token_hash && status === 'idle') {
       handleConfirm();
     }
   }, [token_hash]);
 
   const handleConfirm = async () => {
-    if (!token_hash) {
-      setError("Virheellinen vahvistuslinkki.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
+    setStatus('loading');
     try {
-      console.log("[ConfirmPage] Verifying OTP via Server Action...");
-      const result = await verifyOtpAction(token_hash, type);
-      
+      const result = await verifyOtpAction(token_hash!, type);
       if (result.success) {
-        console.log("[ConfirmPage] Verification success, redirecting with debug param...");
-        // Redirect with success param so we can see it in Home page debug bar
+        setStatus('success');
+        // Use window.location for the most reliable redirect that clears all state
         window.location.href = '/?auth=success';
       }
     } catch (err: any) {
-      console.error("[ConfirmPage] Error:", err);
-      setError(err.message || "Kirjautuminen epäonnistui. Linkki saattaa olla vanhentunut.");
-      setLoading(false);
+      console.error("[Confirm] Error:", err);
+      setStatus('error');
+      setError(err.message || "Vahvistus epäonnistui. Linkki on ehkä jo käytetty tai se on avattu väärässä selaimessa.");
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-50">
-      <div className="w-full max-w-md p-8 bg-white shadow-xl rounded-2xl text-center">
-        <ShieldCheck className="mx-auto text-blue-600 mb-4" size={48} />
-        <h1 className="text-2xl font-bold mb-2">Vahvistetaan istuntoa</h1>
-        <p className="text-slate-600 mb-8">
-          Viimeistellään kirjautumista ja varmistetaan turvallinen yhteys...
+    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-950 text-white">
+      <div className="w-full max-w-md p-10 bg-slate-900 border border-slate-800 shadow-2xl rounded-[3rem] text-center">
+        <div className="mb-8 flex justify-center">
+          {status === 'error' ? (
+            <div className="p-4 bg-rose-500/20 rounded-full text-rose-500 border border-rose-500/30">
+              <AlertCircle size={40} />
+            </div>
+          ) : (
+            <div className="p-4 bg-emerald-500/20 rounded-full text-emerald-500 border border-emerald-500/30">
+              <ShieldCheck size={40} />
+            </div>
+          )}
+        </div>
+
+        <h1 className="text-2xl font-black uppercase tracking-tighter mb-4">
+          {status === 'error' ? 'Vahvistus epäonnistui' : 'Vahvistetaan istuntoa'}
+        </h1>
+        
+        <p className="text-slate-400 text-sm mb-10 leading-relaxed font-medium">
+          {status === 'error' 
+            ? 'Tämä johtuu useimmiten siitä, että linkki avattiin eri selaimessa kuin mistä se tilattiin. Kopioi linkki suoraan alkuperäiseen ikkunaan.'
+            : 'Viimeistellään kirjautumista ja varmistetaan turvallinen yhteys DirectDem-palvelimeen...'}
         </p>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium">
-            {error}
+        {status === 'loading' && (
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 size={32} className="animate-spin text-emerald-500" />
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Käsitellään koodia...</p>
           </div>
         )}
 
-        {loading ? (
-          <div className="flex flex-col items-center gap-4 py-4">
-            <Loader2 size={32} className="animate-spin text-nordic-blue" />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Käsitellään...</p>
+        {status === 'error' && (
+          <div className="space-y-4">
+            <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-400 font-bold">
+              {error}
+            </div>
+            <button 
+              onClick={() => window.location.href = '/'}
+              className="w-full py-4 bg-white text-slate-950 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all shadow-xl"
+            >
+              Palaa etusivulle
+            </button>
           </div>
-        ) : (
-          <button 
-            onClick={handleConfirm}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors font-black uppercase tracking-widest h-14 text-sm shadow-lg"
-          >
-            Yritä uudelleen
-          </button>
         )}
-        
-        {!token_hash && !loading && (
-          <p className="mt-4 text-xs text-amber-600 font-bold">
-            Huom: Linkki näyttää puutteelliselta. Varmista että kopioit koko osoitteen sähköpostista.
-          </p>
+
+        {status === 'success' && (
+          <p className="text-emerald-400 font-bold animate-pulse">Ohjataan etusivulle...</p>
         )}
       </div>
     </div>
@@ -86,11 +90,7 @@ function ConfirmContent() {
 
 export default function ConfirmPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nordic-blue"></div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <ConfirmContent />
     </Suspense>
   );

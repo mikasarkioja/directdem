@@ -6,63 +6,75 @@ import { upsertUserProfile } from "@/app/actions/auth";
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") ?? "/";
-  const origin = requestUrl.origin;
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
+  const token_hash = searchParams.get("token_hash");
+  const type = searchParams.get("type") || "magiclink";
+  const next = searchParams.get("next") ?? "/";
 
-  // Use cookies() from next/headers - this is the source of truth in Next.js 15
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            // Force strict settings for Vercel persistence
-            cookieStore.set(name, value, { 
-              ...options, 
-              path: '/', 
-              sameSite: 'lax', 
-              secure: true 
+  if (code || token_hash) {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, { 
+                ...options, 
+                path: '/', 
+                sameSite: 'lax', 
+                secure: true 
+              });
             });
-          });
+          },
         },
-      },
-    }
-  );
+      }
+    );
 
-  try {
+    let error = null;
+    let userId = null;
+
     if (code) {
-      console.log("[Auth Callback] Exchanging code for session...");
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      error = exchangeError;
+      userId = data.session?.user.id;
+    } else if (token_hash) {
+      const { data, error: otpError } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
+      error = otpError;
+      userId = data.session?.user.id;
+    }
+
+    if (!error && userId) {
+      // Background profile update
+      upsertUserProfile(userId).catch(() => {});
       
-      if (error) {
-        console.error("[Auth Callback] Exchange Error:", error.message);
-        return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(error.message)}`, origin));
+      const forwardedHost = request.headers.get('x-forwarded-host');
+      const isLocalEnv = process.env.NODE_ENV === 'development';
+      
+      // Construct the final redirect URL
+      let finalUrl: string;
+      if (isLocalEnv) {
+        finalUrl = `${origin}${next}?auth=success`;
+      } else if (forwardedHost) {
+        finalUrl = `https://${forwardedHost}${next}?auth=success`;
+      } else {
+        finalUrl = `${origin}${next}?auth=success`;
       }
 
-      if (data.session) {
-        console.log("[Auth Callback] Session secured, updating profile...");
-        // Non-blocking profile update
-        upsertUserProfile(data.session.user.id).catch(() => {});
-        
-        // Final success redirect
-        const successUrl = new URL(next, origin);
-        successUrl.searchParams.set('auth', 'success');
-        return NextResponse.redirect(successUrl);
-      }
+      return NextResponse.redirect(finalUrl);
     }
     
-    console.warn("[Auth Callback] No code provided or session failed");
-    return NextResponse.redirect(new URL("/?error=auth_failed_no_session", origin));
-  } catch (err: any) {
-    console.error("[Auth Callback] Fatal Exception:", err.message);
-    return NextResponse.redirect(new URL(`/?error=fatal_error`, origin));
+    if (error) {
+      console.error("[Auth Callback] Auth Error:", error.message);
+      return NextResponse.redirect(`${origin}/?error=${encodeURIComponent(error.message)}`);
+    }
   }
+
+  // Fallback
+  return NextResponse.redirect(`${origin}/?error=no_session_created`);
 }

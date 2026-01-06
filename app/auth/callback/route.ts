@@ -13,8 +13,15 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get("next") ?? "/";
   const origin = requestUrl.origin;
 
+  console.log("[Auth Callback] Request received:", { code: !!code, token_hash: !!token_hash, type });
+
   const cookieStore = await cookies();
   
+  // Create the final redirect response early so we can attach cookies to it
+  const successUrl = new URL(next, origin);
+  successUrl.searchParams.set('auth', 'success');
+  const response = NextResponse.redirect(successUrl);
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -24,18 +31,26 @@ export async function GET(request: Request) {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, { 
-                ...options, 
-                path: '/', 
-                sameSite: 'lax', 
-                secure: true 
-              });
-            });
-          } catch (error) {
-            // Server component context
-          }
+          cookiesToSet.forEach(({ name, value, options }) => {
+            console.log(`[Auth Callback] Setting cookie: ${name}`);
+            
+            const cookieOptions = { 
+              ...options, 
+              path: '/', 
+              sameSite: 'lax' as const,
+              secure: true,
+              // Explicitly NOT setting domain to let browser handle it for current host
+            };
+            
+            // Set on both the cookie store (for this server instance) 
+            // and the redirect response (for the browser)
+            try {
+              cookieStore.set(name, value, cookieOptions);
+            } catch (e) {
+              // Ignore cookie store errors in middleware/callback
+            }
+            response.cookies.set(name, value, cookieOptions);
+          });
         },
       },
     }
@@ -43,30 +58,38 @@ export async function GET(request: Request) {
 
   try {
     if (code) {
+      console.log("[Auth Callback] Exchanging code for session...");
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) throw error;
+      if (error) {
+        console.error("[Auth Callback] Exchange error:", error.message);
+        throw error;
+      }
       if (data.session) {
-        await upsertUserProfile(data.session.user.id).catch(() => {});
-        const successUrl = new URL(next, origin);
-        successUrl.searchParams.set('auth', 'success');
-        return NextResponse.redirect(successUrl);
+        console.log("[Auth Callback] Session created for:", data.session.user.email);
+        // Fire and forget profile update
+        upsertUserProfile(data.session.user.id).catch(e => console.error("[Auth Callback] Profile error:", e));
+        return response;
       }
     } else if (token_hash) {
+      console.log("[Auth Callback] Verifying OTP...");
       const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
-      if (error) throw error;
+      if (error) {
+        console.error("[Auth Callback] OTP error:", error.message);
+        throw error;
+      }
       if (data.session) {
-        await upsertUserProfile(data.session.user.id).catch(() => {});
-        const successUrl = new URL(next, origin);
-        successUrl.searchParams.set('auth', 'success');
-        return NextResponse.redirect(successUrl);
+        console.log("[Auth Callback] Session created for:", data.session.user.email);
+        upsertUserProfile(data.session.user.id).catch(e => console.error("[Auth Callback] Profile error:", e));
+        return response;
       }
     }
     
-    return NextResponse.redirect(new URL("/?error=auth_exchange_failed", origin));
+    console.warn("[Auth Callback] No session was created");
+    return NextResponse.redirect(new URL("/?error=no_session_created", origin));
   } catch (err: any) {
-    console.error("[Auth Callback] Error:", err.message);
+    console.error("[Auth Callback] Fatal error:", err.message);
     const errorUrl = new URL("/", origin);
-    errorUrl.searchParams.set('error', err.message);
+    errorUrl.searchParams.set('error', err.message || 'unknown_auth_error');
     return NextResponse.redirect(errorUrl);
   }
 }

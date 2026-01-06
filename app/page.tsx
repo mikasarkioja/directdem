@@ -14,8 +14,9 @@ export default async function Home({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const resolvedSearchParams = await searchParams;
-  const view = resolvedSearchParams.view as any;
+  const view = (resolvedSearchParams.view as string) || "overview";
   const error = resolvedSearchParams.error as string;
+  const auth = resolvedSearchParams.auth as string;
 
   // Server-side user fetch using Next.js 15 cookies()
   let user = null;
@@ -30,11 +31,25 @@ export default async function Home({
       <Navbar user={user} />
       {user && <FirstTimeGDPR userId={user.id} />}
       
-      {/* Auth Error Display */}
+      {/* Auth State Display */}
       <AuthErrorToast error={error} />
+      
+      {auth === 'success' && !user && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] w-full max-w-lg px-4">
+          <div className="bg-amber-500 text-white p-6 rounded-[2rem] shadow-2xl border border-amber-400 flex items-start gap-4">
+            <div className="bg-white/20 p-3 rounded-2xl">
+              <span className="text-2xl">🔄</span>
+            </div>
+            <div className="flex-1 space-y-1">
+              <p className="font-black uppercase text-[10px] tracking-widest">Istuntoa alustetaan</p>
+              <p className="font-bold text-sm">Kirjautuminen onnistui, mutta istunto ei vielä näy. Päivitä sivu (F5).</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Suspense fallback={<div className="flex h-screen items-center justify-center bg-slate-950 text-white font-black uppercase tracking-widest text-xs">Ladataan keskusta...</div>}>
-        <Dashboard user={user} initialView={view || "overview"} />
+        <Dashboard user={user} initialView={view as any} />
       </Suspense>
     </div>
   );

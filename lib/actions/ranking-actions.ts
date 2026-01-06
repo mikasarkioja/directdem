@@ -70,9 +70,11 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
     // Topic Ownership: Collect categories from DB or use core categories as fallback
     const allCategories = new Set<string>(["Talous", "Arvot", "Ympäristö", "Aluepolitiikka", "Kansainvälisyys", "Turvallisuus"]);
     rankings.forEach(r => {
-      Object.keys(r.topic_ownership || {}).forEach(cat => {
-        if (cat !== 'Muu' && cat !== 'Yleinen') allCategories.add(cat);
-      });
+      if (r.topic_ownership) {
+        Object.keys(r.topic_ownership).forEach(cat => {
+          if (cat && cat !== 'Muu' && cat !== 'Yleinen') allCategories.add(cat.trim());
+        });
+      }
     });
 
     // Map category keys to Finnish display names
@@ -86,20 +88,22 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
     };
 
     const categories = Array.from(allCategories);
-    const owners = categories.sort((a, b) => (displayNames[a] || a).localeCompare(displayNames[b] || b)).map(cat => {
-      const partyOwnership = rankings.map(r => ({
-        party: r.party_name,
-        intensity: r.topic_ownership?.[cat] || 0
-      })).sort((a, b) => b.intensity - a.intensity);
+    const owners = categories
+      .sort((a, b) => (displayNames[a] || a).localeCompare(displayNames[b] || b))
+      .map(cat => {
+        const partyOwnership = rankings.map(r => ({
+          party: r.party_name,
+          intensity: r.topic_ownership?.[cat] || r.topic_ownership?.[cat + " "] || 0
+        })).sort((a, b) => b.intensity - a.intensity);
 
-      const best = partyOwnership[0];
-      
-      return {
-        category: displayNames[cat] || cat,
-        party: best?.intensity > 0 ? best.party : "Ei dataa",
-        score: best ? Math.round(best.intensity * 10) / 10 : 0
-      };
-    });
+        const best = partyOwnership[0];
+        
+        return {
+          category: displayNames[cat] || cat,
+          party: (best && best.intensity > 0) ? best.party : "Ei dataa",
+          score: best ? Math.round(best.intensity * 10) / 10 : 0
+        };
+      });
 
     return { 
       parties, 

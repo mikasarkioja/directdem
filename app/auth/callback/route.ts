@@ -12,8 +12,12 @@ export async function GET(request: Request) {
   const type = requestUrl.searchParams.get("type") || "magiclink";
   const next = requestUrl.searchParams.get("next") ?? "/";
 
+  // Create a base response for redirects
   const cookieStore = await cookies();
-  const response = NextResponse.redirect(new URL(next, request.url));
+  const redirectTo = new URL(next, request.url);
+  
+  // Use a temporary response to collect cookies from Supabase
+  const response = NextResponse.redirect(redirectTo);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,9 +29,10 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            const cookieOptions = { ...options, path: '/', sameSite: 'lax' as const };
-            cookieStore.set(name, value, cookieOptions);
-            response.cookies.set(name, value, cookieOptions);
+            // 1. Set on the incoming request cookies (for immediate server-side state)
+            cookieStore.set(name, value, { ...options, path: '/', sameSite: 'lax' });
+            // 2. Set on the outgoing response (for the browser to save them)
+            response.cookies.set(name, value, { ...options, path: '/', sameSite: 'lax' });
           });
         },
       },
@@ -38,16 +43,25 @@ export async function GET(request: Request) {
     if (code) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) throw error;
+      
       if (data.session) {
         await upsertUserProfile(data.session.user.id).catch(() => {});
-        return response;
+        // Add success flag to URL
+        redirectTo.searchParams.set('auth', 'success');
+        return NextResponse.redirect(redirectTo, {
+          headers: response.headers // Ensure cookies are included in the final redirect
+        });
       }
     } else if (token_hash) {
       const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
       if (error) throw error;
+      
       if (data.session) {
         await upsertUserProfile(data.session.user.id).catch(() => {});
-        return response;
+        redirectTo.searchParams.set('auth', 'success');
+        return NextResponse.redirect(redirectTo, {
+          headers: response.headers
+        });
       }
     }
     

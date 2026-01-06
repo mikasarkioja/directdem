@@ -10,6 +10,14 @@ export interface RankingResult {
     name: string;
     cohesion: number;
     polarization: number;
+    polarizationVector: {
+      economic: number;
+      liberal: number;
+      env: number;
+      urban: number;
+      global: number;
+      security: number;
+    };
     pivotScore: number;
     topCategory: string;
     mpCount: number;
@@ -18,7 +26,7 @@ export interface RankingResult {
     disciplined: { name: string; score: number }[];
     flipFlops: { name: string; score: number }[];
     owners: { category: string; party: string; score: number }[];
-    activity: { name: string; score: number }[]; // New leaderboard
+    activity: { name: string; score: number }[];
   };
 }
 
@@ -46,15 +54,18 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
   if (mpError || !mpData) throw new Error("Could not fetch MP data for ranking");
 
   // 2. Fetch voting data for cohesion (Rice Index) and activity
+  // Fetching 20,000 most recent votes for a representative sample
   const { data: voteAgg, error: voteError } = await supabase
     .from("mp_votes")
     .select(`
       vote_type,
       event_id,
-      mps!inner ( party, is_active, first_name, last_name ),
+      mps!inner ( id, party, is_active, first_name, last_name ),
       voting_events!inner ( category )
     `)
-    .eq("mps.is_active", true);
+    .eq("mps.is_active", true)
+    .order('created_at', { ascending: false })
+    .limit(20000);
 
   if (voteError || !voteAgg) throw new Error("Could not fetch vote data");
 
@@ -149,7 +160,21 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
       Math.pow(avg.sec - parliamentMedian.sec, 2)
     );
     partyPolarization[party] = Math.round(dist * 50); // Scale for UI
+    
+    (partyPolarization as any)[`${party}_vector`] = {
+      economic: avg.eco - parliamentMedian.eco,
+      liberal: avg.lib - parliamentMedian.lib,
+      env: avg.env - parliamentMedian.env,
+      urban: avg.urb - parliamentMedian.urb,
+      global: avg.glo - parliamentMedian.glo,
+      security: avg.sec - parliamentMedian.sec,
+    };
   });
+
+  // 4. Topic Ownership (activity per category)
+  // Use the categories actually present in our sample
+  const availableCategories = Array.from(new Set(voteAgg.map((v: any) => v.voting_events?.category).filter(c => c && c !== 'Muu')));
+  const displayCategories = availableCategories.length > 0 ? availableCategories : ["Talous", "Arvot", "Ympäristö", "Aluepolitiikka", "Kansainvälisyys", "Turvallisuus"];
 
   // 5. Pivot Score (Using actual engine)
   const partyPivot: Record<string, number> = {};
@@ -171,12 +196,13 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
 
   const parties = Object.keys(partyProfiles).map(name => {
     const cats = partyActivity[name] || {};
-    const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0]?.[0] || "Yleinen";
+    const topCat = Object.entries(cats).filter(([c]) => c !== 'Muu').sort((a, b) => b[1] - a[1])[0]?.[0] || "Yleinen";
     
     return {
       name,
       cohesion: Math.round(partyCohesion[name] || 0),
       polarization: partyPolarization[name] || 0,
+      polarizationVector: (partyPolarization as any)[`${name}_vector`],
       pivotScore: partyPivot[name] || 0,
       topCategory: topCat,
       mpCount: partyProfiles[name].length
@@ -191,7 +217,7 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
       name,
       score: Math.round(Object.values(cats).reduce((a, b) => a + b, 0) / (partyProfiles[name]?.length || 1))
     })).sort((a, b) => b.score - a.score),
-    owners: ["Talous", "Arvot", "Ympäristö", "Aluepolitiikka", "Kansainvälisyys", "Turvallisuus"].map(cat => {
+    owners: displayCategories.sort().map(cat => {
       // Calculate ownership by INTENSITY: (votes in category / party MP count)
       const partyOwnership = parties.map(p => ({ 
         party: p.name, 
@@ -201,7 +227,7 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
       const best = partyOwnership[0];
       
       return { 
-        category: cat, 
+        category: cat as string, 
         party: best?.intensity > 0 ? best.party : "Ei dataa", 
         score: best ? Math.round(best.intensity * 10) / 10 : 0
       };

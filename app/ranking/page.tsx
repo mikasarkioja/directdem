@@ -22,6 +22,7 @@ export default function RankingPage() {
   const [data, setData] = useState<RankingResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedParty, setSelectedParty] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -153,7 +154,7 @@ export default function RankingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm space-y-6 flex flex-col"
+              className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm space-y-6 flex flex-col min-h-[400px]"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
@@ -164,6 +165,9 @@ export default function RankingPage() {
                   <p className="text-sm font-black uppercase text-slate-900">Äänet per edustaja</p>
                 </div>
               </div>
+              <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic">
+                Vertailu aktiivisimman ({data.leaderboards.activity[0]?.name}) ja passiivisimman ({data.leaderboards.activity[data.leaderboards.activity.length-1]?.name}) puolueen välillä.
+              </p>
               <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar flex-1">
                 {data.leaderboards.activity.map((p, i) => (
                   <div key={p.name} className="flex items-center justify-between group">
@@ -212,33 +216,97 @@ export default function RankingPage() {
 
           {/* Polarization Heatmap / Bar Chart */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white border border-slate-200 rounded-[3rem] p-10 shadow-sm space-y-8">
+            <div className="bg-white border border-slate-200 rounded-[3rem] p-10 shadow-sm space-y-8 min-h-[500px] flex flex-col transition-all">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <h3 className="text-lg font-black uppercase tracking-tight">Puolueiden Polarisaatio</h3>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Mitä kauempana palkki on vasemmasta reunasta, sitä enemmän puolueen DNA poikkeaa eduskunnan keskipisteestä.</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    {selectedParty ? `Analyysi: ${selectedParty}` : 'Klikkaa puoluetta nähdäksesi DNA-poikkeaman suunnan'}
+                  </p>
                 </div>
-                <TrendingUp className="text-purple-600" size={24} />
+                <div className="flex gap-2">
+                  {selectedParty && (
+                    <button 
+                      onClick={() => setSelectedParty(null)}
+                      className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-black uppercase transition-colors"
+                    >
+                      Takaisin listaan
+                    </button>
+                  )}
+                  <TrendingUp className="text-purple-600" size={24} />
+                </div>
               </div>
               
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={filteredParties} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" stroke="#94A3B8" fontSize={10} fontWeight="900" width={80} />
-                    <Tooltip 
-                      cursor={{fill: '#F8FAFC'}}
-                      contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}}
-                      itemStyle={{fontWeight: '900', textTransform: 'uppercase', fontSize: '10px'}}
-                    />
-                    <Bar dataKey="polarization" radius={[0, 4, 4, 0]}>
-                      {filteredParties.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.polarization > 30 ? "#A855F7" : "#CBD5E1"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="flex-1 w-full min-h-[300px]">
+                {selectedParty ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={[
+                      { 
+                        subject: "Talous", 
+                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.economic || 0) * 100, 
+                        fullMark: 100 
+                      },
+                      { 
+                        subject: "Arvot", 
+                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.liberal || 0) * 100, 
+                        fullMark: 100 
+                      },
+                      { 
+                        subject: "Ympäristö", 
+                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.env || 0) * 100, 
+                        fullMark: 100 
+                      },
+                      { 
+                        subject: "Alue", 
+                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.urban || 0) * 100, 
+                        fullMark: 100 
+                      },
+                      { 
+                        subject: "Global", 
+                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.global || 0) * 100, 
+                        fullMark: 100 
+                      },
+                      { 
+                        subject: "Turv.", 
+                        A: (filteredParties.find(p => p.name === selectedParty)?.polarizationVector.security || 0) * 100, 
+                        fullMark: 100 
+                      },
+                    ]}>
+                      <PolarGrid stroke="#F1F5F9" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: '900' }} />
+                      <Radar
+                        name={selectedParty}
+                        dataKey="A"
+                        stroke="#A855F7"
+                        fill="#A855F7"
+                        fillOpacity={0.6}
+                      />
+                      <Tooltip />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={filteredParties} 
+                      layout="vertical"
+                      onClick={(data) => data && data.activeLabel && setSelectedParty(data.activeLabel)}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" stroke="#94A3B8" fontSize={10} fontWeight="900" width={80} />
+                      <Tooltip 
+                        cursor={{fill: '#F8FAFC'}}
+                        contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}}
+                        itemStyle={{fontWeight: '900', textTransform: 'uppercase', fontSize: '10px'}}
+                      />
+                      <Bar dataKey="polarization" radius={[0, 4, 4, 0]} className="cursor-pointer">
+                        {filteredParties.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.polarization > 30 ? "#A855F7" : "#CBD5E1"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
 
               <div className="p-6 bg-slate-900 rounded-[2rem] text-white space-y-3 relative overflow-hidden">
@@ -248,9 +316,9 @@ export default function RankingPage() {
                   <span className="text-[10px] font-black uppercase tracking-widest">Tutkijan Analyysi</span>
                 </div>
                 <p className="text-xs text-slate-300 italic relative z-10 leading-relaxed">
-                  "Suomalainen parlamentarismi osoittaa tällä hetkellä mielenkiintoista polarisaatiota. 
-                  Osa puolueista hakeutuu kauas mediaanista, mikä viittaa vahvaan strategiseen profilointiin 
-                  ja ideologiseen puhtauteen vaalikauden kynnyksellä."
+                  {selectedParty 
+                    ? `"${selectedParty} poikkeaa eduskunnan keskipisteestä eniten ${(Object.entries(filteredParties.find(p => p.name === selectedParty)?.polarizationVector || {}).sort((a, b) => Math.abs(b[1] as number) - Math.abs(a[1] as number))[0]?.[0] === 'economic' ? 'talous' : 'arvo')}-akselilla. Tutkakaavio näyttää suunnan (ulospäin = oikeisto/liberaali/suojelu/maaseutu/globalismi/kova)." `
+                    : '"Suomalainen parlamentarismi osoittaa tällä hetkellä mielenkiintoista polarisaatiota. Osa puolueista hakeutuu kauas mediaanista, mikä viittaa vahvaan strategiseen profilointiin."'}
                 </p>
               </div>
             </div>

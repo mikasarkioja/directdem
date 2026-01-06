@@ -52,7 +52,7 @@ export async function findMatchesForScores(inputScores: {
   urban: number;
   global: number;
   security: number;
-}): Promise<{ topMatches: MPMatch[]; bottomMatches: MPMatch[]; partyAnalysis: any[] }> {
+}, excludeMpId?: number): Promise<{ topMatches: MPMatch[]; bottomMatches: MPMatch[]; partyAnalysis: any[] }> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -77,7 +77,8 @@ export async function findMatchesForScores(inputScores: {
     return { topMatches: [], bottomMatches: [], partyAnalysis: [] };
   }
 
-  const uniqueProfiles = Array.from(new Map(allProfiles.map(p => [p.mps.id, p])).values());
+  const uniqueProfiles = Array.from(new Map(allProfiles.map(p => [p.mps.id, p])).values())
+    .filter((p: any) => !excludeMpId || p.mps.id !== excludeMpId);
 
   const stats = {
     eco: { sum: 0, sqSum: 0, count: 0 },
@@ -276,7 +277,7 @@ export async function getHarkimoMatches(): Promise<HarkimoMatchResult> {
       urban: harkimoProfile.urban_rural_score || 0,
       global: harkimoProfile.international_national_score || 0,
       security: harkimoProfile.security_score || 0
-    });
+    }, harkimoMp.id);
 
     return {
       harkimo: {

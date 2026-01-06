@@ -45,14 +45,14 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
 
   if (mpError || !mpData) throw new Error("Could not fetch MP data for ranking");
 
-  // 2. Fetch voting data for cohesion (Rice Index)
-  // We aggregate jaa/ei per party per event
+  // 2. Fetch voting data for cohesion (Rice Index) and activity
   const { data: voteAgg, error: voteError } = await supabase
     .from("mp_votes")
     .select(`
       vote_type,
       event_id,
-      mps!inner ( party, is_active, first_name, last_name )
+      mps!inner ( party, is_active, first_name, last_name ),
+      voting_events!inner ( category )
     `)
     .eq("mps.is_active", true);
 
@@ -60,13 +60,24 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
 
   // Group votes by party and event
   const partyVotes: Record<string, Record<string, { jaa: number; ei: number }>> = {};
+  const partyActivity: Record<string, Record<string, number>> = {};
+  
   voteAgg.forEach((v: any) => {
     const mp = v.mps;
     const party = formatParty(mp.party, `${mp.first_name} ${mp.last_name}`);
+    const cat = v.voting_events?.category;
+
+    // Cohesion tracking
     if (!partyVotes[party]) partyVotes[party] = {};
     if (!partyVotes[party][v.event_id]) partyVotes[party][v.event_id] = { jaa: 0, ei: 0 };
     if (v.vote_type === 'jaa') partyVotes[party][v.event_id].jaa++;
     if (v.vote_type === 'ei') partyVotes[party][v.event_id].ei++;
+
+    // Activity tracking (for all categories including Muu)
+    if (cat) {
+      if (!partyActivity[party]) partyActivity[party] = {};
+      partyActivity[party][cat] = (partyActivity[party][cat] || 0) + 1;
+    }
   });
 
   // Calculate Rice Index per party (average across all events)
@@ -138,25 +149,6 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
       Math.pow(avg.sec - parliamentMedian.sec, 2)
     );
     partyPolarization[party] = Math.round(dist * 50); // Scale for UI
-  });
-
-  // 4. Topic Ownership (activity per category)
-  const { data: catData } = await supabase
-    .from("voting_events")
-    .select("id, category")
-    .not("category", "is", null);
-  
-  const eventCategories: Record<string, string> = {};
-  catData?.forEach(e => eventCategories[e.id] = e.category);
-
-  const partyActivity: Record<string, Record<string, number>> = {};
-  voteAgg.forEach((v: any) => {
-    const mp = v.mps;
-    const party = formatParty(mp.party, `${mp.first_name} ${mp.last_name}`);
-    const cat = eventCategories[v.event_id];
-    if (!cat || cat === 'Muu') return;
-    if (!partyActivity[party]) partyActivity[party] = {};
-    partyActivity[party][cat] = (partyActivity[party][cat] || 0) + 1;
   });
 
   // 5. Pivot Score (Using actual engine)

@@ -141,14 +141,15 @@ async function calculateMPProfiles() {
     let counts = { economic: 0, liberal: 0, env: 0, urban: 0, global: 0, security: 0 };
 
     votes.forEach((v: any) => {
-      if (!v.voting_events.summary_ai || !v.voting_events.category || v.voting_events.category === 'Muu') return;
+      const event = Array.isArray(v.voting_events) ? v.voting_events[0] : v.voting_events;
+      if (!event || !event.summary_ai || !event.category || event.category === 'Muu') return;
       
-      const parts = v.voting_events.summary_ai.split(': ');
+      const parts = event.summary_ai.split(': ');
       if (parts.length < 2) return;
       
       const aiWeight = parseFloat(parts[1]);
-      const jaa = v.voting_events.ayes || 0;
-      const ei = v.voting_events.noes || 0;
+      const jaa = event.ayes || 0;
+      const ei = event.noes || 0;
       const total = jaa + ei;
       
       if (total === 0) return;
@@ -163,17 +164,17 @@ async function calculateMPProfiles() {
       // Linear weight for controversy to avoid penalizing moderately clear votes too much
       const score = voteVal * aiWeight * (0.5 + controversy); 
 
-      if (v.voting_events.category === 'Talous') {
+      if (event.category === 'Talous') {
         economic += score; counts.economic++;
-      } else if (v.voting_events.category === 'Arvot') {
+      } else if (event.category === 'Arvot') {
         liberal += score; counts.liberal++;
-      } else if (v.voting_events.category === 'Ympäristö') {
+      } else if (event.category === 'Ympäristö') {
         env += score; counts.env++;
-      } else if (v.voting_events.category === 'Aluepolitiikka') {
+      } else if (event.category === 'Aluepolitiikka') {
         urban += score; counts.urban++;
-      } else if (v.voting_events.category === 'Kansainvälisyys') {
+      } else if (event.category === 'Kansainvälisyys') {
         global += score; counts.global++;
-      } else if (v.voting_events.category === 'Turvallisuus') {
+      } else if (event.category === 'Turvallisuus') {
         security += score; counts.security++;
       }
     });

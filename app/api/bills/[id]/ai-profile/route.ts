@@ -4,8 +4,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -14,7 +15,7 @@ export async function GET(
   const { data, error } = await supabase
     .from("bill_ai_profiles")
     .select("*")
-    .eq("bill_id", params.id)
+    .eq("bill_id", id)
     .single();
 
   if (error || !data) {

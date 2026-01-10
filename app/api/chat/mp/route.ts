@@ -131,6 +131,6 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toDataStreamResponse({ data });
+  return (result as any).toDataStreamResponse({ data });
 }
 

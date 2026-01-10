@@ -50,8 +50,22 @@ export default function ArenaDuelPage() {
         const mpsData = await mpsRes.json();
         const billsData = await billsRes.json();
         
-        setMps(mpsData.filter((m: MP) => m.id !== championId));
-        setBills(billsData);
+        console.log("Arena Load - MPs:", mpsData);
+        console.log("Arena Load - Bills:", billsData);
+
+        if (Array.isArray(mpsData)) {
+          setMps(mpsData.filter((m: MP) => m.id !== championId));
+        } else {
+          console.error("MPs data is not an array:", mpsData);
+          setMps([]);
+        }
+
+        if (Array.isArray(billsData)) {
+          setBills(billsData);
+        } else {
+          console.error("Bills data is not an array:", billsData);
+          setBills([]);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -68,7 +82,32 @@ export default function ArenaDuelPage() {
       challengerId: selectedChallenger?.id, 
       billId: selectedBill?.bill_id 
     },
+    onError: (err) => {
+      console.error("Arena Error:", err);
+      const errorMsg = JSON.parse(err.message);
+      setMessages(prev => [...prev, { 
+        id: "err-" + Date.now(), 
+        role: "assistant", 
+        content: `[SPEAKER: MODERATOR][STATUS: Virhe] Järjestelmävirhe: ${errorMsg.error || err.message}` 
+      } as any]);
+    }
   });
+
+  // Calculate tension level based on messages whenever they change
+  useEffect(() => {
+    let level = 0;
+    messages.forEach(m => {
+      if (m.role === "assistant") {
+        const statusMatch = m.content.match(/\[STATUS: (.*?)\]/);
+        if (statusMatch) {
+          const status = statusMatch[1];
+          if (status === "Hyökkää" || status === "Haastaa takinkäännöstä") level = Math.min(100, level + 15);
+          else if (status === "Kunnioittaa") level = Math.max(0, level - 10);
+        }
+      }
+    });
+    setTensionLevel(level);
+  }, [messages]);
 
   const startDuel = () => {
     if (!selectedChallenger || !selectedBill) return;
@@ -80,28 +119,54 @@ export default function ArenaDuelPage() {
     });
   };
 
+  const triggerNextTurn = () => {
+    if (isLoading) return;
+    
+    // Determine who was the last speaker
+    const lastAssistantMessage = [...messages].reverse().find(m => m.role === "assistant");
+    let nextSpeakerPrompt = "";
+    
+    if (lastAssistantMessage) {
+      const parsed = parseMessage(lastAssistantMessage.content);
+      if (parsed.speaker === "CHAMPION") {
+        nextSpeakerPrompt = `${selectedChallenger?.first_name}, mitä vastaat tähän? Käytä faktoja.`;
+      } else {
+        nextSpeakerPrompt = `Hjallis, mikä on kuittisi tähän? Ole suora.`;
+      }
+    } else {
+      nextSpeakerPrompt = "Aloittakaa väittely.";
+    }
+
+    append({
+      role: "user",
+      content: nextSpeakerPrompt
+    });
+  };
+
   const parseMessage = (content: string) => {
     const speakerMatch = content.match(/\[SPEAKER: (.*?)\]/);
     const statusMatch = content.match(/\[STATUS: (.*?)\]/);
     const factsMatch = content.match(/\[FACTS: (.*?)\]/);
     
-    // Update Tension Level based on status
-    if (statusMatch) {
-      const status = statusMatch[1];
-      if (status === "Hyökkää" || status === "Haastaa takinkäännöstä") setTensionLevel(prev => Math.min(100, prev + 15));
-      else if (status === "Kunnioittaa") setTensionLevel(prev => Math.max(0, prev - 10));
-    }
-
     let cleanText = content
       .replace(/\[SPEAKER: (.*?)\]/g, "")
       .replace(/\[STATUS: (.*?)\]/g, "")
       .replace(/\[FACTS: (.*?)\]/g, "")
       .trim();
 
+    let parsedFacts = null;
+    if (factsMatch) {
+      try {
+        parsedFacts = JSON.parse(factsMatch[1]);
+      } catch (e) {
+        console.error("Failed to parse facts JSON:", e);
+      }
+    }
+
     return {
       speaker: speakerMatch ? speakerMatch[1] : "CHAMPION",
       status: statusMatch ? statusMatch[1] : "Kuuntelee",
-      facts: factsMatch ? JSON.parse(factsMatch[1]) : null,
+      facts: parsedFacts,
       text: cleanText
     };
   };
@@ -269,24 +334,25 @@ export default function ArenaDuelPage() {
                       
                       const parsed = m.role === "assistant" ? parseMessage(m.content) : { text: m.content, speaker: "USER", status: "Referee", facts: null as any };
                       const isChamp = parsed.speaker === "CHAMPION";
+                      const isMod = parsed.speaker === "MODERATOR";
                       
                       return (
                         <motion.div
                           key={m.id}
-                          initial={{ opacity: 0, x: isChamp ? -20 : 20 }}
+                          initial={{ opacity: 0, x: isChamp ? -20 : (isMod ? 0 : 20) }}
                           animate={{ opacity: 1, x: 0 }}
-                          className={`flex ${isChamp ? "justify-start" : "justify-end"}`}
+                          className={`flex ${isChamp ? "justify-start" : (isMod ? "justify-center" : "justify-end")}`}
                         >
-                          <div className={`max-w-[85%] space-y-3`}>
-                            <div className={`flex items-center gap-3 ${isChamp ? "flex-row" : "flex-row-reverse"}`}>
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isChamp ? "bg-yellow-500 text-slate-950" : "bg-orange-500 text-white"}`}>
-                                {isChamp ? <Trophy size={16} /> : <Sword size={16} />}
+                          <div className={`${isMod ? "max-w-full w-full" : "max-w-[85%]"} space-y-3`}>
+                            <div className={`flex items-center gap-3 ${isChamp ? "flex-row" : (isMod ? "justify-center" : "flex-row-reverse")}`}>
+                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isChamp ? "bg-yellow-500 text-slate-950" : (isMod ? "bg-slate-700 text-slate-300" : "bg-orange-500 text-white")}`}>
+                                {isChamp ? <Trophy size={16} /> : (isMod ? <Info size={16} /> : <Sword size={16} />)}
                               </div>
-                              <div className="flex flex-col">
+                              <div className={`flex flex-col ${isMod ? "items-center" : ""}`}>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                  {isChamp ? championName : (parsed.speaker === "USER" ? "Erotuomari" : `${selectedChallenger?.first_name} ${selectedChallenger?.last_name}`)}
+                                  {isChamp ? championName : (isMod ? "Moderaattori" : (parsed.speaker === "USER" ? "Erotuomari" : `${selectedChallenger?.first_name} ${selectedChallenger?.last_name}`))}
                                 </span>
-                                <span className={`text-[8px] font-bold uppercase italic ${isChamp ? "text-yellow-500" : "text-orange-500"}`}>
+                                <span className={`text-[8px] font-bold uppercase italic ${isChamp ? "text-yellow-500" : (isMod ? "text-slate-400" : "text-orange-500")}`}>
                                   {parsed.status}
                                 </span>
                               </div>
@@ -295,7 +361,7 @@ export default function ArenaDuelPage() {
                             <div className={`p-6 rounded-[2.5rem] text-sm leading-relaxed shadow-xl border ${
                               isChamp 
                                 ? "bg-slate-800 text-slate-200 border-yellow-500/10 rounded-tl-none" 
-                                : (parsed.speaker === "USER" ? "bg-blue-600 text-white border-none rounded-tr-none" : "bg-slate-800 text-slate-200 border-orange-500/10 rounded-tr-none")
+                                : (isMod ? "bg-slate-900/80 text-slate-400 border-white/5 text-center italic" : (parsed.speaker === "USER" ? "bg-blue-600 text-white border-none rounded-tr-none" : "bg-slate-800 text-slate-200 border-orange-500/10 rounded-tr-none"))
                             }`}>
                               {parsed.text}
                             </div>
@@ -328,23 +394,36 @@ export default function ArenaDuelPage() {
                 </div>
 
                 {/* Input Area */}
-                <form onSubmit={handleSubmit} className="p-8 bg-slate-900 border-t border-white/5">
-                  <div className="relative flex items-center gap-4">
-                    <input
-                      value={input}
-                      onChange={handleInputChange}
-                      placeholder="Heitä haastava kysymys molemmille..."
-                      className="flex-1 bg-slate-800 border border-white/5 p-5 rounded-2xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-inner"
-                    />
+                <form onSubmit={handleSubmit} className="p-8 bg-slate-900 border-t border-white/5 space-y-4">
+                  <div className="flex flex-col md:flex-row items-center gap-4">
+                    <div className="relative flex-1 w-full">
+                      <input
+                        value={input}
+                        onChange={handleInputChange}
+                        placeholder="Heitä haastava kysymys molemmille..."
+                        className="w-full bg-slate-800 border border-white/5 p-5 rounded-2xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-inner pr-16"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isLoading || !input.trim()}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-orange-500 text-white rounded-xl hover:bg-orange-400 disabled:opacity-50 transition-all shadow-lg"
+                      >
+                        <Send size={20} />
+                      </button>
+                    </div>
+
                     <button
-                      type="submit"
-                      disabled={isLoading || !input.trim()}
-                      className="p-5 bg-orange-500 text-white rounded-2xl hover:bg-orange-400 disabled:opacity-50 transition-all shadow-xl shadow-orange-500/20"
+                      type="button"
+                      onClick={triggerNextTurn}
+                      disabled={isLoading}
+                      className="w-full md:w-auto px-8 py-5 bg-slate-800 border border-white/10 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-700 disabled:opacity-50 transition-all flex items-center justify-center gap-3 shadow-xl"
                     >
-                      <Send size={24} />
+                      {isLoading ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} className="text-yellow-500" />}
+                      Seuraava puheenvuoro
                     </button>
                   </div>
-                  <div className="mt-4 flex justify-between items-center px-2">
+                  
+                  <div className="flex justify-between items-center px-2">
                     <p className="text-[8px] font-black uppercase text-slate-600 tracking-[0.2em] flex items-center gap-2">
                       <Info size={10} />
                       Käyttäjä toimii erotuomarina ja moderaattorina

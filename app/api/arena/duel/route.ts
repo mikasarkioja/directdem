@@ -7,21 +7,36 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const { messages, championId, challengerId, billId, userDna } = await req.json();
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
-  // 1. Fetch both MP profiles
+  if (!supabaseUrl || !serviceKey) {
+    console.error("Arena Duel - Missing Env Vars");
+    return new Response(JSON.stringify({ error: "Palvelimen konfiguraatiovirhe (API keys missing)." }), { status: 500 });
+  }
+
+  console.log("Arena Duel - Starting:", { championId, challengerId, billId });
+
+  // Varmistetaan että ID:t ovat numeroita
+  const champIdNum = parseInt(championId);
+  const challIdNum = parseInt(challengerId);
+
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  // 1. Fetch both MP profiles by starting from the base 'mps' table
   const { data: mpsData, error: mpsError } = await supabase
-    .from("mp_ai_profiles")
+    .from("mps")
     .select(`
-      mp_id,
-      system_prompt,
-      voting_summary,
-      rhetoric_style,
-      mps ( first_name, last_name, party ),
-      mp_profiles:mp_id (
+      id,
+      first_name,
+      last_name,
+      party,
+      mp_ai_profiles!inner (
+        system_prompt,
+        voting_summary,
+        rhetoric_style
+      ),
+      mp_profiles (
         economic_score,
         liberal_conservative_score,
         environmental_score,
@@ -30,14 +45,26 @@ export async function POST(req: Request) {
         security_score
       )
     `)
-    .in("mp_id", [championId, challengerId]);
+    .in("id", [champIdNum, challIdNum]);
+
+  console.log("Arena Duel - MP Data Fetch:", { 
+    count: mpsData?.length, 
+    error: mpsError?.message,
+    foundIds: mpsData?.map(m => m.id)
+  });
 
   if (mpsError || !mpsData || mpsData.length < 2) {
-    return new Response(JSON.stringify({ error: "Molempien edustajien profiilit on oltava alustettu." }), { status: 404 });
+    const foundIds = mpsData?.map(m => m.id.toString()) || [];
+    const missing = [championId, challengerId].filter(id => !foundIds.includes(id.toString()));
+    
+    return new Response(JSON.stringify({ 
+      error: `Edustajien AI-profiilit puuttuvat: ${missing.join(", ")}. Profiloi heidät ensin.` 
+    }), { status: 400 });
   }
 
-  const champion = mpsData.find(m => m.mp_id === championId);
-  const challenger = mpsData.find(m => m.mp_id === challengerId);
+  // Map the data back to the format the rest of the script expects
+  const champion = mpsData.find(m => m.id === champIdNum);
+  const challenger = mpsData.find(m => m.id === challIdNum);
 
   if (!champion || !challenger) {
     return new Response(JSON.stringify({ error: "Yksi tai molemmat edustajien AI-profiileista puuttuu." }), { status: 404 });
@@ -45,14 +72,35 @@ export async function POST(req: Request) {
 
   // 2. Fetch Bill Profile
   const { data: billProfile } = await supabase
-    .from("bill_ai_profiles")
+    .from("bill_enhanced_profiles")
     .select("*")
     .eq("bill_id", billId)
     .single();
 
+  const billContext = billProfile ? `
+    VÄITTELYN AIHE (LAKI):
+    - Otsikko: ${billProfile.title}
+    - Hotspotit: ${JSON.stringify((billProfile.analysis_data as any).hotspots)}
+    - Voittajat: ${JSON.stringify((billProfile.analysis_data as any).winners)}
+    - Häviäjät: ${JSON.stringify((billProfile.analysis_data as any).losers)}
+    - Kitka-ennuste: ${(billProfile.forecast_metrics as any).friction_index}/100
+  ` : "Yleinen poliittinen linjaus.";
+
   // 3. Conflict Analysis between the two MPs
-  const champDna = (champion as any).mp_profiles?.[0];
-  const challDna = (challenger as any).mp_profiles?.[0];
+  const getDna = (mp: any) => {
+    if (!mp.mp_profiles) return null;
+    return Array.isArray(mp.mp_profiles) ? mp.mp_profiles[0] : mp.mp_profiles;
+  };
+
+  const getAi = (mp: any) => {
+    if (!mp.mp_ai_profiles) return null;
+    return Array.isArray(mp.mp_ai_profiles) ? mp.mp_ai_profiles[0] : mp.mp_ai_profiles;
+  };
+
+  const champDna = getDna(champion);
+  const challDna = getDna(challenger);
+  const champAi = getAi(champion);
+  const challAi = getAi(challenger);
   
   let distance = 0;
   if (champDna && challDna) {
@@ -67,18 +115,13 @@ export async function POST(req: Request) {
     distance = Math.sqrt(diffs.reduce((a, b) => a + b, 0));
   }
 
-  const lastMessage = messages[messages.length - 1];
-  
-  // Quick fix for Vercel build: cast to any or handle arrays correctly
-  const champ = champion as any;
-  const chall = challenger as any;
-  
-  const champName = `${champ.mps?.first_name || champ.mps?.[0]?.first_name || "Champion"} ${champ.mps?.last_name || champ.mps?.[0]?.last_name || ""}`;
-  const challName = `${chall.mps?.first_name || chall.mps?.[0]?.first_name || "Challenger"} ${chall.mps?.last_name || chall.mps?.[0]?.last_name || ""}`;
-  const champParty = champ.mps?.party || champ.mps?.[0]?.party || "Unknown";
-  const challParty = chall.mps?.party || chall.mps?.[0]?.party || "Unknown";
+  console.log("Arena Duel - Distance:", distance);
 
-  // Decide who is currently relevant
+  const champName = `${champion.first_name} ${champion.last_name}`;
+  const challName = `${challenger.first_name} ${challenger.last_name}`;
+  const champParty = champion.party;
+  const challParty = challenger.party;
+
   const provocationLevel = distance > 2.5 ? "KORKEA (Spicy)" : (distance > 1.5 ? "KESKITASO" : "MATALA (Rakentava)");
 
   const systemPrompt = `
@@ -88,17 +131,17 @@ export async function POST(req: Request) {
     
     OSAPUOLET:
     1. CHAMPION (Agentti A): ${champName} (${champParty}). 
-       - Tyyli: ${champion.rhetoric_style} (Hjalliksen tyyli: suora, liikemiesmäinen, populistinen, kriittinen valtavirtaa kohtaan).
-       - Perustus: ${champion.system_prompt}
-       - Äänestykset: ${JSON.stringify(champion.voting_summary)}
+       - Tyyli: ${champAi?.rhetoric_style} (Hjalliksen tyyli: suora, liikemiesmäinen, populistinen, kriittinen valtavirtaa kohtaan).
+       - Perustus: ${champAi?.system_prompt}
+       - Äänestykset: ${JSON.stringify(champAi?.voting_summary)}
     
     2. CHALLENGER (Agentti B): ${challName} (${challParty}). 
-       - Tyyli: ${challenger.rhetoric_style}
-       - Perustus: ${challenger.system_prompt}
-       - Äänestykset: ${JSON.stringify(challenger.voting_summary)}
+       - Tyyli: ${challAi?.rhetoric_style}
+       - Perustus: ${challAi?.system_prompt}
+       - Äänestykset: ${JSON.stringify(challAi?.voting_summary)}
     
     KONTEKSTI (LAKI):
-    ${billProfile ? `Aihe: ${billProfile.audience_hook}. Hotspotit: ${JSON.stringify(billProfile.hotspots)}` : "Yleinen poliittinen linjaus."}
+    ${billContext}
     
     IDEOLOGINEN JÄNNITE: ${distance.toFixed(2)} / 5.0 -> Provokaatio-taso: ${provocationLevel}.
     
@@ -131,4 +174,3 @@ export async function POST(req: Request) {
 
   return result.toDataStreamResponse({ data });
 }
-

@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { assignToCommittee } from "@/lib/logic/committee-assigner";
@@ -28,6 +28,7 @@ export async function getUserProfile() {
         committee_assignment: committee,
         rank_title: rankTitle,
         impact_points: user.impact_points || 0,
+        active_role: user.active_role || 'citizen',
         is_guest: true
       };
     }
@@ -56,6 +57,7 @@ export async function createUserProfile() {
     committee_assignment: committee,
     rank_title: rankTitle,
     impact_points: 10,
+    active_role: 'shadow_mp',
     updated_at: new Date().toISOString()
   };
 
@@ -98,4 +100,55 @@ export async function addImpactPoints(points: number) {
     .eq("id", user.id);
 
   revalidatePath("/dashboard");
+}
+
+export async function switchUserRole(role: 'citizen' | 'shadow_mp' | 'researcher') {
+  const user = await getUser();
+  
+  // 1. Tallennetaan rooli AINA evästeeseen (toimii heti ja on luotettava)
+  const cookieStore = await cookies();
+  cookieStore.set("guest_active_role", role, {
+    maxAge: 60 * 60 * 24 * 30,
+    path: "/",
+    sameSite: "lax",
+  });
+
+  // Jos ei ole kirjautunutta käyttäjää, eväste riittää
+  if (!user || user.is_guest) {
+    revalidatePath("/");
+    return { success: true };
+  }
+
+  // 2. Yritetään tallentaa tietokantaan taustalla (jos kirjautunut)
+  try {
+    const adminClient = await createAdminClient();
+    
+    // Tarkistetaan onko käyttäjällä jo profiili
+    const { data: existingProfile } = await adminClient
+      .from("user_profiles")
+      .select("id")
+      .eq("id", user.id)
+      .single();
+
+    if (!existingProfile) {
+      await adminClient.from("user_profiles").upsert({ 
+        id: user.id, 
+        active_role: role,
+        rank_title: 'Kansalainen',
+        impact_points: 0
+      });
+    } else {
+      await adminClient
+        .from("user_profiles")
+        .update({ active_role: role })
+        .eq("id", user.id);
+    }
+  } catch (dbError) {
+    console.warn("Tietokantapäivitys epäonnistui, mutta rooli vaihdettiin evästeellä:", dbError);
+    // Emme palauta virhettä, koska eväste riittää käyttöliittymän toiminnalle
+  }
+
+  revalidatePath("/");
+  revalidatePath("/dashboard");
+  return { success: true };
 }

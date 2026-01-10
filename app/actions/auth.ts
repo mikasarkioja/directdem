@@ -19,6 +19,9 @@ export async function getUser(): Promise<UserProfile | null> {
       if (guestId) {
         console.log("[getUser] Ghost user detected:", guestId);
         
+        // Haetaan mahdolliset eväste-asetukset (rooli)
+        const guestRole = cookieStore.get("guest_active_role")?.value as any;
+
         // Haetaan profiili jos se on tietokannassa
         const { data: profile } = await supabase
           .from("profiles")
@@ -40,6 +43,7 @@ export async function getUser(): Promise<UserProfile | null> {
           full_name: profile?.full_name || guestName || "Ghost User",
           email: profile?.email || "guest@local",
           is_guest: true,
+          active_role: guestRole || 'citizen',
           is_verified: false,
           impact_points: profile?.impact_points || 0,
           level: profile?.level || 1,
@@ -57,8 +61,18 @@ export async function getUser(): Promise<UserProfile | null> {
 
     console.log("[getUser] Regular user found:", user.id);
 
+    const cookieStore = await cookies();
+    const guestRole = cookieStore.get("guest_active_role")?.value as any;
+
     const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    return { id: user.id, email: user.email, ...profile };
+    const { data: userProfile } = await supabase.from("user_profiles").select("active_role").eq("id", user.id).single();
+
+    return { 
+      id: user.id, 
+      email: user.email, 
+      ...profile,
+      active_role: userProfile?.active_role || guestRole || 'citizen'
+    };
   } catch {
     return null;
   }

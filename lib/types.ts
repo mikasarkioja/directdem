@@ -85,6 +85,7 @@ export interface UserProfile {
   join_report_list?: boolean;
   is_admin?: boolean;
   is_guest?: boolean;
+  active_role?: 'citizen' | 'shadow_mp' | 'researcher';
   current_archetype?: string;
   dna_level?: number;
   impact_points?: number;

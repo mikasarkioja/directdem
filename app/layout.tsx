@@ -33,6 +33,7 @@ export const viewport: Viewport = {
 };
 
 import { Toaster } from "react-hot-toast";
+import { RoleProvider } from "@/lib/context/RoleContext";
 
 export default function RootLayout({
   children,
@@ -48,8 +49,10 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body className={inter.className}>
-        {children}
-        <Toaster position="top-center" />
+        <RoleProvider>
+          {children}
+          <Toaster position="top-center" />
+        </RoleProvider>
       </body>
     </html>
   );

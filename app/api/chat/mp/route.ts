@@ -59,20 +59,28 @@ export async function POST(req: Request) {
   let billContext = "";
   if (billId) {
     const { data: billProfile } = await supabase
-      .from("bill_ai_profiles")
+      .from("bill_enhanced_profiles")
       .select("*")
       .eq("bill_id", billId)
       .single();
     
     if (billProfile) {
+      const analysis = billProfile.analysis_data as any;
+      const forecast = billProfile.forecast_metrics as any;
+      
       billContext = `
         NYKYINEN LAKIESITYS:
-        Hotspots: ${JSON.stringify(billProfile.hotspots)}
-        Yleisö-koukku: ${billProfile.audience_hook}
-        DNA-vaikutus: ${JSON.stringify(billProfile.dna_impact)}
+        Hotspots: ${JSON.stringify(analysis.hotspots)}
+        Voittajat: ${JSON.stringify(analysis.winners)}
+        Häviäjät: ${JSON.stringify(analysis.losers)}
+        Ideologiset kipurajat: ${analysis.ideological_tradeoffs}
         
-        OHJE: Käytä näitä hotspot-kohtia haastaaksesi käyttäjää tai puolustaaksesi kantaasi. 
-        Keskity erityisesti kohtien puolustamiseen oman puolueesi näkökulmasta.
+        SÄÄENNUSTE (Forecast):
+        Kitka-indeksi: ${forecast.friction_index}/100
+        Voter Sensitivity: ${forecast.voter_sensitivity}
+        
+        OHJE: Käytä näitä hotspot-kohtia haastaaksesi käyttäjää. 
+        Viittaa "Voittajiin" ja "Häviäjiin". Jos edustat ryhmää joka häviää, mutta puolueesi tukee lakia, ilmaise sisäistä ristiriitaa tai "puoluekurin" välttämättömyyttä.
       `;
     }
   }

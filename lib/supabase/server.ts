@@ -29,3 +29,23 @@ export async function createClient() {
     }
   );
 }
+
+export async function createAdminClient() {
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim().replace(/[\r\n]/g, '');
+  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim().replace(/[\r\n]/g, '');
+
+  return createServerClient(
+    url,
+    key,
+    {
+      cookies: {
+        getAll() {
+          return []; // Admin client doesn't need to read cookies
+        },
+        setAll() {
+          // Admin client doesn't need to set cookies
+        },
+      },
+    }
+  );
+}

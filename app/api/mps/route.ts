@@ -18,6 +18,12 @@ export async function GET() {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 
+  if (!data) {
+    return new Response(JSON.stringify([]), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
   return new Response(JSON.stringify(data), {
     headers: { "Content-Type": "application/json" }
   });

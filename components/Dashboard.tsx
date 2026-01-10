@@ -15,9 +15,11 @@ import DebateArena from "./DebateArena";
 import MPWorkspace from "./MPWorkspace";
 import ShadowDashboard from "./ShadowDashboard";
 import LiveParallelPlenary from "./LiveParallelPlenary";
+import QuickPulse from "./dashboard/QuickPulse";
 import type { DashboardView, UserProfile } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, Radio, Briefcase, Shield } from "lucide-react";
+import { LayoutDashboard, Radio, Briefcase, Shield, Search, Zap } from "lucide-react";
+import { useRole } from "@/lib/context/RoleContext";
 
 interface DashboardProps {
   user: UserProfile | null;
@@ -28,6 +30,7 @@ export default function Dashboard({ user, initialView = "workspace" }: Dashboard
   const [activeView, setActiveView] = useState<DashboardView>(initialView);
   const [viewContext, setViewContext] = useState<ViewContext>("parliament");
   const [selectedMunicipality, setSelectedMunicipality] = useState(user?.municipality || "Espoo");
+  const { role } = useRole();
 
   // Sync state with initialView prop if it changes (e.g. navigation)
   useEffect(() => {
@@ -36,82 +39,66 @@ export default function Dashboard({ user, initialView = "workspace" }: Dashboard
     }
   }, [initialView]);
 
-  // Suggest municipal context if user has municipality in profile
-  useEffect(() => {
-    if (user?.municipality) {
-      setSelectedMunicipality(user.municipality);
+  const getHeaderTitle = () => {
+    switch (role) {
+      case 'shadow_mp':
+        return { main: "Varjo", accent: "Työhuone", sub: "Varjokansanedustajan päätöksentekoympäristö" };
+      case 'researcher':
+        return { main: "Analyysi", accent: "Keskus", sub: "Poliittisen datan ja korrelaatioiden tutkimus" };
+      default:
+        return { main: "Kansalais", accent: "Keskus", sub: "Henkilökohtainen uutisvirta ja vaikuttaminen" };
     }
-  }, [user]);
+  };
+
+  const header = getHeaderTitle();
 
   return (
     <>
-      <div className="flex h-screen bg-[#F8FAFC] text-command-dark overflow-hidden">
+      <div className="flex h-screen bg-[#F8FAFC] dark:bg-slate-950 text-command-dark dark:text-white overflow-hidden transition-colors duration-700">
         <Sidebar activeView={activeView} setActiveView={setActiveView} user={user} />
         
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0 relative custom-scrollbar">
           <div className="max-w-7xl mx-auto p-4 md:p-10 relative z-10">
             {/* Command Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-              <div>
-                <motion.h1 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-3xl font-black uppercase tracking-tight text-command-dark"
-                >
-                  Kansalais <span className="text-command-neon">Keskus</span>
-                </motion.h1>
-                <p className="text-command-gray text-[10px] font-bold uppercase tracking-[0.2em] mt-1 opacity-70">
-                  Kansalainen: {user?.full_name || "Vieras"} — Henkilöllisyys varmistettu
+              <motion.div
+                key={role}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <h1 className="text-4xl font-black uppercase tracking-tighter text-command-dark dark:text-white">
+                  {header.main} <span className="text-[var(--accent-primary)]">{header.accent}</span>
+                </h1>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 opacity-70">
+                  {header.sub} — {user?.full_name || "Vieras"}
                 </p>
-              </div>
+              </motion.div>
 
-              <div className="flex items-center gap-2 p-1 bg-white rounded-xl border border-slate-200 shadow-sm">
-                <button
-                  onClick={() => setActiveView("workspace")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    activeView === "workspace" ? "bg-slate-900 text-white shadow-md" : "text-command-gray hover:bg-slate-50"
-                  }`}
-                >
-                  <Briefcase size={14} />
-                  Työhuone
-                </button>
-                <button
-                  onClick={() => setActiveView("municipal")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    activeView === "municipal" ? "bg-purple-600 text-white shadow-md shadow-purple-500/20" : "text-command-gray hover:bg-slate-50"
-                  }`}
-                >
-                  <Shield size={14} />
-                  Varjokansanedustaja
-                </button>
-                <button
-                  onClick={() => setActiveView("overview")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    activeView === "overview" ? "bg-command-neon text-white shadow-md" : "text-command-gray hover:bg-slate-50"
-                  }`}
-                >
-                  <LayoutDashboard size={14} />
-                  Yleisnäkymä
-                </button>
-                <button
-                  onClick={() => setActiveView("bills")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    activeView === "bills" ? "bg-command-neon text-white shadow-md" : "text-command-gray hover:bg-slate-50"
-                  }`}
-                >
-                  <Radio size={14} />
-                  Live Areena
-                </button>
+              <div className="flex items-center gap-4">
+                {/* Secondary contextual info can go here */}
+                {role === 'shadow_mp' && (
+                  <div className="px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center gap-3">
+                    <Shield size={16} className="text-purple-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-purple-500">Valiokunta Aktiivinen</span>
+                  </div>
+                )}
+                {role === 'researcher' && (
+                  <div className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-xl flex items-center gap-3">
+                    <Search size={16} className="text-cyan-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-cyan-500">Datalähde: Vaski API</span>
+                  </div>
+                )}
               </div>
             </div>
 
             <AnimatePresence mode="wait">
-              {activeView === "workspace" ? (
+              {activeView === "workspace" || (role === 'shadow_mp' && activeView === "overview") ? (
                 <motion.div
                   key="workspace"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
                 >
                   <MPWorkspace user={user} />
                 </motion.div>
@@ -123,19 +110,19 @@ export default function Dashboard({ user, initialView = "workspace" }: Dashboard
                   exit={{ opacity: 0 }}
                   className="space-y-10"
                 >
-                  <ImpactStats 
-                    impactPoints={user?.impact_points || 450} 
-                    democracyGapReduced={34} 
-                    level={user?.level || 4} 
-                    xp={user?.xp || 1200} 
-                    nextLevelXp={2500} 
-                  />
-                  
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                    <div className="lg:col-span-2 space-y-8">
-                      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-                        <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-6">
-                          <h3 className="text-sm font-black uppercase tracking-widest text-command-dark">Viimeisimmät esitykset</h3>
+                    <div className="lg:col-span-2 space-y-10">
+                      <ImpactStats 
+                        impactPoints={user?.impact_points || 450} 
+                        democracyGapReduced={34} 
+                        level={user?.level || 4} 
+                        xp={user?.xp || 1200} 
+                        nextLevelXp={2500} 
+                      />
+                      
+                      <div className="bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-white/10 p-8 shadow-sm">
+                        <div className="flex justify-between items-center mb-8 border-b border-slate-100 dark:border-white/5 pb-6">
+                          <h3 className="text-sm font-black uppercase tracking-widest text-command-dark dark:text-white">Viimeisimmät esitykset</h3>
                           <ContextSwitcher 
                             currentContext={viewContext} 
                             onContextChange={setViewContext} 
@@ -152,10 +139,12 @@ export default function Dashboard({ user, initialView = "workspace" }: Dashboard
                     </div>
                     
                     <div className="space-y-10">
+                      <QuickPulse />
                       <QuestLog />
-                      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-command-dark mb-6">Heimokartta</h3>
-                        <div className="aspect-square bg-[#F8FAFC] rounded-2xl border border-slate-100 flex items-center justify-center relative overflow-hidden group cursor-help">
+                      
+                      <div className="bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-white/10 p-8 shadow-sm">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-command-dark dark:text-white mb-6">Heimokartta</h3>
+                        <div className="aspect-square bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-center relative overflow-hidden group cursor-help">
                           {/* Tribe Map SVG Visual */}
                           <svg viewBox="0 0 200 200" className="w-full h-full p-4 opacity-20 group-hover:opacity-40 transition-opacity">
                             <defs>

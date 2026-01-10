@@ -1,8 +1,10 @@
 "use client";
 
-import { LayoutGrid, FileText, Map as MapIcon, User, Users, Radio } from "lucide-react";
+import { LayoutGrid, FileText, Map as MapIcon, User, Users, Radio, Search } from "lucide-react";
 import type { DashboardView } from "@/lib/types";
 import Link from "next/link";
+import PulseButton from "./nav/PulseButton";
+import { useRole } from "@/lib/context/RoleContext";
 
 interface BottomNavProps {
   activeView: DashboardView;
@@ -10,24 +12,47 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ activeView, onViewChange }: BottomNavProps) {
-  const navItems = [
-    { label: "Keskus", view: "overview" as const, icon: LayoutGrid },
-    { label: "Areena", view: "arena" as const, icon: FileText, href: "/arena" },
-    { label: "Väittely", view: "debate" as const, icon: Radio, href: "/vaittely/demo" },
-    { label: "Profiili", view: "profile" as const, icon: User },
-  ];
+  const { role } = useRole();
+
+  const getNavItems = () => {
+    const common = [
+      { label: "Keskus", view: "overview" as const, icon: LayoutGrid },
+    ];
+
+    if (role === 'shadow_mp') {
+      return [
+        ...common,
+        { label: "Areena", view: "arena" as const, icon: FileText, href: "/arena" },
+        { label: "Väittely", view: "debate" as const, icon: Radio, href: "/vaittely/demo" },
+      ];
+    } else if (role === 'researcher') {
+      return [
+        ...common,
+        { label: "Data", view: "ranking" as const, icon: Search, href: "/ranking" },
+        { label: "Kartta", view: "consensus" as const, icon: MapIcon },
+      ];
+    } else {
+      return [
+        ...common,
+        { label: "Areena", view: "arena" as const, icon: Radio, href: "/arena" },
+        { label: "DNA", view: "profile" as const, icon: User },
+      ];
+    }
+  };
+
+  const navItems = getNavItems();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-xl md:hidden z-50 safe-area-bottom">
-      <div className="flex justify-around items-center h-16 px-4">
-        {navItems.map((item) => {
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:hidden z-50 safe-area-bottom">
+      <div className="flex justify-around items-center h-20 px-4">
+        {navItems.slice(0, 2).map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.view;
 
           const content = (
             <>
-              <Icon size={20} className={isActive ? "scale-110" : "scale-100"} />
-              <span className="text-[9px] font-black uppercase tracking-tight leading-tight">{item.label}</span>
+              <Icon size={20} className={isActive ? "scale-110 text-command-neon" : "scale-100"} />
+              <span className={`text-[8px] font-black uppercase tracking-tight leading-tight mt-1 ${isActive ? "text-command-neon" : "text-slate-400"}`}>{item.label}</span>
             </>
           );
 
@@ -36,11 +61,7 @@ export default function BottomNav({ activeView, onViewChange }: BottomNavProps) 
               <Link
                 key={item.label}
                 href={item.href}
-                className={`flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 transition-all touch-manipulation select-none ${
-                  isActive
-                    ? "text-command-neon"
-                    : "text-slate-400"
-                }`}
+                className="flex flex-col items-center justify-center min-w-[64px] h-full transition-all"
               >
                 {content}
               </Link>
@@ -51,13 +72,46 @@ export default function BottomNav({ activeView, onViewChange }: BottomNavProps) 
             <button
               key={item.label}
               onClick={() => onViewChange(item.view)}
-              className={`flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 transition-all touch-manipulation select-none ${
-                isActive
-                  ? "text-command-neon"
-                  : "text-slate-400"
-              }`}
-              style={{ userSelect: "none", WebkitUserSelect: "none" }}
-              aria-label={item.label}
+              className="flex flex-col items-center justify-center min-w-[64px] h-full transition-all"
+            >
+              {content}
+            </button>
+          );
+        })}
+
+        {/* Center Pulse Button */}
+        <div className="-translate-y-4">
+          <PulseButton />
+        </div>
+
+        {navItems.slice(2, 4).map((item) => {
+          const Icon = item.icon;
+          const isActive = activeView === item.view;
+
+          const content = (
+            <>
+              <Icon size={20} className={isActive ? "scale-110 text-command-neon" : "scale-100"} />
+              <span className={`text-[8px] font-black uppercase tracking-tight leading-tight mt-1 ${isActive ? "text-command-neon" : "text-slate-400"}`}>{item.label}</span>
+            </>
+          );
+
+          if (item.href) {
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="flex flex-col items-center justify-center min-w-[64px] h-full transition-all"
+              >
+                {content}
+              </Link>
+            );
+          }
+
+          return (
+            <button
+              key={item.label}
+              onClick={() => onViewChange(item.view)}
+              className="flex flex-col items-center justify-center min-w-[64px] h-full transition-all"
             >
               {content}
             </button>

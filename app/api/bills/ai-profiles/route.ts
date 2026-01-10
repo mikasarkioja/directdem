@@ -9,24 +9,22 @@ export async function GET() {
   );
 
   const { data, error } = await supabase
-    .from("bill_ai_profiles")
-    .select(`
-      bill_id,
-      bills ( title )
-    `)
-    .order("updated_at", { ascending: false });
+    .from("bill_enhanced_profiles")
+    .select("bill_id, title")
+    .order("created_at", { ascending: false })
+    .limit(20);
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 
-  // Flatten the response
-  const flattened = data.map((d: any) => ({
-    bill_id: d.bill_id,
-    title: d.bills?.title || "Nimetön lakiesitys"
-  }));
+  if (!data) {
+    return new Response(JSON.stringify([]), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
 
-  return new Response(JSON.stringify(flattened), {
+  return new Response(JSON.stringify(data), {
     headers: { "Content-Type": "application/json" }
   });
 }

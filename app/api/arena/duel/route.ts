@@ -51,8 +51,8 @@ export async function POST(req: Request) {
     .single();
 
   // 3. Conflict Analysis between the two MPs
-  const champDna = champion.mp_profiles;
-  const challDna = challenger.mp_profiles;
+  const champDna = (champion as any).mp_profiles?.[0];
+  const challDna = (challenger as any).mp_profiles?.[0];
   
   let distance = 0;
   if (champDna && challDna) {

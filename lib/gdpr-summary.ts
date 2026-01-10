@@ -75,12 +75,12 @@ Voit poistaa tilisi asetuksista. Tämä poistaa kaikki tietosi järjestelmästä
     }
 
     const { text } = await generateText({
-      model: openai("gpt-4o-mini") as any,
+      model: openai("gpt-4o-mini"),
       system: systemPrompt,
       prompt: `Selitä tämä tietosuojaseloste selkokielellä:\n\n${privacyPolicyText}`,
       temperature: 0.7,
       maxTokens: 500,
-    });
+    } as any);
 
     return text || "Tietosuojaseloste saatavilla /privacy-policy -sivulla.";
   } catch (error: any) {

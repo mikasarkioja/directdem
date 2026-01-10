@@ -85,21 +85,24 @@ export async function getUserDataForExport(): Promise<{
           created_at: profile.created_at,
           updated_at: profile.updated_at,
         },
-        votes: (votes || []).map((vote: any) => ({
-          id: vote.id,
-          position: vote.position,
-          created_at: vote.created_at,
-          updated_at: vote.updated_at,
-          bill: {
-            id: vote.bills.id,
-            title: vote.bills.title,
-            parliament_id: vote.bills.parliament_id,
-            summary: vote.bills.summary,
-            status: vote.bills.status,
-            category: vote.bills.category,
-            published_date: vote.bills.published_date,
-          },
-        })),
+        votes: (votes || []).map((vote: any) => {
+          const bill = Array.isArray(vote.bills) ? vote.bills[0] : vote.bills;
+          return {
+            id: vote.id,
+            position: vote.position,
+            created_at: vote.created_at,
+            updated_at: vote.updated_at,
+            bill: {
+              id: bill?.id,
+              title: bill?.title,
+              parliament_id: bill?.parliament_id,
+              summary: bill?.summary,
+              status: bill?.status,
+              category: bill?.category,
+              published_date: bill?.published_date,
+            },
+          };
+        }),
       },
     };
   } catch (error: any) {

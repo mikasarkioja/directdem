@@ -190,12 +190,12 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
         let summary: string;
         try {
           const { text } = await generateText({
-            model: openai("gpt-4o-mini") as any, // Type workaround for version conflict
+            model: openai("gpt-4o-mini"), // Type workaround for version conflict
             system: systemPrompt,
             prompt: `Tiivistä tämä lakiteksti selkokielelle:\n\n${preparedText}`,
             maxTokens: 1500,
             temperature: 0.7,
-          });
+          } as any);
           summary = text;
         } catch (aiError: any) {
           results.errors.push(`AI generation failed for ${bill.parliament_id}: ${aiError.message}`);

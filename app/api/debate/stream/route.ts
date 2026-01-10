@@ -36,11 +36,11 @@ OHJEET:
   const currentSpeaker = participants[0]; // The first participant in the list is the current speaker
 
   const result = await streamText({
-    model: openai("gpt-4o-mini") as any,
+    model: openai("gpt-4o-mini"),
     system: systemPrompt,
     prompt: `Sinun vuorosi puhua, edustaen puoluetta: ${currentSpeaker.party.name}. 
 Pidä puheenvuoro lyhyenä ja ytimekkäänä (max 100 sanaa).`,
-  });
+  } as any);
 
   return result.toDataStreamResponse();
 }

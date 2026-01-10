@@ -62,12 +62,15 @@ async function getUserVotes(userId: string): Promise<UserVote[]> {
     return [];
   }
 
-  return (votes || []).map((vote: any) => ({
-    billId: vote.bill_id,
-    billTitle: vote.bills?.title || "Unknown",
-    parliamentId: vote.bills?.parliament_id || "",
-    position: vote.position,
-  }));
+  return (votes || []).map((vote: any) => {
+    const bill = Array.isArray(vote.bills) ? vote.bills[0] : vote.bills;
+    return {
+      billId: vote.bill_id,
+      billTitle: bill?.title || "Unknown",
+      parliamentId: bill?.parliament_id || "",
+      position: vote.position,
+    };
+  });
 }
 
 /**

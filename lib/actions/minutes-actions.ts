@@ -48,9 +48,9 @@ export async function generateShadowMinutesAnalysis(billId: string) {
     Vastaa JSON-muodossa: { "summary_memo": "teksti", "ideological_divergence": "teksti", "democracy_gap_score": 0-100 }`;
 
     const { text } = await generateText({
-      model: openai("gpt-4o") as any,
+      model: openai("gpt-4o"),
       prompt: prompt,
-    });
+    } as any);
 
     const cleanJson = text.replace(/```json|```/g, "").trim();
     const result = JSON.parse(cleanJson);

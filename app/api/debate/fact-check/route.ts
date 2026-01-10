@@ -8,7 +8,7 @@ export async function POST(req: Request) {
 
   try {
     const { text } = await generateText({
-      model: openai("gpt-4o-mini") as any,
+      model: openai("gpt-4o-mini"),
       system: `Olet 'The Agora' -väittelyn puolueeton tuomari ja faktantarkistaja (Judge AI).
       
       TEHTÄVÄSI:
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       prompt: `Analysoi tämä viesti: "${message}"
       
       Käytä apuna näitä uutisia jos ne liittyvät asiaan: ${JSON.stringify(contextNews)}`,
-    });
+    } as any);
 
     return Response.json({ factCheck: text.trim() });
   } catch (error) {

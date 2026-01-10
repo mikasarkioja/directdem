@@ -44,7 +44,7 @@ SÄÄNNÖT:
 Tämä on ${history.length + 1}. puheenvuoro väittelyssä.`;
 
   const result = await streamText({
-    model: openai("gpt-4o-mini") as any,
+    model: openai("gpt-4o-mini"),
     system: systemPrompt,
     messages: [
       ...history.map((m: any) => ({
@@ -53,7 +53,7 @@ Tämä on ${history.length + 1}. puheenvuoro väittelyssä.`;
       })),
       { role: "user", content: "Kirjoita seuraava puheenvuorosi nyt." }
     ],
-  });
+  } as any);
 
   return result.toDataStreamResponse();
 }

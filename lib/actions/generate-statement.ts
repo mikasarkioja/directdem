@@ -87,9 +87,9 @@ Kirjoita sivistyneellä, neutraalilla ja virallisella suomen kielellä.`;
 
   try {
     const { text } = await generateText({
-      model: openai("gpt-4o") as any,
+      model: openai("gpt-4o"),
       prompt: prompt,
-    });
+    } as any);
 
     return {
       summary: text,

@@ -34,9 +34,9 @@ export async function checkParliamentaryLanguage(text: string): Promise<Moderati
     }`;
 
     const { text: resultText } = await generateText({
-      model: openai("gpt-4o-mini") as any,
+      model: openai("gpt-4o-mini"),
       prompt: prompt,
-    });
+    } as any);
 
     const cleanJson = resultText.replace(/```json|```/g, "").trim();
     return JSON.parse(cleanJson);

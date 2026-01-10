@@ -57,9 +57,9 @@ export async function checkUserImpact(userId: string) {
 
       try {
         const { text } = await generateText({
-          model: openai("gpt-4o") as any,
+          model: openai("gpt-4o"),
           prompt: prompt,
-        });
+        } as any);
 
         if (text.trim() !== "EI_OSUMAA") {
           // 4. Save impact citation if not already exists

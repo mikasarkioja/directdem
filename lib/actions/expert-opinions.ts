@@ -20,9 +20,9 @@ export async function getExpertOpinions(billTitle: string, billSummary: string) 
     Vastaa JSON-muodossa: { "pro": "lausunto", "con": "lausunto" }. Käytä asiantuntevaa ja virallista kieltä.`;
 
     const { text } = await generateText({
-      model: openai("gpt-4o-mini") as any,
+      model: openai("gpt-4o-mini"),
       prompt: prompt,
-    });
+    } as any);
 
     // Handle potential JSON parsing from AI text
     const cleanJson = text.replace(/```json|```/g, "").trim();

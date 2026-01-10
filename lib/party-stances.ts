@@ -159,12 +159,12 @@ Vastaa JSON-muodossa:
 Jos et löydä vastalauseita, palauta tyhjä lista.`;
 
     const { text } = await generateText({
-      model: openai("gpt-4o-mini") as any,
+      model: openai("gpt-4o-mini"),
       system: systemPrompt,
       prompt: `Analysoi tämä mietintöteksti ja etsi vastalauseet (Vastalause). Kerro mitkä puolueet allekirjoittivat vastalauseen:\n\n${mietintoText.substring(0, 20000)}`,
       temperature: 0.3,
       maxTokens: 500,
-    });
+    } as any);
 
     // Parse JSON response
     try {

@@ -114,7 +114,8 @@ export async function sendWeeklyReport(): Promise<{
     >();
 
     for (const vote of votes || []) {
-      const bill = (vote as any).bills;
+      const billDataRaw = (vote as any).bills;
+      const bill = Array.isArray(billDataRaw) ? billDataRaw[0] : billDataRaw;
       if (!bill) continue;
 
       const billId = bill.id;

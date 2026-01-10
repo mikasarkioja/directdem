@@ -35,9 +35,9 @@ export async function generateBillTasks(billId: string, billTitle: string, billS
     Vastaa JSON-muodossa: { "tasks": [{ "title": "tehtävän otsikko", "description": "lyhyt kuvaus mitä pitää tehdä" }] }`;
 
     const { text } = await generateText({
-      model: openai("gpt-4o-mini") as any,
+      model: openai("gpt-4o-mini"),
       prompt: prompt,
-    });
+    } as any);
 
     const cleanJson = text.replace(/```json|```/g, "").trim();
     const result = JSON.parse(cleanJson);

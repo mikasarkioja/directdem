@@ -77,8 +77,14 @@ export async function findMatchesForScores(inputScores: {
     return { topMatches: [], bottomMatches: [], partyAnalysis: [] };
   }
 
-  const uniqueProfiles = Array.from(new Map(allProfiles.map(p => [p.mps.id, p])).values())
-    .filter((p: any) => !excludeMpId || p.mps.id !== excludeMpId);
+  const uniqueProfiles = Array.from(new Map(allProfiles.map(p => {
+    const mpInfo = Array.isArray(p.mps) ? p.mps[0] : p.mps;
+    return [mpInfo?.id, p];
+  })).values())
+    .filter((p: any) => {
+      const mpInfo = Array.isArray(p.mps) ? p.mps[0] : p.mps;
+      return !excludeMpId || mpInfo?.id !== excludeMpId;
+    });
 
   const stats = {
     eco: { sum: 0, sqSum: 0, count: 0 },
@@ -159,11 +165,12 @@ export async function findMatchesForScores(inputScores: {
     // Weighted average: Z-score (relative position) + Raw distance (absolute agreement)
     const compatibility = Math.max(1, Math.round((zCompatibility * 0.6 + rawCompatibility * 0.4) * 100));
 
-    const fullName = `${p.mps.first_name} ${p.mps.last_name}`;
+    const mpInfo = Array.isArray(p.mps) ? p.mps[0] : p.mps;
+    const fullName = mpInfo ? `${mpInfo.first_name} ${mpInfo.last_name}` : "Tuntematon MP";
     return {
       id: p.mp_id,
       full_name: fullName,
-      party: formatParty(p.mps.party, fullName),
+      party: mpInfo ? formatParty(mpInfo.party, fullName) : "Tuntematon",
       compatibility,
       distance: zDistance, // Store for sorting
       scores: {

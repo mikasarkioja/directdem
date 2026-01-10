@@ -18,9 +18,9 @@ export async function formatLegalLanguage(text: string) {
     Palauta vain muotoiltu lakiteksti ilman selityksiä.`;
 
     const { text: formattedText } = await generateText({
-      model: openai("gpt-4o") as any,
+      model: openai("gpt-4o"),
       prompt: prompt,
-    });
+    } as any);
 
     return formattedText.trim();
   } catch (error) {

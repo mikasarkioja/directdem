@@ -65,7 +65,7 @@ export async function createParty(name: string) {
 async function generatePartyManifesto(partyName: string, dnaProfile: ArchetypePoints) {
   try {
     const { text } = await generateText({
-      model: openai("gpt-4o-mini") as any,
+      model: openai("gpt-4o-mini"),
       system: `Olet virtuaalipuolueen ideologi. Tehtäväsi on kirjoittaa puolueelle vakuuttava, dynaaminen ja dynaaminen manifesti. 
       Käytä ammattimaista, mutta iskevää kieltä. 
       Rakenne on tiukka:
@@ -75,7 +75,7 @@ async function generatePartyManifesto(partyName: string, dnaProfile: ArchetypePo
       prompt: `Puolueen nimi: ${partyName}. 
       Jäsenten DNA-painotukset (0-100 skaalalla): ${JSON.stringify(dnaProfile)}. 
       Analysoi nämä painotukset ja luo niihin perustuva manifesti. Jos painotus on korkea 'fact_checker' -kategoriassa, korosta tietoa. Jos 'reformer', korosta muutosta.`,
-    });
+    } as any);
     return text;
   } catch (e) {
     return "Meidän arvomme: Luottamus, avoimuus ja yhteistyö. \nTärkeimmät tavoitteemme: \n- Parempi demokratia\n- Läpinäkyvä päätöksenteko\n- Kansalaisten ääni kuuluviin\nMiksi olemme olemassa: Rakentamassa Suomen digitaalista tulevaisuutta yhdessä.";

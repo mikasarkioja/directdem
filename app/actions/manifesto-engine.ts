@@ -80,7 +80,7 @@ async function generateManifestoProposal(
 ) {
   try {
     const { text } = await generateText({
-      model: openai("gpt-4o-mini") as any,
+      model: openai("gpt-4o-mini"),
       system: `Olet 'Dynamic Manifesto Learning Engine'. Tehtäväsi on päivittää virtuaalipuolueen manifesti vastaamaan jäsenten TODELLISTA toimintaa ja tuoretta uutisvirtaa.
       
       Analysoi:
@@ -97,7 +97,7 @@ async function generateManifestoProposal(
       Nykyinen manifesti: ${currentManifesto}
       Jäsenten äänestysdata: ${JSON.stringify(trends)}
       Tuoreet uutiset: ${JSON.stringify(news)}`,
-    });
+    } as any);
 
     const data = JSON.parse(text);
     return data;

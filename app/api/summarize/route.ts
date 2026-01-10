@@ -75,12 +75,12 @@ Tavoite: Yksityiskohtainen mutta ymmärrettävä selitys. Vähintään 500-800 s
 
     // Stream the AI response
     const result = await streamText({
-      model: openai("gpt-4o-mini") as any, // Type workaround for version conflict
+      model: openai("gpt-4o-mini"), // Type workaround for version conflict
       system: systemPrompt,
       prompt: `Tiivistä tämä ${isMunicipal ? "päätös" : "lakiteksti"} selkokielelle. Ole yksityiskohtainen ja selitä kaikki tärkeät asiat:\n\n${preparedText}`,
       maxTokens: 2000, // Increased from 1500 to allow longer summaries
       temperature: 0.7,
-    });
+    } as any);
 
     // Return the stream
     return result.toDataStreamResponse({

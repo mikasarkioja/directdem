@@ -36,7 +36,8 @@ export async function initializeProfileFromMP(mpId: number) {
     throw new Error("Kansanedustajan profiilia ei löytynyt.");
   }
 
-  const mpName = `${mpProfile.mps.first_name} ${mpProfile.mps.last_name}`;
+  const mpInfo = Array.isArray(mpProfile.mps) ? mpProfile.mps[0] : mpProfile.mps;
+  const mpName = mpInfo ? `${mpInfo.first_name} ${mpInfo.last_name}` : "Tuntematon MP";
 
   // 3. Update user's profile
   const { error: updateError } = await supabase

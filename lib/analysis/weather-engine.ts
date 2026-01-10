@@ -36,12 +36,12 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
   if (!category || category === 'Hallituksen esitys' || category === 'Muu') {
     try {
       const { text } = await generateText({
-        model: openai('gpt-4o-mini') as any,
+        model: openai('gpt-4o-mini'),
         system: `Olet poliittinen analyytikko. Luokittele lakiesityksen otsikko kuuteen kategoriaan: 
           Talous, Arvot, Ympäristö, Aluepolitiikka, Kansainvälisyys, Turvallisuus.
           Vastaa vain kategorian nimellä.`,
         prompt: bill.title,
-      });
+      } as any);
       category = text.trim();
       // Update bill category in DB for future
       await supabase.from('bills').update({ category }).eq('id', billId);
@@ -153,13 +153,13 @@ export async function predictVoteOutcome(billId: string): Promise<PredictionResu
   let summary = "";
   try {
     const { text } = await generateText({
-      model: openai('gpt-4o-mini') as any,
+      model: openai('gpt-4o-mini'),
       system: `Olet kokenut poliittinen analyytikko. Kirjoita lyhyt, 1-2 lauseen pituinen analyytikon huomio (Analyst's Note) 
         perustuen äänestysennusteeseen. Käytä neutraalia, mutta asiantuntevaa sävyä.
         Lakiesitys: ${bill.title}
         Ennuste: ${jaa} JAA, ${ei} EI, ${abstain} TYHJÄÄ.`,
       prompt: "Kirjoita tiivistelmä tuloksesta ja mahdollisesta poliittisesta jännitteestä.",
-    });
+    } as any);
     summary = text.trim();
   } catch (e) {
     // Fallback to static summaries if AI fails

@@ -94,12 +94,14 @@ export async function POST(req: Request) {
     else if (distance < 0.8) provocationLevel = "Friendly";
   }
 
-  const provocationInstructions = {
+  const provocationInstructions: Record<string, string> = {
     "Friendly": "Käyttäjä jakaa arvosi. Ole hengenheimolainen, lämmin ja vahvista yhteistä näkemystä.",
     "Neutral": "Ole asiallinen ja ammattimainen kansanedustaja.",
     "Skeptical": "Käyttäjällä on eriävä näkemys. Ole hieman kireä, haasta käyttäjän logiikkaa ja puolusta linjaasi jämäkästi.",
     "Hostile": "Olette ideologisesti täysin vastakkaisilla puolilla. Ole piikikäs, käytä retoriikassasi hyökkäävyyttä ja kyseenalaista käyttäjän motiivit tai arvot suoraan."
-  }[provocationLevel as keyof typeof provocationInstructions];
+  };
+
+  const currentInstructions = provocationInstructions[provocationLevel] || provocationInstructions["Neutral"];
 
   const fullSystemPrompt = `
     ${systemPromptBase}
@@ -109,7 +111,7 @@ export async function POST(req: Request) {
     KONTEKSTI:
     - Olet ${mpName} (${mpParty}).
     - Tyylisi on ${mpRhetoric}.
-    - IDEOLOGINEN TILA: ${provocationInstructions}
+    - IDEOLOGINEN TILA: ${currentInstructions}
     - Etäisyys käyttäjään (0-5): ${distance.toFixed(2)}.
     
     OHJEET VASTAUKSEEN:

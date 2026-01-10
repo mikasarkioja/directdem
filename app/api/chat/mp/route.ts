@@ -42,9 +42,14 @@ export async function POST(req: Request) {
 
     if (mpFull) {
       profile = mpFull;
-      mpDna = mpFull.mp_profiles;
-      mpName = `${mpFull.mps.first_name} ${mpFull.mps.last_name}`;
-      mpParty = mpFull.mps.party;
+      // Handle Supabase joining returning arrays
+      const mpData = mpFull as any;
+      const mpsInfo = Array.isArray(mpData.mps) ? mpData.mps[0] : mpData.mps;
+      const profilesInfo = Array.isArray(mpData.mp_profiles) ? mpData.mp_profiles[0] : mpData.mp_profiles;
+      
+      mpDna = profilesInfo;
+      mpName = `${mpsInfo?.first_name || "Poliittinen"} ${mpsInfo?.last_name || "AI"}`;
+      mpParty = mpsInfo?.party || "DirectDem";
       mpRhetoric = mpFull.rhetoric_style;
       systemPromptBase = mpFull.system_prompt;
     }

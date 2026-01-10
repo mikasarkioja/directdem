@@ -72,9 +72,6 @@ export async function POST(req: Request) {
     }
   }
 
-  const profile = mpFull;
-  const mpDna = mpFull.mp_profiles;
-
   // 2. Tarkempi provokaatio-logiikka: Laske ideologinen etäisyys
   let distance = 0;
   let provocationLevel = "Neutral";

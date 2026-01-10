@@ -2,12 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
-import { v4 as uuidv4 } from "uuid";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { randomUUID } from "crypto";
 
 export async function startGhostSession(name: string) {
-  const guestId = uuidv4();
+  const guestId = randomUUID();
   const cookieStore = await cookies();
   
   // Tallenna evästeeseen (30 päivää)

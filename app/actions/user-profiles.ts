@@ -153,6 +153,6 @@ export async function switchUserRole(role: 'citizen' | 'shadow_mp' | 'researcher
     return { success: true };
   } catch (error: any) {
     console.error("Critical error in switchUserRole:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message || "Tuntematon virhe" };
   }
 }

@@ -54,7 +54,7 @@ export function RoleProvider({
           newRole === 'researcher' ? 'Tutkija' : 'Kansalainen'
         }`);
       } else {
-        toast.error(`Roolin vaihto epäonnistui: ${res.error || "Tuntematon virhe"}`);
+        toast.error(`Roolin vaihto epäonnistui: ${(res as any).error || "Tuntematon virhe"}`);
       }
     } catch (err) {
       toast.error("Virhe roolin vaihdossa.");

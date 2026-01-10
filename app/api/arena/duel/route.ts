@@ -121,13 +121,13 @@ export async function POST(req: Request) {
   const data = new StreamData();
 
   const result = await streamText({
-    model: openai("gpt-4o") as any,
+    model: openai("gpt-4o"),
     system: systemPrompt,
     messages,
     onFinish() {
       data.close();
     },
-  });
+  } as any);
 
   return result.toDataStreamResponse({ data });
 }

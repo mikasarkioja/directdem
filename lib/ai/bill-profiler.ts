@@ -24,7 +24,7 @@ export async function profileBill(billId: string) {
   const sourceText = bill.summary || bill.title || "Ei kuvausta saatavilla.";
 
   const { text: analysisText } = await generateText({
-    model: openai("gpt-4o-mini") as any,
+    model: openai("gpt-4o-mini"),
     system: "Olet poliittinen strategisti. Tehtäväsi on analysoida lakiesitystekstiä ja löytää siitä poliittiset kiistakapulat (hotspots).",
     prompt: `
       Lakiesitys: ${bill.title}
@@ -48,7 +48,7 @@ export async function profileBill(billId: string) {
         "controversy_score": 0
       }
     `,
-  });
+  } as any);
 
   const analysis = JSON.parse(analysisText);
 

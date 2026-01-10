@@ -71,7 +71,7 @@ export async function generateMPPersona(mpId: string) {
         "system_prompt": ""
       }
     `,
-  });
+  } as any);
 
   const analysis = JSON.parse(analysisText);
 

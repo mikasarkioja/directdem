@@ -24,7 +24,7 @@ export async function profileBill(billId: string) {
   const sourceText = bill.summary || bill.title || "Ei kuvausta saatavilla.";
 
   const { text: analysisText } = await generateText({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-4o-mini") as any,
     system: "Olet poliittinen strategisti. Tehtäväsi on analysoida lakiesitystekstiä ja löytää siitä poliittiset kiistakapulat (hotspots).",
     prompt: `
       Lakiesitys: ${bill.title}

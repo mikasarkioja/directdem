@@ -11,11 +11,18 @@ interface BottomNavProps {
   onViewChange: (view: DashboardView) => void;
 }
 
+interface NavItem {
+  label: string;
+  view: DashboardView;
+  icon: any;
+  href?: string;
+}
+
 export default function BottomNav({ activeView, onViewChange }: BottomNavProps) {
   const { role } = useRole();
 
-  const getNavItems = () => {
-    const common = [
+  const getNavItems = (): NavItem[] => {
+    const common: NavItem[] = [
       { label: "Keskus", view: "overview" as const, icon: LayoutGrid },
     ];
 

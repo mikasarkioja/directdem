@@ -58,7 +58,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
     { id: "ranking", label: "Voimasuhteet", icon: TrendingUp, href: "/ranking" },
     { id: "analysis", label: "Takinkääntö-vahti", icon: Activity, href: "/puolueet/analyysi" },
     { id: "debate", label: "Väittelyareena", icon: Radio, href: "/vaittely/demo" },
-    { id: "overview", label: "Hjallis-haaste", icon: BarChart3, href: "/demo/harkimo" },
+    { id: "arena", label: "Hjallis-haaste", icon: BarChart3, href: "/arena" },
     { id: "profile", label: "Oma DNA", icon: User, href: "/profiili" },
   ];
 

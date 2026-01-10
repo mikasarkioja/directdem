@@ -209,7 +209,7 @@ export interface DebateParticipant {
 }
 
 // Dashboard view types
-export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate" | "ranking" | "analysis" | "workspace";
+export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate" | "ranking" | "analysis" | "workspace" | "arena";
 
 // API Test types
 export interface TestResult {

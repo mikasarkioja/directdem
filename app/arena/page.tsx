@@ -267,7 +267,7 @@ export default function ArenaDuelPage() {
                     {messages.filter(m => m.role !== "user" || m.content.includes("Aloitetaan")).map((m) => {
                       if (m.role === "user" && m.content.includes("Aloitetaan")) return null;
                       
-                      const parsed = m.role === "assistant" ? parseMessage(m.content) : { text: m.content, speaker: "USER", status: "Referee" };
+                      const parsed = m.role === "assistant" ? parseMessage(m.content) : { text: m.content, speaker: "USER", status: "Referee", facts: null as any };
                       const isChamp = parsed.speaker === "CHAMPION";
                       
                       return (

@@ -37,9 +37,11 @@ export async function generateMPPersona(mpId: string) {
     .single();
 
   // 4. Käytetään AI:ta analysoimaan 'Ristiriidat' ja 'Tyyli'
-  const votingHistoryText = votes?.map(v => 
-    `- ${v.voting_events.title_fi} (${v.voting_events.category}): Äänesti ${v.vote_type.toUpperCase()}`
-  ).join("\n") || "Ei äänestysdataa saatavilla.";
+  const votingHistoryText = votes?.map(v => {
+    const event = Array.isArray(v.voting_events) ? v.voting_events[0] : v.voting_events;
+    if (!event) return null;
+    return `- ${event.title_fi} (${event.category}): Äänesti ${v.vote_type.toUpperCase()}`;
+  }).filter(Boolean).join("\n") || "Ei äänestysdataa saatavilla.";
 
   const { text: analysisText } = await generateText({
     model: openai("gpt-4o-mini"),

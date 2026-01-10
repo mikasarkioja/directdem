@@ -74,9 +74,12 @@ export async function calculateAndStorePartyRankings(supabase: SupabaseClient) {
   const partyActivity: Record<string, Record<string, number>> = {};
   
   voteAgg.forEach((v: any) => {
-    const mp = v.mps;
+    const mp = Array.isArray(v.mps) ? v.mps[0] : v.mps;
+    if (!mp) return;
+    
     const party = formatParty(mp.party, `${mp.first_name} ${mp.last_name}`);
-    const cat = v.voting_events?.category?.trim(); // Trim category name
+    const event = Array.isArray(v.voting_events) ? v.voting_events[0] : v.voting_events;
+    const cat = event?.category?.trim(); // Trim category name
 
     if (!partyVotes[party]) partyVotes[party] = {};
     if (!partyVotes[party][v.event_id]) partyVotes[party][v.event_id] = { jaa: 0, ei: 0 };

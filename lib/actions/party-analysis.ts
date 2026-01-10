@@ -58,7 +58,9 @@ export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
     const mpIds = partyData.ids;
     // Rice Index
     const pVotes = votes.filter(v => {
-      const mp = (v as any).mps;
+      const mpData = (v as any).mps;
+      const mp = Array.isArray(mpData) ? mpData[0] : mpData;
+      if (!mp) return false;
       return formatParty(mp.party, `${mp.first_name} ${mp.last_name}`) === pName;
     });
     const votesByEvent: Record<string, { jaa: number, ei: number }> = {};
@@ -82,7 +84,9 @@ export async function getPartyAnalysis(): Promise<PartyAnalysisData[]> {
     // Topic Ownership
     const catCounts: Record<string, number> = {};
     pVotes.forEach(v => {
-      const cat = (v as any).voting_events.category;
+      const eventData = (v as any).voting_events;
+      const event = Array.isArray(eventData) ? eventData[0] : eventData;
+      const cat = event?.category;
       if (cat && cat !== 'Muu') {
         catCounts[cat] = (catCounts[cat] || 0) + 1;
       }

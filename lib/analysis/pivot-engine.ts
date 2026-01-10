@@ -36,10 +36,11 @@ export async function calculatePivotScore(mpId: number): Promise<number> {
   // 3. Ryhmittele äänet kategorioittain ja laske keskiarvo
   const categoryVotes: Record<string, { sum: number, count: number }> = {};
   votes.forEach((v: any) => {
-    const cat = v.voting_events.category;
+    const event = Array.isArray(v.voting_events) ? v.voting_events[0] : v.voting_events;
+    const cat = event?.category;
     if (!cat || cat === 'Muu') return;
 
-    const parts = v.voting_events.summary_ai?.split(': ');
+    const parts = event?.summary_ai?.split(': ');
     const aiWeight = parts?.length > 1 ? parseFloat(parts[1]) : 0;
     
     // Suunta: Jaa = 1, Ei = -1

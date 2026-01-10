@@ -22,3 +22,4 @@ CREATE POLICY "System/Users can insert their own history"
 ON user_profile_history FOR INSERT 
 WITH CHECK (auth.uid() = user_id);
 
+

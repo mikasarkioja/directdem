@@ -109,3 +109,4 @@ The component will:
 - Party logo images instead of colored dots
 
 
+

@@ -55,3 +55,4 @@ CREATE TRIGGER sync_profile_email_on_insert_trigger
   EXECUTE FUNCTION sync_profile_email_on_insert();
 
 
+

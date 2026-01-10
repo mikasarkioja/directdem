@@ -23,3 +23,4 @@ export interface ParliamentStats {
   categoryOwners: Record<string, { party: string; score: number }>;
 }
 
+

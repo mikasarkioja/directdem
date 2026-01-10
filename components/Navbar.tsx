@@ -5,6 +5,7 @@ import { User, LogOut } from "lucide-react";
 import VerifiedBadge from "./VerifiedBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { clearGhostSession } from "@/lib/auth/ghost-actions";
 import type { UserProfile } from "@/lib/types";
 
 interface NavbarProps {
@@ -17,7 +18,11 @@ export default function Navbar({ user }: NavbarProps) {
   const supabase = createClient();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    if (user?.is_guest) {
+      await clearGhostSession();
+    } else {
+      await supabase.auth.signOut();
+    }
     router.refresh();
     router.push("/");
   };

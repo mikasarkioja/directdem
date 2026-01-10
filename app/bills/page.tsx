@@ -4,3 +4,4 @@ export default function BillsRedirect() {
   redirect("/?view=bills");
 }
 
+

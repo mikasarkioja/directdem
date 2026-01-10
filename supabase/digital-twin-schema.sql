@@ -28,3 +28,4 @@ CREATE TABLE IF NOT EXISTS live_sessions (
 -- Enable Realtime for live_sessions
 ALTER PUBLICATION supabase_realtime ADD TABLE live_sessions;
 
+

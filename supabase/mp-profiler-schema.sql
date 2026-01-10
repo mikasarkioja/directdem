@@ -21,3 +21,4 @@ CREATE INDEX IF NOT EXISTS idx_mp_profiles_dna ON mp_profiles (dna_economy, dna_
 ALTER TABLE mp_profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read mp profiles" ON mp_profiles FOR SELECT USING (TRUE);
 
+

@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type { Bill, UserProfile } from "@/lib/types";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
-import ShadowIDCard from "./ShadowIDCard";
+import ShadowIDCard from "./auth/ShadowIDCard";
 import ExpertHearing from "./ExpertHearing";
 import CommitteeWorkspace from "./CommitteeWorkspace";
 import ClauseEditor from "./ClauseEditor";

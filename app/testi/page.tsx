@@ -7,6 +7,7 @@ import {
   ChevronRight, ChevronLeft, Sparkles, BrainCircuit, 
   Target, Globe, Shield, TreePine, Landmark, Loader2 
 } from "lucide-react";
+import { saveDNATestResults } from "@/app/actions/dna";
 
 const QUESTIONS = [
   {
@@ -94,6 +95,13 @@ export default function DNATestPage() {
 
     // Store in localStorage for temporary use if not logged in
     localStorage.setItem("dna_test_results", JSON.stringify(scores));
+
+    // Try to save to database if logged in
+    try {
+      await saveDNATestResults(scores);
+    } catch (e) {
+      console.error("Failed to save DNA results to DB", e);
+    }
 
     // Simulate AI analysis time
     setTimeout(() => {
@@ -194,4 +202,5 @@ export default function DNATestPage() {
     </div>
   );
 }
+
 

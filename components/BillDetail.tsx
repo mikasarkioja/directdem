@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, RefreshCw, AlertCircle, CheckCircle, Database, Radio, ShieldCheck, Zap, ThumbsUp, CloudSun } from "lucide-react";
+import { X, Sparkles, RefreshCw, AlertCircle, CheckCircle, Database, Radio, ShieldCheck, Zap, ThumbsUp, CloudSun, Flame } from "lucide-react";
 import type { Bill, VoteStats, IntegrityAlert } from "@/lib/types";
 import { regenerateBillSummary } from "@/app/actions/process-bill";
 import { getIntegrityAlertsForEvent } from "@/lib/actions/promise-actions";
 import StreamingSummary from "./StreamingSummary";
 import ComparisonMirror from "./ComparisonMirror";
 import VoteButton from "./VoteButton";
+import BillHeatmap from "./BillHeatmap";
 import { getVoteStats } from "@/app/actions/votes";
 import { trackEngagement, confirmAlert } from "@/app/actions/dna";
 import Link from "next/link";
@@ -134,6 +135,17 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Hotspots Section */}
+          <div className="space-y-8">
+            <div className="flex items-center gap-3 text-orange-400">
+              <div className="p-2 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                <Flame size={20} className="animate-pulse" />
+              </div>
+              <h3 className="text-xs font-black uppercase tracking-[0.2em]">Poliittiset Hotspotit</h3>
+            </div>
+            <BillHeatmap billId={bill.id} billTitle={bill.title} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

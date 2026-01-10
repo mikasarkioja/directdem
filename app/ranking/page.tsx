@@ -197,8 +197,8 @@ export default function RankingPage() {
                   <p className="text-sm font-black uppercase text-slate-900">Äänet per edustaja</p>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic">
-                Vertailu aktiivisimman ({data.leaderboards.activity[0]?.name}) ja passiivisimman ({data.leaderboards.activity[data.leaderboards.activity.length-1]?.name}) puolueen välillä.
+              <p className="text-[10px] text-slate-500 font-bold leading-relaxed border-l-2 border-blue-500/30 pl-3">
+                Mittaa osallistumisastetta: kuinka monta kertaa puolueen edustajat ovat keskimäärin painaneet Jaa/Ei-nappia täysistunnoissa.
               </p>
               <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar flex-1">
                 {data.leaderboards.activity.map((p, i) => (
@@ -229,6 +229,9 @@ export default function RankingPage() {
                   <p className="text-sm font-black uppercase text-slate-900">Topic Ownership</p>
                 </div>
               </div>
+              <p className="text-[10px] text-slate-500 font-bold leading-relaxed border-l-2 border-purple-500/30 pl-3">
+                Tunnistaa teeman "omistajan": mikä puolue keskittää eniten parlamentaarista energiaa tiettyyn kategoriaan.
+              </p>
               <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[300px]">
                 {data.leaderboards.owners.map((o) => (
                   <div key={o.category} className="flex items-center justify-between group border-b border-slate-50 pb-2">
@@ -445,17 +448,17 @@ export default function RankingPage() {
               <h3 className="text-xl font-black uppercase tracking-tight text-purple-400">Metriikoiden Selitykset</h3>
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Rice Index (Koheesio)</p>
+                  <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Topic Ownership (Omistajuus)</p>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Mittari, joka analysoi puolueen sisäistä yhtenäisyyttä. Mitä korkeampi prosentti, sitä tiukempaa puoluekuria ryhmä noudattaa. 
-                    100% tarkoittaa, että kaikki paikalla olleet edustajat äänestivät täsmälleen samalla tavalla jokaisessa äänestyksessä.
+                    Paljastaa puolueen strategiset painopisteet. Se lasketaan analysoimalla, kuinka suuri osuus puolueen kaikista äänistä kohdistuu tiettyyn kategoriaan. 
+                    Korkea <strong>intensiteetti (int.)</strong> kertoo, että aihe on puolueelle keskeinen "leipälaji", johon se käyttää eniten asiantuntijaresurssejaan.
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Pivot Score (Poikkeama)</p>
+                  <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Äänet per edustaja (Aktiivisuus)</p>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Laskee eron kansanedustajien vaalikoneessa antamien vastausten ja heidän todellisen äänestyskäyttäytymisensä välillä. 
-                    Korkea luku kertoo joko pragmaattisesta politiikasta (hallitusvastuu) tai tietoista suunnanmuutoksesta vaalien jälkeen.
+                    Kertoo läsnäolosta ja vaikuttamisesta. Parlamentaarisessa työssä valta on niillä, jotka ovat paikalla. 
+                    Luku lasketaan jakamalla puolueen kaikkien edustajien antamat äänet edustajien määrällä.
                   </p>
                 </div>
               </div>

@@ -260,3 +260,4 @@ export default function DebateArena({ topic, billTitle, participants }: DebateAr
   );
 }
 
+

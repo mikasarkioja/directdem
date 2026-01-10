@@ -2,12 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { assignToCommittee } from "@/lib/logic/committee-assigner";
 import { getUser } from "./auth";
 
 export async function getUserProfile() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser(); // Käytetään meidän uutta getUseria joka tunnistaa Ghostin
 
   if (!user) return null;
 
@@ -18,6 +19,18 @@ export async function getUserProfile() {
     .single();
 
   if (error && error.code !== "PGRST116") {
+    // Jos on kyseessä Ghost-käyttäjä, palautetaan mockattu profiili jos DB-haku epäonnistuu
+    if (user.is_guest) {
+      const { committee, rankTitle } = assignToCommittee(user);
+      return {
+        id: user.id,
+        shadow_id_number: `GHOST-${user.id.substring(0, 4).toUpperCase()}`,
+        committee_assignment: committee,
+        rank_title: rankTitle,
+        impact_points: user.impact_points || 0,
+        is_guest: true
+      };
+    }
     console.error("Error fetching user profile:", error);
     return null;
   }
@@ -35,24 +48,28 @@ export async function createUserProfile() {
   const { committee, rankTitle } = assignToCommittee(user);
 
   // Generate random Shadow ID
-  const shadowId = `SH-${Math.floor(1000 + Math.random() * 9000)}-${user.id.substring(0, 4).toUpperCase()}`;
+  const shadowId = `${user.is_guest ? 'GS' : 'SH'}-${Math.floor(1000 + Math.random() * 9000)}-${user.id.substring(0, 4).toUpperCase()}`;
+
+  const profileData = {
+    id: user.id,
+    shadow_id_number: shadowId,
+    committee_assignment: committee,
+    rank_title: rankTitle,
+    impact_points: 10,
+    updated_at: new Date().toISOString()
+  };
 
   const { data, error } = await supabase
     .from("user_profiles")
-    .upsert([
-      {
-        id: user.id,
-        shadow_id_number: shadowId,
-        committee_assignment: committee,
-        rank_title: rankTitle,
-        impact_points: 10,
-        updated_at: new Date().toISOString()
-      }
-    ])
+    .upsert([profileData])
     .select()
     .single();
 
   if (error) {
+    if (user.is_guest) {
+      console.log("[Ghost] Profile creation skipped due to FK, returning mock data");
+      return { ...profileData, is_guest: true };
+    }
     console.error("Error creating user profile:", error);
     throw new Error("Profiilin luonti epäonnistui");
   }

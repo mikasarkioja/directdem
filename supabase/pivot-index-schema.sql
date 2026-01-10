@@ -16,3 +16,4 @@ CREATE TABLE IF NOT EXISTS mp_candidate_responses (
 CREATE INDEX IF NOT EXISTS idx_mp_responses_mp_id ON mp_candidate_responses(mp_id);
 CREATE INDEX IF NOT EXISTS idx_mp_responses_category ON mp_candidate_responses(category);
 
+

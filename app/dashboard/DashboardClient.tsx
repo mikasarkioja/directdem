@@ -14,11 +14,15 @@ import {
   Zap, 
   Sparkles,
   Newspaper,
-  Bell
+  Bell,
+  Home,
+  LayoutGrid
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import ShadowIDCard from "@/components/auth/ShadowIDCard";
 import ExpertSummary from "@/components/committee/ExpertSummary";
+import DNAActivation from "@/components/dashboard/DNAActivation";
 import toast, { Toaster } from "react-hot-toast";
 
 interface DashboardClientProps {
@@ -169,10 +173,32 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
     rank_title: profile.rank_title,
   };
 
+  const hasDna = (initialUser?.economic_score !== undefined && initialUser?.economic_score !== 0) || 
+                 (initialUser?.liberal_conservative_score !== undefined && initialUser?.liberal_conservative_score !== 0);
+
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <Toaster position="bottom-center" />
       
+      {/* Työhuoneen Navigointipalkki */}
+      <div className="flex items-center justify-between bg-slate-900/50 border border-white/5 p-2 rounded-2xl backdrop-blur-sm">
+        <div className="flex items-center gap-1">
+          <Link href="/" className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+            <Home size={14} />
+            Etusivu
+          </Link>
+          <div className="w-px h-4 bg-white/10 mx-1" />
+          <Link href="/?view=bills" className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+            <LayoutGrid size={14} />
+            Moduulit
+          </Link>
+        </div>
+        <div className="flex items-center gap-2 pr-4">
+          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Varjokansanedustaja Online</span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Sidebar: ID Card & Agenda */}
         <aside className="lg:col-span-3 space-y-8">
@@ -198,58 +224,64 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
           </div>
         </aside>
 
-        {/* Center: Task Stream (Committee Bills) */}
+        {/* Center: Task Stream (Committee Bills) or DNA Activation */}
         <main className="lg:col-span-6 space-y-8">
-          <div className="flex justify-between items-end">
-            <div className="space-y-1">
-              <h2 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">Tehtävävirta</h2>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Valiokunta: {mergedUser.committee_assignment}</p>
-            </div>
-            <div className="bg-slate-900 px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase text-purple-400">
-              {bills.length} Esitystä
-            </div>
-          </div>
-
-          <AnimatePresence mode="wait">
-            {selectedBill && (
-              <motion.div
-                key={selectedBill.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="bg-slate-900/80 border border-white/10 rounded-[3rem] p-8 md:p-10 space-y-8 shadow-2xl backdrop-blur-xl"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <span className="px-2 py-0.5 bg-purple-600 text-white rounded text-[8px] font-black uppercase tracking-widest">
-                      {selectedBill.parliamentId || "HE 2024"}
-                    </span>
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Päivitetty tänään</span>
-                  </div>
-                  <h3 className="text-2xl font-black uppercase tracking-tighter text-white leading-tight">
-                    {selectedBill.title}
-                  </h3>
+          {!hasDna ? (
+            <DNAActivation />
+          ) : (
+            <>
+              <div className="flex justify-between items-end">
+                <div className="space-y-1">
+                  <h2 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">Tehtävävirta</h2>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Valiokunta: {mergedUser.committee_assignment}</p>
                 </div>
-
-                <ExpertSummary bill={selectedBill} onGiveStatement={handleGiveStatement} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {bills.filter(b => b.id !== selectedBill?.id).slice(0, 4).map((bill) => (
-              <div 
-                key={bill.id}
-                onClick={() => setSelectedBill(bill)}
-                className="p-6 bg-slate-900/40 border border-white/5 rounded-[2rem] hover:border-purple-500/30 transition-all cursor-pointer group"
-              >
-                <p className="text-[8px] font-black uppercase text-slate-600 mb-2">{bill.parliamentId}</p>
-                <h4 className="text-xs font-black uppercase tracking-tight text-white group-hover:text-purple-400 transition-colors line-clamp-2">
-                  {bill.title}
-                </h4>
+                <div className="bg-slate-900 px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase text-purple-400">
+                  {bills.length} Esitystä
+                </div>
               </div>
-            ))}
-          </div>
+
+              <AnimatePresence mode="wait">
+                {selectedBill && (
+                  <motion.div
+                    key={selectedBill.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="bg-slate-900/80 border border-white/10 rounded-[3rem] p-8 md:p-10 space-y-8 shadow-2xl backdrop-blur-xl"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <span className="px-2 py-0.5 bg-purple-600 text-white rounded text-[8px] font-black uppercase tracking-widest">
+                          {selectedBill.parliamentId || "HE 2024"}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Päivitetty tänään</span>
+                      </div>
+                      <h3 className="text-2xl font-black uppercase tracking-tighter text-white leading-tight">
+                        {selectedBill.title}
+                      </h3>
+                    </div>
+
+                    <ExpertSummary bill={selectedBill} onGiveStatement={handleGiveStatement} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {bills.filter(b => b.id !== selectedBill?.id).slice(0, 4).map((bill) => (
+                  <div 
+                    key={bill.id}
+                    onClick={() => setSelectedBill(bill)}
+                    className="p-6 bg-slate-900/40 border border-white/5 rounded-[2rem] hover:border-purple-500/30 transition-all cursor-pointer group"
+                  >
+                    <p className="text-[8px] font-black uppercase text-slate-600 mb-2">{bill.parliamentId}</p>
+                    <h4 className="text-xs font-black uppercase tracking-tight text-white group-hover:text-purple-400 transition-colors line-clamp-2">
+                      {bill.title}
+                    </h4>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </main>
 
         {/* Right Sidebar: Live News & Notifications */}

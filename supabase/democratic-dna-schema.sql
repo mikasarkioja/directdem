@@ -36,3 +36,4 @@ CREATE POLICY "Users can view their own badges" ON user_badges
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS current_archetype TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS dna_level INTEGER DEFAULT 1;
 
+

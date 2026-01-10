@@ -1,30 +1,34 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Mail, ShieldCheck, ArrowRight, Loader2, RefreshCw, KeyRound } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Loader2, ShieldCheck, Ghost, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { sendOtpAction, verifyOtpCodeAction } from '@/app/actions/auth';
+import { createClient } from '@/lib/supabase/client';
+import { startGhostSession } from '@/lib/auth/ghost-actions';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
-  const [step, setStep] = useState<'email' | 'otp'>('email');
+  const [step, setStep] = useState<'email' | 'otp' | 'ghost'>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
+  const [ghostName, setGhostName] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-
     setLoading(true);
     try {
-      await sendOtpAction(email);
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: true }
+      });
+      if (error) throw error;
       setStep('otp');
-      toast.success('Vahvistuskoodi lähetetty sähköpostiisi!');
+      toast.success('Koodi lähetetty!');
     } catch (error: any) {
-      toast.error(error.message || 'Koodin lähetys epäonnistui.');
+      toast.error('Lähetys epäonnistui: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -33,160 +37,122 @@ export default function LoginPage() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp || otp.length < 6) return;
-
     setLoading(true);
     try {
-      await verifyOtpCodeAction(email, otp);
-      // If we reach here, verifyOtpCodeAction failed to redirect (which shouldn't happen)
-      toast.success('Kirjautuminen onnistui! Päivitetään näkymää...');
-      window.location.href = '/?view=workspace';
-    } catch (error: any) {
-      if (error.message === 'NEXT_REDIRECT') {
-        // This is a special Next.js internal error used for redirection, ignore it
-        return;
+      console.log("[Login] Verifying OTP on client...");
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: 'email'
+      });
+
+      if (error) throw error;
+      if (data.session) {
+        toast.success('Kirjautuminen onnistui!');
+        // Pakotetaan sivu latautumaan uudelleen dashboardilla
+        window.location.href = '/dashboard';
       }
-      toast.error('Virheellinen tai vanhentunut koodi.');
-    } finally {
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast.error(error.message || 'Virheellinen koodi.');
+      setLoading(false);
+    }
+  };
+
+  const handleGhostLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ghostName) return;
+    setLoading(true);
+    try {
+      await startGhostSession(ghostName);
+    } catch (error: any) {
+      // Ohitetaan Next.js:n sisäinen redirect-virhe
+      if (error.digest?.includes('NEXT_REDIRECT')) return;
+      
+      console.error("Ghost login error:", error);
+      toast.error('Pikakirjautuminen epäonnistui.');
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background Glow */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none" />
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-10 rounded-[3rem] shadow-2xl relative z-10"
-      >
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-slate-900 border border-white/10 p-10 rounded-[3rem] shadow-2xl">
         <div className="flex flex-col items-center mb-10 text-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-600/20">
-            <ShieldCheck className="text-white" size={32} />
-          </div>
-          <h1 className="text-3xl font-black uppercase tracking-tighter text-white mb-2">
-            Direct<span className="text-blue-500">Dem</span>
-          </h1>
-          <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">
-            Turvallinen sisäänkirjautuminen
-          </p>
+          <ShieldCheck className="text-blue-500 mb-4" size={48} />
+          <h1 className="text-3xl font-black uppercase text-white tracking-tighter">DirectDem</h1>
         </div>
-
+        
         <AnimatePresence mode="wait">
-          {step === 'email' ? (
-            <motion.form 
-              key="email-step"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              onSubmit={handleSendOtp}
-              className="space-y-6"
-            >
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                  Sähköpostiosoite
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                  <input 
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nimi@esimerkki.fi"
-                    className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all font-medium"
-                  />
+          {step === 'email' && (
+            <motion.div key="e" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+              <form onSubmit={handleSendOtp} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Sähköpostiosoite</label>
+                  <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nimi@esimerkki.fi" className="w-full bg-slate-800 border border-slate-700 text-white rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
+                <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-3 bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-500 transition-all">
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : 'Lähetä koodi'}
+                </button>
+              </form>
+              
+              <div className="mt-8 pt-8 border-t border-white/5 text-center">
+                <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-4">Tai kokeile heti ilman sähköpostia</p>
+                <button 
+                  onClick={() => setStep('ghost')}
+                  className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl border border-blue-500/30 text-blue-400 font-bold uppercase text-[10px] tracking-widest hover:bg-blue-500/10 transition-all"
+                >
+                  <Ghost size={14} /> Pikasisäänpääsy
+                </button>
               </div>
+            </motion.div>
+          )}
 
-              <button 
-                type="submit"
-                disabled={loading || !email}
-                className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black uppercase tracking-widest py-5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-95 group"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
+          {step === 'otp' && (
+            <motion.form key="o" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} onSubmit={handleVerifyOtp} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Vahvistuskoodi</label>
+                <input type="text" required maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))} placeholder="123456" className="w-full bg-slate-800 border border-slate-700 text-white rounded-2xl py-4 px-6 text-center text-2xl tracking-[0.5em] outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-3 bg-emerald-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-500 transition-all">
+                {loading ? <Loader2 className="animate-spin" size={20} /> : 'Vahvista'}
+              </button>
+              <button type="button" onClick={() => setStep('email')} className="w-full text-center text-[10px] text-slate-500 hover:text-white uppercase font-bold tracking-widest">Takaisin</button>
+            </motion.form>
+          )}
+
+          {step === 'ghost' && (
+            <motion.form key="g" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} onSubmit={handleGhostLogin} className="space-y-6">
+              <div className="text-center mb-4">
+                <Ghost className="text-blue-400 mx-auto mb-2" size={32} />
+                <h2 className="text-white font-bold uppercase tracking-widest text-sm">Ghost Login</h2>
+                <p className="text-slate-500 text-[10px] mt-1">Pääset testaamaan kaikkia ominaisuuksia heti.</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Nimimerkkisi</label>
+                <input 
+                  type="text" 
+                  required 
+                  autoFocus
+                  value={ghostName} 
+                  onChange={(e) => setGhostName(e.target.value)} 
+                  placeholder="Esim. Varjoedustaja" 
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-blue-500" 
+                />
+              </div>
+              <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-3 bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-500 transition-all">
+                {loading ? <Loader2 className="animate-spin" size={20} /> : (
                   <>
-                    Lähetä koodi
-                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                    <Sparkles size={18} />
+                    <span>Astu eduskuntaan</span>
                   </>
                 )}
               </button>
-            </motion.form>
-          ) : (
-            <motion.form 
-              key="otp-step"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              onSubmit={handleVerifyOtp}
-              className="space-y-6"
-            >
-              <div className="space-y-2">
-                <div className="flex justify-between items-end">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                    Vahvistuskoodi (6 numeroa)
-                  </label>
-                  <button 
-                    type="button"
-                    onClick={() => setStep('email')}
-                    className="text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-400 transition-colors"
-                  >
-                    Vaihda sähköposti
-                  </button>
-                </div>
-                <div className="relative">
-                  <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                  <input 
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="123456"
-                    className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all font-mono text-xl tracking-[0.5em] text-center"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <button 
-                  type="submit"
-                  disabled={loading || otp.length < 6}
-                  className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black uppercase tracking-widest py-5 rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-95"
-                >
-                  {loading ? (
-                    <Loader2 className="animate-spin" size={20} />
-                  ) : (
-                    <>
-                      Vahvista ja kirjaudu
-                      <ShieldCheck size={18} />
-                    </>
-                  )}
-                </button>
-
-                <button 
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 text-slate-500 hover:text-slate-300 font-bold uppercase text-[9px] tracking-widest transition-colors py-2"
-                >
-                  <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                  En saanut koodia, lähetä uudelleen
-                </button>
-              </div>
+              <button type="button" onClick={() => setStep('email')} className="w-full text-center text-[10px] text-slate-500 hover:text-white uppercase font-bold tracking-widest">Takaisin sähköpostiin</button>
             </motion.form>
           )}
         </AnimatePresence>
-
-        <p className="mt-10 text-center text-[9px] text-slate-600 font-bold uppercase tracking-widest leading-relaxed">
-          Kirjautumalla hyväksyt palvelun <br/>käyttöehdot ja tietosuojaselosteen.
-        </p>
-      </motion.div>
+      </div>
     </div>
   );
 }
-

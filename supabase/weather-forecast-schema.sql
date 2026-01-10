@@ -31,3 +31,4 @@ CREATE TABLE IF NOT EXISTS user_predictions (
 CREATE INDEX IF NOT EXISTS idx_forecast_bill ON bill_forecasts(bill_id);
 CREATE INDEX IF NOT EXISTS idx_user_pred_user ON user_predictions(user_id);
 
+

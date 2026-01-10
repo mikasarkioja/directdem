@@ -2,7 +2,90 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { addPartyXP } from "./parties";
-import type { ArchetypePoints } from "@/lib/types";
+import type { ArchetypePoints, UserProfile } from "@/lib/types";
+import { revalidatePath } from "next/cache";
+import { assignToCommittee } from "@/lib/logic/committee-assigner";
+import { getUser } from "./auth";
+import { saveGhostDNA } from "@/lib/auth/ghost-actions";
+
+export async function saveDNATestResults(scores: {
+  economic_score: number;
+  liberal_conservative_score: number;
+  environmental_score: number;
+  urban_rural_score: number;
+  international_national_score: number;
+  security_score: number;
+}) {
+  const user = await getUser();
+
+  if (!user) return { success: false, error: "Ei kirjautunutta käyttäjää" };
+
+  // 1. Jos on Ghost-käyttäjä, tallennetaan evästeeseen
+  if (user.is_guest) {
+    console.log("[saveDNATestResults] Saving for Ghost user...");
+    await saveGhostDNA(scores);
+    revalidatePath("/dashboard");
+    return { success: true };
+  }
+
+  const supabase = await createClient();
+  
+  // 2. Update the primary profile for regular users
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      ...scores,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", user.id);
+
+  if (profileError) {
+    console.error("[saveDNATestResults] Profile Error:", profileError);
+    return { success: false, error: profileError.message };
+  }
+
+  // 2. Check if user_profiles exists and update assignment
+  const { data: userProfile } = await supabase
+    .from("user_profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  if (userProfile) {
+    // We need the full user object to re-run assignment
+    const { data: fullProfile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (fullProfile) {
+        // Map to UserProfile type for assignToCommittee
+        const mappedUser: UserProfile = {
+            id: user.id,
+            ...fullProfile,
+            impact_points: userProfile.impact_points || 0
+        };
+
+        const { committee, rankTitle } = assignToCommittee(mappedUser);
+
+        await supabase
+            .from("user_profiles")
+            .update({
+                committee_assignment: committee,
+                rank_title: rankTitle,
+                updated_at: new Date().toISOString()
+            })
+            .eq("id", user.id);
+    }
+  }
+
+  // 3. Clear cache and revalidate
+  revalidatePath("/dashboard");
+  revalidatePath("/");
+  
+  return { success: true };
+}
 
 export async function getDNAPoints() {
   const supabase = await createClient();

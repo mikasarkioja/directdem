@@ -20,9 +20,37 @@ export async function calculateAndStorePartyRankings(supabase: SupabaseClient) {
     return;
   }
 
-  // 2. Fetch LARGE sample of voting data (e.g., last 50,000 votes)
-  // Using !inner to ensure we only get votes for events that exist and have a category
-  const { data: voteAgg, error: voteError } = await supabase
+  // 2. Fetch LARGE sample of voting data across categories
+  const coreCategories = ["Talous", "Arvot", "Ympäristö", "Aluepolitiikka", "Kansainvälisyys", "Turvallisuus"];
+  let voteAgg: any[] = [];
+
+  for (const cat of coreCategories) {
+    console.log(`Fetching votes for category: ${cat}...`);
+    const { data: catVotes, error: catError } = await supabase
+      .from("mp_votes")
+      .select(`
+        vote_type,
+        event_id,
+        mps!inner ( id, party, is_active, first_name, last_name ),
+        voting_events!inner ( category )
+      `)
+      .eq("mps.is_active", true)
+      .eq("voting_events.category", cat)
+      .limit(50000); // Increased limit per category
+    
+    if (catError) {
+      console.error(`Error fetching votes for ${cat}:`, catError.message);
+      continue;
+    }
+    
+    if (catVotes) {
+      voteAgg = [...voteAgg, ...catVotes];
+      console.log(`Fetched ${catVotes.length} votes for ${cat}.`);
+    }
+  }
+
+  // Also fetch some 'Muu' just for cohesion calculations if needed, but we skip it for topic ownership
+  const { data: muuVotes } = await supabase
     .from("mp_votes")
     .select(`
       vote_type,
@@ -31,11 +59,13 @@ export async function calculateAndStorePartyRankings(supabase: SupabaseClient) {
       voting_events!inner ( category )
     `)
     .eq("mps.is_active", true)
-    .not("voting_events.category", "is", null) // Only count votes for categorized events
-    .limit(50000); 
+    .eq("voting_events.category", "Muu")
+    .limit(5000);
+  
+  if (muuVotes) voteAgg = [...voteAgg, ...muuVotes];
 
-  if (voteError || !voteAgg) {
-    console.error("Virhe äänten haussa:", voteError?.message);
+  if (voteAgg.length === 0) {
+    console.error("Ei löytynyt yhtään ääntä kategorisoiduista äänestyksistä.");
     return;
   }
 

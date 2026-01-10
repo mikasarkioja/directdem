@@ -38,3 +38,4 @@ CREATE UNIQUE INDEX votes_bill_id_user_id_unique
 -- This is intentional - they're anonymous contributions to statistics
 
 
+

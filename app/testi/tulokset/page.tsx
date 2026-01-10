@@ -163,15 +163,15 @@ export default function TestiTulokset() {
 
         {/* CTA Section */}
         <div className="flex flex-col items-center gap-6 pt-12">
-          <Link 
-            href="/?view=bills"
+          <button 
+            onClick={() => window.location.href = '/dashboard'}
             className="px-12 py-5 bg-purple-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-purple-600/20 flex items-center gap-3"
           >
             <Play size={16} fill="currentColor" />
-            Jatka äänestysareenalle
-          </Link>
+            Astu Varjokansanedustajan Työhuoneeseen
+          </button>
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-            Jokainen ääni tarkentaa profiiliasi
+            Profiilisi on nyt aktivoitu valiokuntatyöskentelyä varten
           </p>
         </div>
       </div>

@@ -57,3 +57,4 @@ CREATE POLICY "Founders can update their party" ON virtual_parties FOR UPDATE TO
 -- Users can join parties
 CREATE POLICY "Users can join parties" ON party_members FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
+

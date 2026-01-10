@@ -4,3 +4,4 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS liberal_conservative_score FLOAT D
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS environmental_score FLOAT DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS initialized_from_mp TEXT;
 
+

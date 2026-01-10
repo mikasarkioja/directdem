@@ -44,3 +44,4 @@ CREATE POLICY "Public read mps" ON mps FOR SELECT USING (TRUE);
 CREATE POLICY "Public read voting_events" ON voting_events FOR SELECT USING (TRUE);
 CREATE POLICY "Public read mp_votes" ON mp_votes FOR SELECT USING (TRUE);
 
+

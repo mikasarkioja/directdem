@@ -12,3 +12,4 @@ CREATE TABLE IF NOT EXISTS bill_user_submissions (
 -- Index for performance
 CREATE INDEX IF NOT EXISTS idx_bill_user_submissions_bill_id ON bill_user_submissions(bill_id);
 
+

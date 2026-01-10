@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Shield, User, Briefcase, Award, Zap, Radio } from "lucide-react";
+import { Shield, User, Briefcase, Award, Zap, Radio, Lock } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
 
 interface ShadowIDCardProps {
@@ -10,13 +10,65 @@ interface ShadowIDCardProps {
 }
 
 export default function ShadowIDCard({ user }: ShadowIDCardProps) {
+  const hasDna = user.economic_score !== undefined && user.economic_score !== 0;
+  const isLocked = !hasDna;
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      className="relative w-full max-w-[280px] aspect-[0.7/1] bg-slate-900 border border-white/10 rounded-[2.5rem] p-6 overflow-hidden shadow-2xl group"
+      whileHover={{ y: isLocked ? 0 : -5, transition: { duration: 0.2 } }}
+      className={`relative w-full max-w-[280px] aspect-[0.7/1] bg-slate-900 border border-white/10 rounded-[2.5rem] p-6 overflow-hidden shadow-2xl group transition-all duration-500 ${isLocked ? 'grayscale opacity-70' : ''}`}
     >
+      {/* Holographic Foil Overlay */}
+      {!isLocked && (
+        <motion.div 
+          animate={{ 
+            backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
+            opacity: [0.3, 0.5, 0.3]
+          }}
+          transition={{ 
+            duration: 10, 
+            repeat: Infinity, 
+            ease: "linear" 
+          }}
+          className="absolute inset-0 z-0 pointer-events-none opacity-30 mix-blend-overlay"
+          style={{
+            background: "linear-gradient(135deg, rgba(255,0,255,0.4) 0%, rgba(0,255,255,0.4) 25%, rgba(255,255,0,0.4) 50%, rgba(0,255,255,0.4) 75%, rgba(255,0,255,0.4) 100%)",
+            backgroundSize: "400% 400%",
+          }}
+        />
+      )}
+
+      {/* Secondary Iridescent Layer */}
+      {!isLocked && (
+        <motion.div 
+          animate={{ 
+            rotate: [0, 360],
+            opacity: [0.1, 0.2, 0.1]
+          }}
+          transition={{ 
+            duration: 20, 
+            repeat: Infinity, 
+            ease: "linear" 
+          }}
+          className="absolute -inset-1/2 z-0 pointer-events-none mix-blend-color-dodge"
+          style={{
+            background: "conic-gradient(from 0deg, transparent, rgba(168,85,247,0.3), transparent, rgba(56,189,248,0.3), transparent)",
+          }}
+        />
+      )}
+
+      {/* Lock Overlay if no DNA */}
+      {isLocked && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-[2px]">
+          <div className="bg-slate-800 p-4 rounded-3xl border border-white/10 shadow-xl">
+            <Lock className="text-slate-500 w-8 h-8" />
+          </div>
+          <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Profiili Lukittu</p>
+        </div>
+      )}
+
       {/* Background Cyber Patterns */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
@@ -61,7 +113,7 @@ export default function ShadowIDCard({ user }: ShadowIDCardProps) {
             {user.full_name || "Nimetön"}
           </h3>
           <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">
-            {user.rank_title || "Varjokansanedustaja"}
+            {isLocked ? "Jonossa (Odottaa profiilia)" : (user.rank_title || "Varjokansanedustaja")}
           </p>
         </div>
 

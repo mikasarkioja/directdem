@@ -4,6 +4,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { formatParty } from "@/lib/utils/party-utils";
 import { calculatePivotScore } from "@/lib/analysis/pivot-engine";
+import { unstable_noStore as noStore } from 'next/cache';
 
 export interface RankingResult {
   parties: {
@@ -32,6 +33,7 @@ export interface RankingResult {
 }
 
 export async function getPoliticalRanking(): Promise<RankingResult> {
+  noStore();
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -91,16 +93,25 @@ export async function getPoliticalRanking(): Promise<RankingResult> {
     const owners = categories
       .sort((a, b) => (displayNames[a] || a).localeCompare(displayNames[b] || b))
       .map(cat => {
-        const partyOwnership = rankings.map(r => ({
-          party: r.party_name,
-          intensity: r.topic_ownership?.[cat] || r.topic_ownership?.[cat + " "] || 0
-        })).sort((a, b) => b.intensity - a.intensity);
+        const partyOwnership = rankings.map(r => {
+          // Find matching key in topic_ownership (case insensitive and trimmed)
+          const topicKeys = Object.keys(r.topic_ownership || {});
+          const matchingKey = topicKeys.find(k => k.trim().toLowerCase() === cat.trim().toLowerCase());
+          const intensity = matchingKey ? r.topic_ownership[matchingKey] : 0;
+
+          return {
+            party: r.party_name,
+            intensity: intensity || 0
+          };
+        }).sort((a, b) => b.intensity - a.intensity);
 
         const best = partyOwnership[0];
+        // Ensure intensity is meaningful (> 0.1) to show a party
+        const hasOwner = best && best.intensity > 0.1;
         
         return {
           category: displayNames[cat] || cat,
-          party: (best && best.intensity > 0) ? best.party : "Ei dataa",
+          party: hasOwner ? best.party : "Ei dataa",
           score: best ? Math.round(best.intensity * 10) / 10 : 0
         };
       });

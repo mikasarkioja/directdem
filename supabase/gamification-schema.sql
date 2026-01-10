@@ -68,3 +68,4 @@ INSERT INTO achievements (name, description, icon, xp_reward) VALUES
 ('Kuntavahti', 'Äänestit kolmessa paikallisessa asiassa.', 'building-icon', 200),
 ('Siviili-identiteetti', 'Vahvistit henkilöllisyytesi.', 'shield-check', 500);
 
+

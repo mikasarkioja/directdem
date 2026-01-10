@@ -16,12 +16,13 @@ const supabase = createClient(
 );
 
 async function categorizeVotes() {
-  console.log('--- Luokitellaan äänestykset AI:n avulla ---');
+  console.log('--- Luokitellaan äänestykset AI:n avulla (myös "Muu"-kategorian uudelleenarviointi) ---');
   
   const { data: events, error } = await supabase
     .from('voting_events')
     .select('id, title_fi')
-    .is('category', null);
+    .or('category.is.null,category.eq.Muu')
+    .limit(10000); // Fetch up to 10k events to ensure we cover everything
 
   if (error) {
     console.error('Virhe haettaessa äänestyksiä:', error.message);
@@ -38,42 +39,48 @@ async function categorizeVotes() {
   let count = 0;
   for (const event of events) {
     count++;
-    if (count % 50 === 0) {
+    if (count % 25 === 0) {
       console.log(`Prosessoidaan: ${count}/${events.length}...`);
-      // Välitallennus: lasketaan profiilit säännöllisesti jotta sivu päivittyy
-      if (count % 200 === 0) {
-        console.log('--- Välipäivitys: Päivitetään MP-profiilit... ---');
-        await calculateMPProfiles();
-      }
     }
+    
+    // Välitallennus: lasketaan profiilit säännöllisesti jotta sivu päivittyy
+    if (count % 100 === 0) {
+      console.log('--- Välipäivitys: Päivitetään MP-profiilit ja puolue-rankingit... ---');
+      await calculateMPProfiles();
+      await calculateAndStorePartyRankings(supabase);
+    }
+
     try {
       const { text } = await generateText({
         model: openai('gpt-4o-mini') as any,
-        system: `Olet poliittinen analyytikko. Tehtäväsi on luokitella Suomen eduskunnan äänestysotsikko kuuteen kategoriaan: 
-          1. Talous (weight: -1=Vasen/Julkinen, 1=Oikeisto/Yksityinen)
-          2. Arvot (weight: -1=Liberaali/Uudistava, 1=Konservatiivi/Säilyttävä)
-          3. Ympäristö (weight: -1=Talous edellä/Hyödyntäminen, 1=Luonto edellä/Suojelu)
-          4. Aluepolitiikka (weight: -1=Keskittävä/Urbaani, 1=Hajauttava/Maaseutu)
-          5. Kansainvälisyys (weight: -1=Kansallinen etu, 1=Kansainvälinen/EU)
-          6. Turvallisuus (weight: -1=Pehmeä/Rauhanomainen, 1=Kova/Sotilaallinen/Nato)
+        system: `Olet poliittinen analyytikko. Tehtäväsi on luokitella Suomen eduskunnan äänestysotsikko (voi olla suomeksi tai ruotsiksi) kuuteen poliittiseen pääkategoriaan.
           
-          VINKKEJÄ:
-          - Valtiovarainministeriö, Vero, Talousarvio -> Talous
-          - Sosiaali- ja terveys, Koulutus, Kulttuuri, Oikeus -> Arvot
-          - Ympäristö, Maa- ja metsätalous (suojelu) -> Ympäristö
-          - Maa- ja metsätalous (tuet), Aluekehitys, Liikenne (tieverkko) -> Aluepolitiikka
-          - EU, Ulkoministeriö, Kehitysyhteistyö, Maahanmuutto -> Kansainvälisyys
-          - Puolustus, NATO, Rajavartiolaitos, Poliisi -> Turvallisuus
+          KATEGORIAT JA KRITEERIT:
+          1. Talous: Verotus, valtiontalous, budjetti, elinkeinot, kilpailukyky, työmarkkinat.
+          2. Arvot: Sote, koulutus, kulttuuri, ihmisoikeudet, uskonto, oikeuslaitos, tasa-arvo.
+          3. Ympäristö: Luonnonsuojelu, ilmasto, energia (uusiutuva), metsästys, eläinten oikeudet.
+          4. Aluepolitiikka: Aluetuki, liikenneinfra (tiet/rautatiet), maataloustuet, kaupungistuminen vs. maaseutu.
+          5. Kansainvälisyys: EU, ulkopolitiikka, kehitysyhteistyö, maahanmuutto, globaali kauppa.
+          6. Turvallisuus: Puolustus, NATO, poliisi, rajavalvonta, kyberturvallisuus, kriisinhallinta.
           
-          Määritä 'weight' (painotus) välillä -1.0 ... 1.0. 
-          VÄLTÄ NOLLAA (0). Jos aihe yhtään liippaa kategoriaa, anna sille vähintään 0.2 tai -0.2.
-          Lähes jokainen poliittinen päätös on joko Talous, Arvot, Ympäristö, Alue, Kansainvälisyys tai Turvallisuus.
+          TÄRKEÄT OHJEET:
+          - ÄLÄ KÄYTÄ "Muu" -KATEGORIAA, jos aiheella on VÄHÄNKÄÄN poliittista merkitystä.
+          - "Muu" on tarkoitettu VAIN puhtaasti hallinnollisiin asioihin (esim. istuntotauot, puhemiehen valinta).
+          - Jos otsikko on ruotsiksi (esim. "Regeringens proposition..."), käännä se mielessäsi ja luokittele.
+          - "Huvudtitel" (Pääluokka) viittaa usein tiettyyn ministeriöön -> käytä ministeriön alaa.
+          
+          PAINOTUS (weight):
+          - Määritä 'weight' välillä -1.0 ... 1.0. 
+          - Esim. Talous: -1.0 = vasemmisto/valtiokeskeinen, 1.0 = oikeisto/markkinakeskeinen.
+          - Esim. Arvot: -1.0 = liberaali/edistyksellinen, 1.0 = konservatiivinen/perinteinen.
+          - VÄLTÄ NOLLAA (0). Anna vähintään 0.3 tai -0.3.
           
           Vastaa VAIN JSON-muodossa: {"category": "Talous|Arvot|Ympäristö|Aluepolitiikka|Kansainvälisyys|Turvallisuus|Muu", "weight": -1...1}`,
         prompt: event.title_fi,
       });
 
-      const analysis = JSON.parse(text || '{}');
+      if (!text) throw new Error("AI returned empty response");
+      const analysis = JSON.parse(text);
 
       await supabase
         .from('voting_events')

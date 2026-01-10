@@ -50,3 +50,4 @@ export async function getUserPrediction(billId: string) {
   return data;
 }
 
+

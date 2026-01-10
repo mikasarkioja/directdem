@@ -10,3 +10,4 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS urban_rural_score FLOAT DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS international_national_score FLOAT DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS security_score FLOAT DEFAULT 0;
 
+

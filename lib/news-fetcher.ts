@@ -93,3 +93,4 @@ export async function fetchRelevantNews(topic: string): Promise<NewsItem[]> {
   return mockNews.default;
 }
 
+

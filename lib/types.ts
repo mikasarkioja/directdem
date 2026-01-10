@@ -84,6 +84,7 @@ export interface UserProfile {
   gdpr_consent_date?: string;
   join_report_list?: boolean;
   is_admin?: boolean;
+  is_guest?: boolean;
   current_archetype?: string;
   dna_level?: number;
   impact_points?: number;

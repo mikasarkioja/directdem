@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     shadow_id_number TEXT UNIQUE,
     committee_assignment TEXT,
+    rank_title TEXT,
     impact_points INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

@@ -150,12 +150,17 @@ async function fetchAndSaveMPVotes(limit = 100) {
     return;
   }
 
-  let page = 75000; // 2023-2025 alkaa täältä
+  // Nykyinen vaalikausi 2023- alkaa karkeasti sivulta 74000
+  // Haetaan useammalta sivulta varmuuden vuoksi
+  let page = 74000; 
   let hasMore = true;
   let matchesFound = 0;
   let emptyStrike = 0;
+  const maxPages = 100000; 
 
-  while (hasMore) {
+  log(`Aloitetaan haku sivulta ${page}. Kohde-äänestyksiä tiedossa: ${eventIdSet.size}`);
+
+  while (hasMore && page < maxPages) {
     try {
       const url = `${API_BASE}/SaliDBAanestysEdustaja/rows`;
       const response = await axios.get(url, { params: { perPage: limit, page } });
@@ -188,14 +193,19 @@ async function fetchAndSaveMPVotes(limit = 100) {
         matchesFound += votes.length;
         emptyStrike = 0;
         const { error } = await supabase.from('mp_votes').upsert(votes, { onConflict: 'mp_id,event_id' });
-        if (!error) log(`Sivu ${page}: Tallennettu ${votes.length} uutta ääntä.`);
+        if (!error) {
+          if (page % 10 === 0) log(`Sivu ${page}: Tallennettu yhteensä ${matchesFound} osumaa.`);
+        }
       } else {
         emptyStrike++;
-        if (matchesFound > 0 && emptyStrike > 50) hasMore = false;
+        // Sallitaan enemmän tyhjiä sivuja alussa, koska äänet eivät ole täydellisessä järjestyksessä
+        if (matchesFound > 0 && emptyStrike > 100) {
+          log(`Lopetetaan: 100 tyhjää sivua putkeen kohdedatalla.`);
+          hasMore = false;
+        }
       }
       
       page++;
-      if (page >= 95000) hasMore = false;
     } catch (err: any) {
       log('VIRHE äänien haussa:', err.message);
       hasMore = false;
@@ -228,20 +238,18 @@ async function markActiveMPs() {
 }
 
 async function main() {
-  log('🚀 Aloitetaan Eduskunnan massadatan haku (PUHDISTUS + NYKYINEN KAUSI)...');
+  log('🚀 Aloitetaan Eduskunnan äänidatan päivitys...');
   
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     log('VIRHE: Supabase-asetukset puuttuvat!');
     process.exit(1);
   }
 
-  await cleanupOldData();
-  await fetchAndSaveMPs();
-  await fetchAndSaveVotingEvents();
-  await fetchAndSaveMPVotes();
+  // Jätetään MP:t ja tapahtumat rauhaan, haetaan vain puuttuvat äänet
+  await fetchAndSaveMPVotes(200); // Suurempi limit nopeuttaa
   await markActiveMPs();
   
-  log('🏁 Kaikki valmista! Nyt vain nykyisen vaalikauden data on käytössä.');
+  log('🏁 Äänidata päivitetty.');
 }
 
 main();

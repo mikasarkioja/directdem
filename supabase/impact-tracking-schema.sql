@@ -14,3 +14,4 @@ CREATE TABLE IF NOT EXISTS user_impact_citations (
 -- Index for performance
 CREATE INDEX IF NOT EXISTS idx_user_impact_citations_user_id ON user_impact_citations(user_id);
 
+

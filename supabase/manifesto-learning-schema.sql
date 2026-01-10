@@ -47,3 +47,4 @@ CREATE POLICY "Members can see votes" ON manifesto_update_votes FOR SELECT TO au
   )
 );
 
+

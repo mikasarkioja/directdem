@@ -69,6 +69,15 @@ export async function POST(req: Request) {
 
   const lastMessage = messages[messages.length - 1];
   
+  // Quick fix for Vercel build: cast to any or handle arrays correctly
+  const champ = champion as any;
+  const chall = challenger as any;
+  
+  const champName = `${champ.mps?.first_name || champ.mps?.[0]?.first_name || "Champion"} ${champ.mps?.last_name || champ.mps?.[0]?.last_name || ""}`;
+  const challName = `${chall.mps?.first_name || chall.mps?.[0]?.first_name || "Challenger"} ${chall.mps?.last_name || chall.mps?.[0]?.last_name || ""}`;
+  const champParty = champ.mps?.party || champ.mps?.[0]?.party || "Unknown";
+  const challParty = chall.mps?.party || chall.mps?.[0]?.party || "Unknown";
+
   // Decide who is currently relevant
   const provocationLevel = distance > 2.5 ? "KORKEA (Spicy)" : (distance > 1.5 ? "KESKITASO" : "MATALA (Rakentava)");
 
@@ -78,12 +87,12 @@ export async function POST(req: Request) {
     Olet kokenut poliittinen moderaattori. Ohjaat kahden AI-agentin välistä väittelyä.
     
     OSAPUOLET:
-    1. CHAMPION (Agentti A): ${champion.mps.first_name} ${champion.mps.last_name} (${champion.mps.party}). 
+    1. CHAMPION (Agentti A): ${champName} (${champParty}). 
        - Tyyli: ${champion.rhetoric_style} (Hjalliksen tyyli: suora, liikemiesmäinen, populistinen, kriittinen valtavirtaa kohtaan).
        - Perustus: ${champion.system_prompt}
        - Äänestykset: ${JSON.stringify(champion.voting_summary)}
     
-    2. CHALLENGER (Agentti B): ${challenger.mps.first_name} ${challenger.mps.last_name} (${challenger.mps.party}). 
+    2. CHALLENGER (Agentti B): ${challName} (${challParty}). 
        - Tyyli: ${challenger.rhetoric_style}
        - Perustus: ${challenger.system_prompt}
        - Äänestykset: ${JSON.stringify(challenger.voting_summary)}

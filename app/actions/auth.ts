@@ -71,3 +71,17 @@ export async function syncProfile(userId: string) {
   await supabase.from("profiles").upsert({ id: userId }, { onConflict: 'id' });
   revalidatePath("/", "layout");
 }
+
+export async function upsertUserProfile(userId: string, data: any) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ id: userId, ...data }, { onConflict: 'id' });
+  
+  if (error) {
+    console.error("Error upserting user profile:", error);
+    throw error;
+  }
+  
+  revalidatePath("/", "layout");
+}

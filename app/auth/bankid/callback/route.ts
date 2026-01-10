@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processBankIDCallback } from "@/lib/bankid-auth";
 import { createClient } from "@/lib/supabase/server";
-import { upsertUserProfile } from "@/app/actions/auth";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);

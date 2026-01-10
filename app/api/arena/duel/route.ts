@@ -39,6 +39,10 @@ export async function POST(req: Request) {
   const champion = mpsData.find(m => m.mp_id === championId);
   const challenger = mpsData.find(m => m.mp_id === challengerId);
 
+  if (!champion || !challenger) {
+    return new Response(JSON.stringify({ error: "Yksi tai molemmat edustajien AI-profiileista puuttuu." }), { status: 404 });
+  }
+
   // 2. Fetch Bill Profile
   const { data: billProfile } = await supabase
     .from("bill_ai_profiles")

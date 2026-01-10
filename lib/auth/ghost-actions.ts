@@ -6,6 +6,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 
+/**
+ * Ghost Login Actions
+ * Handles temporary sessions for testing without full Supabase Auth.
+ */
+
 export async function startGhostSession(name: string) {
   const guestId = randomUUID();
   const cookieStore = await cookies();

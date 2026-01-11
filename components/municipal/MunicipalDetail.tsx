@@ -17,6 +17,7 @@ import {
   Database
 } from "lucide-react";
 import ExpertSummary from "../committee/ExpertSummary";
+import ShadowPowerMeter from "../dashboard/ShadowPowerMeter";
 import { generateMunicipalAiSummary, startDeepAnalysis, fetchEnhancedMunicipalProfile } from "@/app/actions/municipal-ai";
 import toast from "react-hot-toast";
 import LocalWeather from "../dashboard/LocalWeather";
@@ -145,39 +146,48 @@ export default function MunicipalDetail({ item, onClose, user }: MunicipalDetail
             </div>
           </div>
 
-          {/* Friction Index */}
-          {(localItem.ai_summary?.friction_index !== undefined || localItem.friction_index !== undefined) && (
-            <div className="flex items-center gap-6 p-8 bg-white/5 rounded-[2.5rem] border border-white/5 shadow-inner">
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Poliittinen Riskikerroin</span>
-                  <span className={`text-sm font-black ${
-                    (localItem.ai_summary?.friction_index || localItem.friction_index) > 70 ? "text-rose-500" : 
-                    (localItem.ai_summary?.friction_index || localItem.friction_index) > 40 ? "text-orange-500" : "text-emerald-500"
-                  }`}>
-                    {localItem.ai_summary?.friction_index || localItem.friction_index}/100
-                  </span>
-                </div>
-                <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden p-1 border border-white/5">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${localItem.ai_summary?.friction_index || localItem.friction_index}%` }}
-                    className={`h-full rounded-full ${
-                      (localItem.ai_summary?.friction_index || localItem.friction_index) > 70 ? "bg-gradient-to-r from-orange-600 to-rose-600" : 
-                      (localItem.ai_summary?.friction_index || localItem.friction_index) > 40 ? "bg-gradient-to-r from-yellow-500 to-orange-500" : "bg-gradient-to-r from-emerald-600 to-teal-600"
-                    }`}
-                  />
+          {/* Friction Index & Shadow Power */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {(localItem.ai_summary?.friction_index !== undefined || localItem.friction_index !== undefined) && (
+              <div className="flex items-center gap-6 p-8 bg-white/5 rounded-[2.5rem] border border-white/5 shadow-inner h-full">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Poliittinen Riskikerroin</span>
+                    <span className={`text-sm font-black ${
+                      (localItem.ai_summary?.friction_index || localItem.friction_index) > 70 ? "text-rose-500" : 
+                      (localItem.ai_summary?.friction_index || localItem.friction_index) > 40 ? "text-orange-500" : "text-emerald-500"
+                    }`}>
+                      {localItem.ai_summary?.friction_index || localItem.friction_index}/100
+                    </span>
+                  </div>
+                  <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden p-1 border border-white/5">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${localItem.ai_summary?.friction_index || localItem.friction_index}%` }}
+                      className={`h-full rounded-full ${
+                        (localItem.ai_summary?.friction_index || localItem.friction_index) > 70 ? "bg-gradient-to-r from-orange-600 to-rose-600" : 
+                        (localItem.ai_summary?.friction_index || localItem.friction_index) > 40 ? "bg-gradient-to-r from-yellow-500 to-orange-500" : "bg-gradient-to-r from-emerald-600 to-teal-600"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-5 bg-white/5 rounded-3xl border border-white/10 mt-4">
+                    <Zap size={24} className={(localItem.ai_summary?.friction_index || localItem.friction_index) > 60 ? "text-orange-500 animate-pulse" : "text-slate-500"} />
+                    <span className="text-[9px] font-black uppercase mt-3 text-slate-400 text-center">
+                      {(localItem.ai_summary?.friction_index || localItem.friction_index) > 70 ? "KORKEA KITKA" : 
+                       (localItem.ai_summary?.friction_index || localItem.friction_index) > 40 ? "KOHTALAINEN" : "MATALA KITKA"}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col items-center justify-center p-5 bg-white/5 rounded-3xl border border-white/10 min-w-[120px]">
-                <Zap size={24} className={(localItem.ai_summary?.friction_index || localItem.friction_index) > 60 ? "text-orange-500 animate-pulse" : "text-slate-500"} />
-                <span className="text-[9px] font-black uppercase mt-3 text-slate-400">
-                  {(localItem.ai_summary?.friction_index || localItem.friction_index) > 70 ? "KORKEA KITKA" : 
-                   (localItem.ai_summary?.friction_index || localItem.friction_index) > 40 ? "KOHTALAINEN" : "MATALA KITKA"}
-                </span>
-              </div>
-            </div>
-          )}
+            )}
+
+            <ShadowPowerMeter
+              billId={localItem.id}
+              realFor={43} // Mock for municipal (Helsinki has 85 members, 43 is simple majority)
+              realAgainst={42}
+              context="municipal"
+            />
+          </div>
 
           {/* Deep Analysis Results (if exist) */}
           {enhancedData?.analysis_data?.analysis_depth && (

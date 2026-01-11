@@ -24,7 +24,7 @@ import type { Bill, VoteStats, IntegrityAlert } from "@/lib/types";
 import { regenerateBillSummary } from "@/app/actions/process-bill";
 import { getIntegrityAlertsForEvent } from "@/lib/actions/promise-actions";
 import ExpertSummary from "./committee/ExpertSummary";
-import ComparisonMirror from "./ComparisonMirror";
+import ShadowPowerMeter from "./dashboard/ShadowPowerMeter";
 import VoteButton from "./VoteButton";
 import BillHeatmap from "./BillHeatmap";
 import { getVoteStats } from "@/app/actions/votes";
@@ -326,17 +326,16 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
             <div className="space-y-8">
               <div className="flex items-center gap-3 text-rose-400">
                 <div className="p-2 bg-rose-500/10 rounded-lg border border-rose-500/20">
-                  <RefreshCw size={20} />
+                  <TrendingUp size={20} />
                 </div>
-                <h3 className="text-xs font-black uppercase tracking-[0.2em]">Demokratiamittari</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em]">Vaikutusmittari</h3>
               </div>
-              <div className="bg-slate-800/30 border border-white/5 p-8 rounded-[2rem] h-full flex items-center">
-                <ComparisonMirror
-                  parliamentVote={politicalForPercent}
-                  citizenVote={voteStats ? voteStats.for_percent : bill.citizenPulse.for}
-                  billName={bill.title}
-                />
-              </div>
+              <ShadowPowerMeter
+                billId={bill.id}
+                realFor={forSeats}
+                realAgainst={totalSeats - forSeats}
+                context="parliament"
+              />
             </div>
 
             {/* Arena Sector */}

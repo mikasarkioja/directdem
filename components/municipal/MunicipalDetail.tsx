@@ -13,7 +13,8 @@ import {
   CheckCircle2, 
   AlertTriangle,
   RefreshCw,
-  Wind
+  Wind,
+  Database
 } from "lucide-react";
 import ExpertSummary from "../committee/ExpertSummary";
 import { generateMunicipalAiSummary, startDeepAnalysis, fetchEnhancedMunicipalProfile } from "@/app/actions/municipal-ai";

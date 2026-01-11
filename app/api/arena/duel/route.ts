@@ -87,6 +87,11 @@ export async function POST(req: Request) {
   const champAlerts = alerts?.filter(a => a.mp_id === champIdNum) || [];
   const challAlerts = alerts?.filter(a => a.mp_id === challIdNum) || [];
 
+  const champName = `${champion.first_name} ${champion.last_name}`;
+  const challName = `${challenger.first_name} ${challenger.last_name}`;
+  const champParty = champion.party;
+  const challParty = challenger.party;
+
   const billContext = billProfile ? `
     VÄITTELYN AIHE (LAKI):
     - Otsikko: ${billProfile.title}
@@ -133,11 +138,6 @@ export async function POST(req: Request) {
   }
 
   console.log("Arena Duel - Distance:", distance);
-
-  const champName = `${champion.first_name} ${champion.last_name}`;
-  const challName = `${challenger.first_name} ${challenger.last_name}`;
-  const champParty = champion.party;
-  const challParty = challenger.party;
 
   const provocationLevel = distance > 2.5 ? "KORKEA (Spicy)" : (distance > 1.5 ? "KESKITASO" : "MATALA (Rakentava)");
 

@@ -1,5 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 
+export interface LocalFlip {
+  councilorId: number;
+  fullName: string;
+  decisionId: string;
+  decisionTitle: string;
+  promiseAnswer: string;
+  voteType: string;
+  inconsistencyScore: number;
+}
+
 /**
  * Logic to detect inconsistencies between election promises and actual votes in council.
  */

@@ -7,13 +7,26 @@ import type { Bill, SupabaseBill } from "@/lib/types";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+
 /**
- * Fetches bills from Supabase, or syncs from Eduskunta API if needed
+ * Fetches bills from Supabase, or syncs from Eduskunta API if needed.
+ * Wrapped in unstable_cache for performance.
  */
-export const fetchBillsFromSupabase = (async (): Promise<Bill[]> => {
-  return unstable_cache(
+export async function fetchBillsFromSupabase(): Promise<Bill[]> {
+  const fetcher = unstable_cache(
     async () => {
-      const supabase = await createClient();
+      // Use a direct Supabase client for public data fetching within cache
+      // to avoid 'cookies() called within unstable_cache' error.
+      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+      
+      if (!url || !key) {
+        console.error("Missing Supabase credentials for bill fetcher");
+        return [];
+      }
+
+      const supabase = createSupabaseClient(url, key);
 
       // Try to fetch from Supabase first
       const { data: billsData, error } = await supabase
@@ -31,8 +44,6 @@ export const fetchBillsFromSupabase = (async (): Promise<Bill[]> => {
           rawText: bill.raw_text || undefined,
           parliamentId: bill.parliament_id || undefined,
           status: bill.status as Bill["status"],
-          // For MVP, use mock data for citizen pulse and political reality
-          // In production, these would come from actual voting data
           citizenPulse: generateMockCitizenPulse({ title: bill.title, abstract: bill.summary || "" }),
           politicalReality: generateMockPoliticalReality({ title: bill.title }),
           category: bill.category || undefined,
@@ -43,12 +54,10 @@ export const fetchBillsFromSupabase = (async (): Promise<Bill[]> => {
       }
 
       // If no bills in Supabase, try to fetch from Eduskunta API and sync
-      // Note: Eduskunta API endpoint may change, so this might fail
       try {
         const eduskuntaIssues = await getLatestBills(50);
         
         if (eduskuntaIssues.length > 0) {
-          // Insert into Supabase
           const billsToInsert = eduskuntaIssues.map((issue) => ({
             parliament_id: issue.parliamentId,
             title: issue.title,
@@ -60,12 +69,11 @@ export const fetchBillsFromSupabase = (async (): Promise<Bill[]> => {
             url: issue.url,
           }));
 
-          // Use upsert to handle duplicates based on parliament_id
           const { data: insertedBills, error: insertError } = await supabase
             .from("bills")
             .upsert(billsToInsert, {
               onConflict: "parliament_id",
-              ignoreDuplicates: false, // Update existing records
+              ignoreDuplicates: false,
             })
             .select();
 
@@ -87,18 +95,16 @@ export const fetchBillsFromSupabase = (async (): Promise<Bill[]> => {
           }
         }
       } catch (error) {
-        // Eduskunta API might be unavailable or endpoint changed
-        // This is not critical - we can use mock data
         console.warn("Eduskunta API unavailable, using fallback:", error);
       }
 
-      // Fallback: Return empty array (UI will show empty state)
-      // In production, you might want to seed some initial bills in Supabase
-      console.info("No bills found. Consider adding bills manually to Supabase or check Eduskunta API endpoint.");
+      console.info("No bills found.");
       return [];
     },
     ["bills-feed-50"],
     { revalidate: 3600, tags: ["bills"] }
-  )();
-});
+  );
+
+  return fetcher();
+}
 

@@ -30,10 +30,17 @@ export interface MunicipalWatchItem {
   }>;
 }
 
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+
 export async function fetchMunicipalWatchFeed(limit = 60) {
-  return unstable_cache(
+  const fetcher = unstable_cache(
     async () => {
-      const supabase = await createClient();
+      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+      
+      if (!url || !key) return [];
+      
+      const supabase = createSupabaseClient(url, key);
 
       const { data, error } = await supabase
         .from("meeting_analysis")
@@ -84,6 +91,8 @@ export async function fetchMunicipalWatchFeed(limit = 60) {
     },
     [`municipal-watch-feed-${limit}`],
     { revalidate: 900, tags: ["municipal-watch"] }
-  )();
+  );
+
+  return fetcher();
 }
 

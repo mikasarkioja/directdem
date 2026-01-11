@@ -19,9 +19,15 @@ export default function QuickPulse({ lens = "national" }: QuickPulseProps) {
 
   useEffect(() => {
     async function load() {
-      const data = await getDailyPulse(lens);
-      setQuestion(data);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const data = await getDailyPulse(lens);
+        setQuestion(data);
+      } catch (err) {
+        console.error("Failed to load pulse question:", err);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, [lens]);

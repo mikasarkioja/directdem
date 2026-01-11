@@ -6,38 +6,46 @@ import { PulseQuestion } from "@/lib/types";
 import { getUser } from "./auth";
 import { saveGhostDNA } from "@/lib/auth/ghost-actions";
 
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+
 /**
  * Fetches a daily pulse question for the user.
  * Priority: 1. Curated questions (not yet in DB), 2. Random bill-based, 3. Fallback
  */
 export async function getDailyPulse(lens: string = "national"): Promise<PulseQuestion | null> {
-  return unstable_cache(
+  const fetcher = unstable_cache(
     async () => {
-      const user = await getUser();
-      const supabase = await createClient();
-
-      // Check if user already answered a question today
-      // (Simplified: we'll just fetch questions and let UI handle "already answered" state if needed)
+      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+      
+      if (!url || !key) return null;
+      const supabase = createSupabaseClient(url, key);
 
       // Try to find a dynamic question from meeting_analysis or bills
       if (lens !== "national") {
-        const { data: meeting } = await supabase
+        const muniName = lens.charAt(0).toUpperCase() + lens.slice(1);
+        const { data: meeting, error } = await supabase
           .from("meeting_analysis")
           .select("id, meeting_title, municipality, ai_summary")
-          .eq("municipality", lens)
+          .eq("municipality", muniName)
           .order("meeting_date", { ascending: false })
           .limit(10);
 
+        if (error) {
+          console.error("Error fetching pulse meetings:", error);
+        }
+
         if (meeting && meeting.length > 0) {
           const randomMeeting = meeting[Math.floor(Math.random() * meeting.length)];
-          if (randomMeeting.ai_summary) {
+          const aiSummary = randomMeeting.ai_summary as any;
+          if (aiSummary && typeof aiSummary === 'object') {
             return {
               id: `MUNI-${randomMeeting.id}`,
               question: `Pitäisikö tämä hanke toteuttaa: "${randomMeeting.meeting_title}"?`,
               municipality: randomMeeting.municipality,
               category: "Aluepolitiikka",
               context: "municipal",
-              impact_vector: randomMeeting.ai_summary.dna_impact || { urban_rural_score: 0.1 }
+              impact_vector: aiSummary.dna_impact || { urban_rural_score: 0.1 }
             } as PulseQuestion;
           }
         }
@@ -72,7 +80,9 @@ export async function getDailyPulse(lens: string = "national"): Promise<PulseQue
     },
     [`daily-pulse-${lens}`],
     { revalidate: 300, tags: ["pulse"] }
-  )();
+  );
+
+  return fetcher();
 }
 
 export async function submitPulseVote(question: PulseQuestion, stance: "YES" | "NO") {

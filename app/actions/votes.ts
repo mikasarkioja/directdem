@@ -6,6 +6,8 @@ import type { VoteStats, VotePosition } from "@/lib/types";
 import { addDNAPoints } from "./dna";
 import { updateUserPoliticalDNA } from "@/lib/actions/user-dna-engine";
 
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+
 export async function submitVote(billId: string, position: VotePosition) {
   const supabase = await createClient();
   const {
@@ -96,9 +98,13 @@ export async function getUserVote(billId: string): Promise<VotePosition | null> 
 }
 
 export async function getVoteStats(billId: string): Promise<VoteStats> {
-  return unstable_cache(
+  const fetcher = unstable_cache(
     async () => {
-      const supabase = await createClient();
+      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+      if (!url || !key) return { for_count: 0, against_count: 0, neutral_count: 0, total_count: 0, for_percent: 0, against_percent: 0, neutral_percent: 0 };
+      
+      const supabase = createSupabaseClient(url, key);
 
       const { data, error } = await supabase.rpc("get_vote_stats", {
         bill_uuid: billId,
@@ -120,6 +126,8 @@ export async function getVoteStats(billId: string): Promise<VoteStats> {
     },
     [`vote-stats-${billId}`],
     { revalidate: 300, tags: [`votes-${billId}`] }
-  )();
+  );
+
+  return fetcher();
 }
 

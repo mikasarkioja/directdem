@@ -189,13 +189,45 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                 </div>
                 
                 <div className="space-y-4">
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <p className="text-[8px] font-black uppercase text-slate-500 mb-1">Kustannusarvio (Arvio)</p>
-                    <p className="text-xl font-black text-white">
+                  <div className="p-6 bg-white/5 rounded-[2rem] border border-white/5 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                      <Database size={40} className="text-purple-400" />
+                    </div>
+                    
+                    <p className="text-[8px] font-black uppercase text-slate-500 mb-1 tracking-widest">Kustannusarvio (Kokoluokka)</p>
+                    <p className="text-2xl font-black text-white mb-4">
                       {enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate > 0 
-                        ? new Intl.NumberFormat('fi-FI', { style: 'currency', currency: 'EUR' }).format(enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate)
+                        ? new Intl.NumberFormat('fi-FI', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate)
                         : "Selvitetään..."}
                     </p>
+
+                    {/* Magnitude Meter */}
+                    {enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-600">
+                          <span>Miljoona</span>
+                          <span>Miljardi</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden flex gap-0.5 p-0.5 border border-white/5">
+                          {[...Array(10)].map((_, i) => {
+                            const cost = enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate;
+                            const logValue = Math.log10(cost || 1);
+                            const threshold = 6 + i * 0.3; // From 1M (10^6) to 1B (10^9) roughly
+                            const isActive = logValue >= threshold;
+                            return (
+                              <div 
+                                key={i} 
+                                className={`h-full flex-1 rounded-sm transition-all duration-500 ${
+                                  isActive 
+                                    ? (i > 7 ? 'bg-rose-500' : i > 4 ? 'bg-orange-500' : 'bg-emerald-500') 
+                                    : 'bg-white/5'
+                                }`} 
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3">

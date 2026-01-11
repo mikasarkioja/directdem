@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { fetchMunicipalWatchFeed, MunicipalWatchItem } from "@/app/actions/municipal-watch";
+import { fetchMunicipalWatchFeed } from "@/app/actions/municipal-watch";
+import type { MunicipalWatchItem } from "@/app/actions/municipal-watch";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Building2, 

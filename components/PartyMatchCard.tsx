@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, Share2, CheckCircle, XCircle, Minus } from "lucide-react";
-import { calculateAlignment, type AlignmentResult } from "@/lib/match-engine";
+import { type AlignmentResult } from "@/lib/match-engine";
 import { PARTY_INFO } from "@/lib/party-stances";
 import { createClient } from "@/lib/supabase/client";
 

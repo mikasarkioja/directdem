@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getDailyMunicipalQuestion, voteOnMunicipalQuestion, MunicipalQuestion } from "@/app/actions/daily-municipal";
+import { getDailyMunicipalQuestion, voteOnMunicipalQuestion } from "@/app/actions/daily-municipal";
+import type { MunicipalQuestion } from "@/app/actions/daily-municipal";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Building2, 

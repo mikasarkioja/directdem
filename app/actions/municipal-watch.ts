@@ -1,5 +1,7 @@
+"use server";
+
 import { createClient } from "@/lib/supabase/server";
-import { MunicipalDecision } from "@/lib/municipal/bridge";
+import type { MunicipalDecision } from "@/lib/municipal/bridge";
 
 export interface MunicipalWatchItem {
   id: string;

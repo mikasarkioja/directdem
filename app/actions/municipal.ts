@@ -101,6 +101,27 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
 }
 
 /**
+ * Fetches municipal decisions from the new modular table
+ */
+export async function fetchMunicipalDecisions(municipality: string = "Espoo"): Promise<any[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("municipal_decisions")
+    .select("*")
+    .eq("municipality", municipality)
+    .order("decision_date", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error("Error fetching decisions:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
  * Record a vote for a municipal case
  */
 export async function voteOnMunicipalCase(
@@ -135,4 +156,3 @@ export async function voteOnMunicipalCase(
   if (error) throw error;
   return { success: true };
 }
-

@@ -77,7 +77,7 @@ export const getUser = cache(async (): Promise<UserProfile | null> => {
   } catch {
     return null;
   }
-}
+});
 
 // Huom: Käytämme nyt pääasiassa LoginPage.tsx:n client-puolen kirjautumista,
 // mutta pidetään nämä taustalla jos tarpeen.

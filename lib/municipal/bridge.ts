@@ -174,15 +174,52 @@ export async function linkDecisionsToCouncilors(decisions: MunicipalDecision[]) 
   return decisions;
 }
 
+import { fetchEspooDynastyLinks, fetchMeetingItems, fetchDynastyContent, DynastyDocType } from "./espoodynasty";
+
+// ... existing code ...
+
 /**
  * 2. Espoo & Vantaa Bridge
  */
 async function fetchEspoo(): Promise<MunicipalDecision[]> {
-  return fetchViaRSS(
-    "Espoo", 
-    "https://www.espoo.fi/fi/rss/articles", 
-    ["valtuusto", "hallitus", "päätös", "lautakunta"]
-  );
+  try {
+    console.log("🕵️ Fetching Espoo via Dynasty Scraper...");
+    const meetingLinks = await fetchEspooDynastyLinks();
+    if (meetingLinks.length === 0) throw new Error("No meetings found");
+
+    // Otetaan uusin kokous
+    const latestMeeting = meetingLinks[0];
+    const items = await fetchMeetingItems(latestMeeting.url);
+    
+    const decisions: MunicipalDecision[] = [];
+    for (const item of items.slice(0, 5)) {
+      const content = await fetchDynastyContent(item);
+      if (content) {
+        decisions.push({
+          title: content.title,
+          municipality: "Espoo",
+          content: content.description + "\n\n" + content.proposal,
+          date: latestMeeting.dateHint || new Date().toISOString(),
+          external_url: content.url,
+          status: "Päätös"
+        });
+      }
+    }
+    
+    if (decisions.length > 0) {
+      updateCache("Espoo", decisions);
+      return decisions;
+    }
+    
+    throw new Error("No items parsed from Dynasty");
+  } catch (err: any) {
+    console.warn(`Espoo Dynasty Fail, falling back to RSS: ${err.message}`);
+    return fetchViaRSS(
+      "Espoo", 
+      "https://www.espoo.fi/fi/rss/articles", 
+      ["valtuusto", "hallitus", "päätös", "lautakunta"]
+    );
+  }
 }
 
 async function fetchVantaa(): Promise<MunicipalDecision[]> {

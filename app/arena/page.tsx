@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
+import { fetchMunicipalCouncilors } from "@/app/actions/councilors";
+import { useRole } from "@/lib/context/RoleContext";
 
 interface MP {
   id: string;
@@ -42,6 +44,7 @@ export default function ArenaDuelPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [tensionLevel, setTensionLevel] = useState(0);
+  const [lens, setLens] = useState<"national" | "Helsinki" | "Espoo" | "Vantaa">("national");
 
   // Harry Harkimo ID (Champion)
   const championId = "1328";
@@ -50,30 +53,35 @@ export default function ArenaDuelPage() {
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
       try {
         const [mpsRes, billsRes] = await Promise.all([
-          fetch("/api/mps"), // Pitää varmistaa että tämä API löytyy
-          fetch("/api/bills/ai-profiles") // Pitää varmistaa että tämä API löytyy tai korvata
+          lens === "national" 
+            ? fetch("/api/mps").then(r => r.json())
+            : fetchMunicipalCouncilors(lens),
+          fetch("/api/bills/ai-profiles").then(r => r.json())
         ]);
         
-        // Mock data jos APIa ei ole vielä
-        const mpsData = await mpsRes.json();
-        const billsData = await billsRes.json();
+        const mpsData = mpsRes;
+        const billsData = billsRes;
         
-        console.log("Arena Load - MPs:", mpsData);
+        console.log(`Arena Load (${lens}) - MPs:`, mpsData);
         console.log("Arena Load - Bills:", billsData);
 
         if (Array.isArray(mpsData)) {
           setMps(mpsData.filter((m: MP) => m.id !== championId));
         } else {
-          console.error("MPs data is not an array:", mpsData);
           setMps([]);
         }
 
         if (Array.isArray(billsData)) {
-          setBills(billsData);
+          // Jos ollaan kuntalinssissä, näytetään vain kunnan esitykset
+          if (lens !== "national") {
+            setBills(billsData.filter((b: any) => b.bill_id.startsWith(`MUNI-${lens.toUpperCase()}`)));
+          } else {
+            setBills(billsData.filter((b: any) => !b.bill_id.startsWith("MUNI-")));
+          }
         } else {
-          console.error("Bills data is not an array:", billsData);
           setBills([]);
         }
       } catch (e) {
@@ -83,7 +91,7 @@ export default function ArenaDuelPage() {
       }
     }
     load();
-  }, []);
+  }, [lens]);
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, append, setMessages } = useChat({
     api: "/api/arena/duel",
@@ -217,6 +225,23 @@ export default function ArenaDuelPage() {
               Poliittinen <span className="text-orange-500">Areena</span>
             </h1>
             <p className="text-slate-500 font-bold uppercase text-xs tracking-widest italic">Kaksintaistelu: Champion vs Challenger</p>
+            
+            {/* Lens Switcher */}
+            <div className="flex justify-center gap-2 pt-4">
+              {["national", "Helsinki", "Espoo", "Vantaa"].map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLens(l as any)}
+                  className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border ${
+                    lens === l 
+                      ? "bg-orange-500 border-orange-600 text-white shadow-lg shadow-orange-500/20" 
+                      : "bg-white/5 border-white/10 text-slate-500 hover:bg-white/10"
+                  }`}
+                >
+                  {l === "national" ? "Valtakunnallinen" : l}
+                </button>
+              ))}
+            </div>
           </div>
 
           {!isDuelActive ? (

@@ -75,31 +75,59 @@ export async function profileMunicipalCouncilor(councilorId: string) {
 }
 
 /**
- * Runs profiling for all councilors who have raw promises but no DNA yet.
+ * Päivittää valtuutetun DNA-sormenjälkeä perustuen hänen puheenvuoroihinsa.
  */
-export async function profileAllPendingCouncilors() {
+export async function refineCouncilorDNAWithSpeeches(councilorId: string, municipality: string) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: pending } = await supabase
-    .from("municipal_councilor_profiles")
-    .select("id")
-    .is("dna_fingerprint", null);
+  // 1. Hae valtuutetun nimi
+  const { data: councilor } = await supabase
+    .from("councilors")
+    .select("full_name, dna_fingerprint")
+    .eq("id", councilorId)
+    .single();
 
-  if (!pending) return;
+  if (!councilor) return;
 
-  console.log(`Prosessoidaan ${pending.length} valtuutettua...`);
+  // 2. Hae kaikki kokousanalyysit, joissa valtuutettu mainitaan
+  const { data: meetings } = await supabase
+    .from("meeting_analysis")
+    .select("ai_summary, raw_content")
+    .eq("municipality", municipality)
+    .contains("ai_summary->mentioned_councilors", [councilor.full_name]);
 
-  for (const c of pending) {
-    try {
-      await profileMunicipalCouncilor(c.id);
-      // Pieni viive API-rajoitusten takia
-      await new Promise(r => setTimeout(r, 500));
-    } catch (err) {
-      console.error(`Virhe profiloinnissa ${c.id}:`, err);
-    }
+  if (!meetings || meetings.length === 0) return;
+
+  console.log(`🎤 Refinoimalla ${councilor.full_name} DNA:ta ${meetings.length} puheenvuoron perusteella...`);
+
+  // 3. Analysoidaan puheenvuorojen poliittinen linja
+  const speechesContext = meetings.map(m => m.ai_summary.summary).join("\n\n");
+
+  const { text: refinedDna } = await generateText({
+    model: openai("gpt-4o-mini"),
+    system: `Olet poliittinen analyytikko. Tehtäväsi on päivittää valtuutetun DNA-sormenjälki (-1.0 ... 1.0) 
+    perustuen hänen puheenvuoroihinsa ja toimintaansa kokouksissa.
+    
+    Nykyinen DNA: ${JSON.stringify(councilor.dna_fingerprint)}`,
+    prompt: `
+      Valtuutettu: ${councilor.full_name}
+      Puheenvuorojen tiivistelmät:
+      ${speechesContext}
+      
+      Analysoi onko valtuutetun linja muuttunut tai vahvistunut tietyillä akseleilla (economy, values, environment, regional, international, security).
+      Palauta päivitetty koko DNA-objekti JSON-muodossa.
+    `
+  } as any);
+
+  try {
+    const dna = JSON.parse(refinedDna.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
+    await supabase.from("councilors").update({ dna_fingerprint: dna }).eq("id", councilorId);
+    console.log(`✅ DNA päivitetty valtuutetulle ${councilor.full_name}`);
+  } catch (e) {
+    console.error("Failed to parse refined DNA JSON");
   }
 }
 

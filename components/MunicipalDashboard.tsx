@@ -123,6 +123,17 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
                   <h3 className="text-base font-black text-command-dark dark:text-white group-hover:text-[var(--accent-primary)] transition-colors leading-tight mb-2">
                     {item.title}
                   </h3>
+                  
+                  {/* Visual Cost Meter Badge */}
+                  {item.cost_estimate && (
+                    <div className="flex items-center gap-2 mb-3 px-3 py-1.5 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 w-fit">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">
+                        Kustannusarvio: {new Intl.NumberFormat('fi-FI').format(item.cost_estimate)} €
+                      </span>
+                    </div>
+                  )}
+
                   <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                     {item.content_summary}
                   </p>

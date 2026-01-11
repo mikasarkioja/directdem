@@ -120,7 +120,8 @@ export async function fetchMunicipalDecisions(municipality: string = "Espoo"): P
   }
 
   // If no data, trigger sync and try again
-  if (!data || data.length === 0) {
+  const finalData = data || [];
+  if (finalData.length === 0) {
     console.log(`[fetchMunicipalDecisions] No data for ${municipality}, syncing...`);
     await syncAllMunicipalities();
     
@@ -131,10 +132,26 @@ export async function fetchMunicipalDecisions(municipality: string = "Espoo"): P
       .order("decision_date", { ascending: false })
       .limit(20);
       
-    return newData || [];
+    finalData.push(...(newData || []));
   }
 
-  return data || [];
+  // Haetaan myös mahdolliset kustannusarviot bill_enhanced_profiles -taulusta
+  const enhancedIds = finalData.map(d => `MUNI-${municipality.toUpperCase()}-${d.id}`);
+  const { data: enhanced } = await supabase
+    .from("bill_enhanced_profiles")
+    .select("bill_id, analysis_data")
+    .in("bill_id", enhancedIds);
+
+  const enhancedMap = new Map();
+  enhanced?.forEach(e => {
+    const cost = e.analysis_data?.analysis_depth?.economic_impact?.total_cost_estimate;
+    if (cost) enhancedMap.set(e.bill_id, cost);
+  });
+
+  return finalData.map(d => ({
+    ...d,
+    cost_estimate: enhancedMap.get(`MUNI-${municipality.toUpperCase()}-${d.id}`)
+  }));
 }
 
 /**

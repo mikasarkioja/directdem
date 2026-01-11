@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getLatestBills } from "@/lib/eduskunta-api";
+import { processBillToSelkokieli } from "./process-bill";
 
 /**
  * Force sync bills from Eduskunta API to Supabase
@@ -66,6 +67,14 @@ export async function syncBillsFromEduskunta(): Promise<{ success: boolean; coun
         errors.push(`${bill.parliament_id}: ${error.message}`);
       } else if (data) {
         successCount++;
+        
+        // Triggeri automaattiselle esianalyysille taustalla (ei odoteta vastausta tässä)
+        // Jos summary on jo "real", ei turhaan regeneroida
+        const isRealSummary = data.summary && data.summary.length > 800 && data.summary.includes("###");
+        if (!isRealSummary) {
+          console.log(`[sync] Käynnistetään automaattinen analyysi lakiesitykselle: ${data.parliament_id}`);
+          processBillToSelkokieli(data.id, false).catch(e => console.error(`Auto-analysis failed for ${data.id}:`, e));
+        }
       }
     }
 

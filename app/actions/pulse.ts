@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { PulseQuestion } from "@/lib/types";
 import { getUser } from "./auth";
 import { saveGhostDNA } from "@/lib/auth/ghost-actions";
@@ -11,71 +11,68 @@ import { saveGhostDNA } from "@/lib/auth/ghost-actions";
  * Priority: 1. Curated questions (not yet in DB), 2. Random bill-based, 3. Fallback
  */
 export async function getDailyPulse(lens: string = "national"): Promise<PulseQuestion | null> {
-  const user = await getUser();
-  const supabase = await createClient();
+  return unstable_cache(
+    async () => {
+      const user = await getUser();
+      const supabase = await createClient();
 
-  // Check if user already answered a question today
-  if (user && !user.is_guest) {
-    const { data: lastVote } = await supabase
-      .from("user_pulse_votes")
-      .select("question_id")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    // For now, let's just fetch a random one that is NOT the last one they answered
-    // or just let them answer multiple if they want, but usually one per day.
-  }
+      // Check if user already answered a question today
+      // (Simplified: we'll just fetch questions and let UI handle "already answered" state if needed)
 
-  // Try to find a dynamic question from meeting_analysis or bills
-  if (lens !== "national") {
-    const { data: meeting } = await supabase
-      .from("meeting_analysis")
-      .select("id, meeting_title, municipality, ai_summary")
-      .eq("municipality", lens)
-      .order("meeting_date", { ascending: false })
-      .limit(5)
-      .then(res => ({ data: res.data ? res.data[Math.floor(Math.random() * res.data.length)] : null }));
+      // Try to find a dynamic question from meeting_analysis or bills
+      if (lens !== "national") {
+        const { data: meeting } = await supabase
+          .from("meeting_analysis")
+          .select("id, meeting_title, municipality, ai_summary")
+          .eq("municipality", lens)
+          .order("meeting_date", { ascending: false })
+          .limit(10);
 
-    if (meeting && meeting.ai_summary) {
-      return {
-        id: `MUNI-${meeting.id}`,
-        question: `Pitäisikö tämä hanke toteuttaa: "${meeting.meeting_title}"?`,
-        municipality: meeting.municipality,
-        category: "Aluepolitiikka", // Default for municipal
-        context: "municipal",
-        impact_vector: meeting.ai_summary.dna_impact || { urban_rural_score: 0.1 }
-      };
-    }
-  }
+        if (meeting && meeting.length > 0) {
+          const randomMeeting = meeting[Math.floor(Math.random() * meeting.length)];
+          if (randomMeeting.ai_summary) {
+            return {
+              id: `MUNI-${randomMeeting.id}`,
+              question: `Pitäisikö tämä hanke toteuttaa: "${randomMeeting.meeting_title}"?`,
+              municipality: randomMeeting.municipality,
+              category: "Aluepolitiikka",
+              context: "municipal",
+              impact_vector: randomMeeting.ai_summary.dna_impact || { urban_rural_score: 0.1 }
+            } as PulseQuestion;
+          }
+        }
+      }
 
-  // Fallback / Default National Questions
-  const defaultQuestions: PulseQuestion[] = [
-    {
-      id: "PULSE-001",
-      question: "Pitäisikö sähköpotkulaudat kieltää keskustoissa viikonloppuöisin?",
-      category: "Turvallisuus",
-      context: "national",
-      impact_vector: { security_score: 0.1, liberal_conservative_score: -0.05 }
+      // Fallback / Default National Questions
+      const defaultQuestions: PulseQuestion[] = [
+        {
+          id: "PULSE-001",
+          question: "Pitäisikö sähköpotkulaudat kieltää keskustoissa viikonloppuöisin?",
+          category: "Turvallisuus",
+          context: "national",
+          impact_vector: { security_score: 0.1, liberal_conservative_score: -0.05 }
+        },
+        {
+          id: "PULSE-002",
+          question: "Tulisiko julkisen liikenteen olla täysin maksutonta kaikille kansalaisille?",
+          category: "Talous",
+          context: "national",
+          impact_vector: { economic_score: -0.1, environmental_score: 0.1 }
+        },
+        {
+          id: "PULSE-003",
+          question: "Pitäisikö Suomen lisätä merkittävästi panostuksia kotimaiseen ruoantuotantoon omavaraisuuden nimissä?",
+          category: "Aluepolitiikka",
+          context: "national",
+          impact_vector: { urban_rural_score: 0.1, security_score: 0.05 }
+        }
+      ];
+
+      return defaultQuestions[Math.floor(Math.random() * defaultQuestions.length)];
     },
-    {
-      id: "PULSE-002",
-      question: "Tulisiko julkisen liikenteen olla täysin maksutonta kaikille kansalaisille?",
-      category: "Talous",
-      context: "national",
-      impact_vector: { economic_score: -0.1, environmental_score: 0.1 }
-    },
-    {
-      id: "PULSE-003",
-      question: "Pitäisikö Suomen lisätä merkittävästi panostuksia kotimaiseen ruoantuotantoon omavaraisuuden nimissä?",
-      category: "Aluepolitiikka",
-      context: "national",
-      impact_vector: { urban_rural_score: 0.1, security_score: 0.05 }
-    }
-  ];
-
-  return defaultQuestions[Math.floor(Math.random() * defaultQuestions.length)];
+    [`daily-pulse-${lens}`],
+    { revalidate: 300, tags: ["pulse"] }
+  )();
 }
 
 export async function submitPulseVote(question: PulseQuestion, stance: "YES" | "NO") {

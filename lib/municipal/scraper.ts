@@ -8,6 +8,7 @@ import { openai } from "@ai-sdk/openai";
 import { fetchEspooDynastyLinks, scrapeEspooWithThrottle, DynastyDocType, DynastyContent, fetchMeetingItems, fetchDynastyContent } from "./espoodynasty";
 import { fetchLatestHelsinkiIssues, fetchHelsinkiIssueDetails } from "./helsinki-client";
 import { fetchLatestVantaaIssues } from "./vantaa-client";
+import { generateMunicipalAiSummary } from "@/app/actions/municipal-ai";
 
 function getSupabase() {
   return createClient(
@@ -52,6 +53,19 @@ export async function scrapeEspooDynasty() {
         const content = await fetchDynastyContent(item);
         if (content) {
           await processAndStoreMeetingItem("Espoo", content);
+          
+          // Triggeri automaattiselle tausta-analyysille
+          const { data: newEntry } = await supabase
+            .from("meeting_analysis")
+            .select("id")
+            .eq("external_url", item.url)
+            .single();
+          
+          if (newEntry) {
+            console.log(`   - Käynnistetään automaattinen analyysi: ${item.title}`);
+            await generateMunicipalAiSummary(newEntry.id).catch(e => console.error("Auto-analysis failed:", e));
+          }
+
           await new Promise(r => setTimeout(r, 1000));
         }
       }
@@ -99,6 +113,19 @@ export async function scrapeHelsinkiAhjo() {
       };
 
       await processAndStoreMeetingItem("Helsinki", content);
+
+      // Triggeri automaattiselle tausta-analyysille
+      const { data: newEntry } = await supabase
+        .from("meeting_analysis")
+        .select("id")
+        .eq("external_url", detailedIssue.id)
+        .single();
+      
+      if (newEntry) {
+        console.log(`   - Käynnistetään automaattinen analyysi: ${issue.subject}`);
+        await generateMunicipalAiSummary(newEntry.id).catch(e => console.error("Auto-analysis failed:", e));
+      }
+
       // Pieni viive ettei API kuormitu liikaa
       await new Promise(r => setTimeout(r, 500));
     }
@@ -138,6 +165,18 @@ export async function scrapeVantaaRSS() {
       };
 
       await processAndStoreMeetingItem("Vantaa", content);
+
+      // Triggeri automaattiselle tausta-analyysille
+      const { data: newEntry } = await supabase
+        .from("meeting_analysis")
+        .select("id")
+        .eq("external_url", issue.id)
+        .single();
+      
+      if (newEntry) {
+        console.log(`   - Käynnistetään automaattinen analyysi: ${issue.subject}`);
+        await generateMunicipalAiSummary(newEntry.id).catch(e => console.error("Auto-analysis failed:", e));
+      }
     }
     
     console.log(`✅ Vantaa louhinta suoritettu.`);

@@ -3,9 +3,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import type { UserProfile } from "@/lib/types";
 
-export async function getUser(): Promise<UserProfile | null> {
+export const getUser = cache(async (): Promise<UserProfile | null> => {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

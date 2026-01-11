@@ -20,6 +20,7 @@ export interface DynastyContent {
   description: string; // Selostus
   proposal: string;    // Päätösehdotus
   url: string;
+  date?: string;
 }
 
 /**

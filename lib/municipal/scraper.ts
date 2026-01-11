@@ -208,6 +208,7 @@ async function processAndStoreMeetingItem(municipality: string, item: DynastyCon
       .upsert({
         municipality: municipality,
         meeting_title: item.title,
+        meeting_date: item.date || new Date().toISOString(),
         raw_content: (item.description + "\n\n" + item.proposal).substring(0, 100000),
         external_url: item.url,
         ai_summary: analysis,

@@ -195,11 +195,21 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                     </div>
                     
                     <p className="text-[8px] font-black uppercase text-slate-500 mb-1 tracking-widest">Kustannusarvio (Kokoluokka)</p>
-                    <p className="text-2xl font-black text-white mb-4">
+                    <p className="text-2xl font-black text-white mb-1">
                       {enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate > 0 
                         ? new Intl.NumberFormat('fi-FI', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate)
                         : "Selvitetään..."}
                     </p>
+
+                    {/* Per Citizen Calculation */}
+                    {enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate > 0 && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="px-2 py-0.5 bg-purple-500/20 rounded text-[9px] font-bold text-purple-400 border border-purple-500/20">
+                          {new Intl.NumberFormat('fi-FI', { style: 'currency', currency: 'EUR' }).format(enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate / 5600000)} / kansalainen
+                        </div>
+                        <p className="text-[9px] text-slate-500 font-medium italic">Vastaa n. {Math.round(enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate / 5600000 / 5)} kpl lounasseteleitä</p>
+                      </div>
+                    )}
 
                     {/* Magnitude Meter */}
                     {enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate > 0 && (

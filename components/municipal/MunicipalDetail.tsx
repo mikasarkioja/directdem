@@ -199,11 +199,25 @@ export default function MunicipalDetail({ item, onClose, user }: MunicipalDetail
                     </div>
                     
                     <p className="text-[8px] font-black uppercase text-slate-500 mb-1 tracking-widest">Kustannusarvio (Paikallinen)</p>
-                    <p className="text-2xl font-black text-white mb-4">
+                    <p className="text-2xl font-black text-white mb-1">
                       {enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate > 0 
                         ? new Intl.NumberFormat('fi-FI', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate)
                         : "Selvitetään..."}
                     </p>
+
+                    {/* Per Citizen Calculation (Municipal) */}
+                    {enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate > 0 && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="px-2 py-0.5 bg-blue-500/20 rounded text-[9px] font-bold text-blue-400 border border-blue-500/20">
+                          {(() => {
+                            const pops: any = { "Helsinki": 670000, "Espoo": 310000, "Vantaa": 250000 };
+                            const pop = pops[localItem.municipality] || 500000;
+                            return new Intl.NumberFormat('fi-FI', { style: 'currency', currency: 'EUR' }).format(enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate / pop);
+                          })()} / asukas
+                        </div>
+                        <p className="text-[9px] text-slate-500 font-medium italic">Paikallinen talousvaikutus</p>
+                      </div>
+                    )}
 
                     {/* Magnitude Meter - Adapted for Municipal Scale (100k - 100M) */}
                     {enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate > 0 && (

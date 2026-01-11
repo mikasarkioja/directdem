@@ -51,7 +51,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
     const result = await confirmAlert(alertId);
     if (result.success) {
       setConfirmedAlerts(prev => new Set([...Array.from(prev), alertId]));
-      toast.success(result.message);
+      toast.success(result.message || "Hälytys vahvistettu!");
     }
   };
 

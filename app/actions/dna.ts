@@ -205,7 +205,7 @@ async function checkBadgeUnlocks(userId: string) {
   }
 }
 
-export async function trackEngagement(billId: string, durationSeconds: number) {
+export async function trackEngagement(billId: string, durationSeconds: number): Promise<{ success: boolean; message?: string }> {
   if (durationSeconds > 30) {
     await addDNAPoints("fact_checker", 2);
     return { success: true, message: "Faktantarkistaja-pisteitä lisätty!" };
@@ -213,10 +213,10 @@ export async function trackEngagement(billId: string, durationSeconds: number) {
   return { success: false };
 }
 
-export async function confirmAlert(alertId: string) {
+export async function confirmAlert(alertId: string): Promise<{ success: boolean; message?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false };
+  if (!user) return { success: false, message: "Kirjaudu sisään vahvistaaksesi." };
 
   // Add Vigilante (Fact Checker) points
   await addDNAPoints("fact_checker", 5);

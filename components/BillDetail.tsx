@@ -18,7 +18,8 @@ import {
   ExternalLink,
   Info,
   Calendar,
-  MapPin
+  MapPin,
+  TrendingUp
 } from "lucide-react";
 import type { Bill, VoteStats, IntegrityAlert } from "@/lib/types";
 import { regenerateBillSummary } from "@/app/actions/process-bill";

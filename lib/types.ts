@@ -64,6 +64,8 @@ export interface VoteStats {
 }
 
 // User profile types
+export type LensMode = "national" | "helsinki" | "espoo" | "vantaa";
+
 export interface ArchetypePoints {
   active: number;
   fact_checker: number;
@@ -210,7 +212,7 @@ export interface DebateParticipant {
 }
 
 // Dashboard view types
-export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate" | "ranking" | "analysis" | "workspace" | "arena";
+export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate" | "ranking" | "analysis" | "workspace" | "arena" | "kuntavahti";
 
 // API Test types
 export interface TestResult {
@@ -233,6 +235,7 @@ export interface IntegrityAlert {
   vote_type: string;
   deviation_score: number;
   severity: 'low' | 'medium' | 'high';
+  reasoning?: string;
   created_at: string;
 }
 

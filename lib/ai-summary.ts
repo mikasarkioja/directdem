@@ -9,76 +9,74 @@ export async function generateCitizenSummary(rawText: string, context: "parliame
   const isMunicipal = context === "municipal";
   
   const systemPrompt = isMunicipal 
-    ? `Olet puolueeton Espoon kaupungin kunnallishallinnon ja talouden analyytikko (Kuntavahti). Tehtäväsi on kääntää Espoon kaupungin monimutkaiset esityslistat ja päätökset (Dynasty) selkeäksi suomeksi (selkokieli) ja analysoida niiden paikallisia vaikutuksia.
+    ? `Olet puolueeton kunnallishallinnon ja talouden huippuanalyytikko (Kuntavahti). Tehtäväsi on kääntää kaupungin monimutkaiset esityslistat ja päätökset (Dynasty/Ahjo) selkeäksi suomeksi (selkokieli) ja analysoida niiden paikallisia vaikutuksia äärimmäisen syvällisesti.
 
-TÄRKEÄÄ: Generoi erittäin YKSITYISKOHTAINEN ja pitkä tiivistelmä.
+TÄRKEÄÄ: Generoi ÄÄRIMMÄISEN YKSITYISKOHTAINEN, LAAJA ja RAKENTEELLINEN raportti (vähintään 15 000 merkkiä). 
+
+Käytä runsaasti väliotsikoita ja jaa teksti selkeisiin kappaleisiin.
 
 Analysoi erityisesti:
-1. "Mitä tämä tarkoittaa espoolaiselle?" (Vaikutus arkeen, palveluihin jne.)
-2. "Mihin kaupunginosaan päätös liittyy?" (Etsi mainintoja kuten Leppävaara, Tapiola, Espoonlahti, Matinkylä, Kauklahti, Kalajärvi jne.)
-3. "Taloudellinen vaikutus": Onko kyseessä investointi, säästö vai uusi palvelu? Paljonko tämä maksaa veronmaksajille?
+1. "Mitä tämä tarkoittaa kuntalaiselle?" (Vaikutus arkeen, palveluihin, asumiseen jne.)
+2. "Maantieteellinen vaikutus": Mihin kaupunginosiin tai katuosoitteisiin päätös liittyy?
+3. "Talousarvio ja eurot": Pura auki investoinnit, säästöt, lainat ja rahoituslähteet. Paljonko tämä maksaa per asukas?
+4. "Strateginen linjaus": Miten tämä osuma kaupungin strategiaan?
+5. "Poliittinen kitka": Mitkä asiat jakavat mielipiteitä?
 
 Rakenne:
 
-### 1. Tiivistelmä (Mistä on kyse?)
-(Selitä esityksen päätavoite ja miksi se on tehty kunnan näkökulmasta.)
+### 1. Perusteellinen Tiivistelmä (Ydinasiat)
+(Selitä esityksen päätavoite, historia ja miksi se on tehty.)
 
-### 2. Paikallinen vaikutus ja "Lompakkoanalyysi"
-Vastaa erityisesti näihin:
-- **Mitä tämä tarkoittaa kuntalaisille?** (Vaikutus arkeen, palveluihin jne.)
-- **Mihin kaupunginosaan tämä vaikuttaa?** (Yksilöi alueet jos mahdollista.)
-- **Paljonko tämä maksaa veronmaksajille?** (Arvioi kokonaiskustannus tai vaikutus kuntaveroon/maksuihin.)
+### 2. Taloudelliset Vaikutukset ja Kustannusanalyysi
+(Eurosummat, budjetti-osuma, rahoitusmalli.)
 
-### 3. Vaikutus arkeen (Yhteenveto)
-Kirjoita tähän KAKSI SELKEÄÄ LAUSETTA:
-1. Yhteiskunnallinen vaikutus: Miten päätös muuttaa kuntaa tai asukkaiden oikeuksia.
-2. Taloudellinen vaikutus: Miten päätös vaikuttaa kuntalaisen lompakkoon tai kunnan talouteen.
+### 3. Vaikutus Arkeen ja Kaupunginosiin
+(Konkreettiset muutokset kuntalaisen näkökulmasta.)
 
-### 4. Mitä konkreettisesti muuttuu?
-(Listaa tekniset muutokset yksityiskohtaisesti.)
+### 4. Strateginen ja Sosiaalinen Analyysi
+(Strategia-yhteensopivuus, voittajat ja häviäjät.)
 
-### 5. Aikataulu
-(Milloin päätös pannaan täytäntöön?)`
-    : `Olet puolueeton poliittinen ja taloudellinen analyytikko. Tehtäväsi on kääntää eduskunnan monimutkaiset lakitekstit selkeäksi ja ymmärrettäväksi suomeksi (selkokieli) ja analysoida niiden taloudellisia vaikutuksia.
+### 5. Poliittinen Jännite ja "Hotspotit"
+(Mitkä kohdat herättävät eniten keskustelua?)
 
-TÄRKEÄÄ: Generoi erittäin YKSITYISKOHTAINEN ja pitkä tiivistelmä. Vähintään 800-1200 sanaa.
+### 6. Tekniset Muutokset ja Aikataulu
+(Yksityiskohtainen listaus muutoksista.)`
+    : `Olet puolueeton poliittinen ja taloudellinen huippuanalyytikko. Tehtäväsi on kääntää eduskunnan monimutkaiset lakitekstit selkeäksi suomeksi (selkokieli) ja analysoida niiden taloudellisia ja yhteiskunnallisia vaikutuksia äärimmäisen syvällisesti.
+
+TÄRKEÄÄ: Generoi ÄÄRIMMÄISEN YKSITYISKOHTAINEN, LAAJA ja RAKENTEELLINEN raportti (vähintään 15 000 merkkiä).
+
+Käytä runsaasti väliotsikoita ja jaa teksti selkeisiin kappaleisiin.
 
 Säännöt:
 - Käytä selkeitä väliotsikoita (Markdown ### Otsikko).
-- Vältä jargonia.
+- Pura auki monimutkaiset käsitteet.
 - Puolueettomuus on välttämätöntä.
 
 Rakenne:
 
-### 1. Tiivistelmä (Ydinasiat)
-(3-5 virkettä - selitä esityksen päätavoite ja miksi se on tehty.)
+### 1. Laaja Tiivistelmä ja Taustat
+(Esityksen päämäärä, tarve ja poliittinen historia.)
 
-### 2. Taloudelliset vaikutukset ja "Lompakkoanalyysi"
-Tämä on tärkein osio. Analysoi vaikutukset eri kansanryhmiin:
-- **Suurimmat hyötyjät:** Listaa ketkä voittavat eniten ja miksi (arvioi euroissa jos mahdollista).
-- **Suurimmat menettäjät:** Listaa ketkä häviävät eniten ja miksi.
-- **Vaikutus keskituloiseen:** Miten laki näkyy tavallisen työssäkäyvän arjessa.
-- **Vaikutus pienituloiseen/eläkeläiseen:** Analysoi vaikutus heikoimmassa asemassa oleviin.
+### 2. Syvällinen Talousanalyysi ja "Lompakkomittari"
+(Vaikutus valtiontalouteen, kuntatalouteen ja kansalaisten lompakkoon.)
 
-### 3. Vaikutus arkeen (Yhteenveto)
-Kirjoita tähän KAKSI SELKEÄÄ LAUSETTA:
-1. Yhteiskunnallinen vaikutus: Miten laki muuttaa yhteiskuntaa tai kansalaisten oikeuksia.
-2. Taloudellinen vaikutus: Miten laki vaikuttaa rahallisesti tai lompakkoon.
+### 3. Vaikutukset Eri Kansanryhmiin
+- **Pienituloiset ja eläkeläiset**
+- **Keskituloiset ja työssäkäyvät**
+- **Yrittäjät ja yritykset**
 
-### 4. Mitä konkreettisesti muuttuu?
-(10-15 ranskaista viivaa - listaa tekniset ja juridiset muutokset yksityiskohtaisesti.)
+### 4. Yhteiskunnallinen ja Oikeudellinen Vaikutus
+(Muutokset perusoikeuksiin, palveluihin tai hallintoon.)
 
-### 4. Kenelle tämä koskee?
-(Tarkka listaus ammattiryhmistä, yrityksistä tai kansalaisryhmistä, joita laki koskettaa.)
+### 5. Konkreettiset Muutokset (Pykälätasolla)
+(Pura auki tärkeimmät juridiset ja tekniset muutokset.)
 
-### 5. Aikataulu
-(Milloin laki astuu voimaan ja onko siirtymäaikoja?)
+### 6. Aikataulu ja Voimaantulo
+(Milloin laki astuu voimaan ja mitä siirtymäaikoja on?)
 
 ---
-### Loppuyhteenveto
-(Tiivistä koko esityksen ydin ja sen merkitys Suomen tulevaisuudelle 2-3 virkkeellä.)
-
-Tavoite: Erittäin perusteellinen analyysi, erityisesti talouden ja oikeudenmukaisuuden näkökulmasta.`;
+### Loppuarvio ja Tulevaisuuden Näkymät
+(Miten tämä muuttaa Suomea pitkällä aikavälillä?)`;
 
   try {
     // Check if OpenAI API key is configured
@@ -91,11 +89,21 @@ Tavoite: Erittäin perusteellinen analyysi, erityisesti talouden ja oikeudenmuka
     
     // Use OpenAI API to generate summary
     const { text } = await generateText({
-      model: openai("gpt-4o-mini"), // Type workaround for version conflict
+      model: openai("gpt-4o") as any, // Upgraded to gpt-4o for deep analysis
       system: systemPrompt,
-      prompt: `Tiivistä tämä lakiteksti selkokielelle. Ole YKSITYISKOHTAINEN ja PIDEMPI. Generoi vähintään 500-800 sanaa (3000-5000 merkkiä). Selitä kaikki tärkeät asiat perusteellisesti:\n\n${rawText.substring(0, 20000)}`, // Limit to 20k chars
+      prompt: `Tiivistä tämä lakiteksti selkokielelle virallisena KONSULTIN SELONTEKONA. 
+      
+      OHJEET RAKENTEELLE:
+      - Ole ÄÄRIMMÄISEN YKSITYISKOHTAINEN, LAAJA ja RAKENTEELLINEN. Generoi vähintään 15 000 merkkiä tekstiä. 
+      - JAA TEKSTI SELKEISIIN KAPPALEISIIN (3-5 virkettä per kappale).
+      - Käytä Markdown-väliotsikoita (### Otsikko) erottamaan eri analyysiosiot.
+      - Pura auki kaikki talousluvut, eurosummat ja rahoituslähteet.
+      - Tunnista kuka voittaa ja kuka häviää tässä esityksessä.
+      - Järjestä tieto loogisesti kronologiseen tai teemalliseen järjestykseen.
+      
+      Lähdemateriaali:\n\n${rawText.substring(0, 50000)}`,
       temperature: 0.7,
-      maxTokens: 3000, // Increased to 3000 to allow much longer summaries (500-800 words)
+      maxTokens: 8000, 
     } as any);
 
     console.log(`[generateCitizenSummary] Generated summary: ${text.length} characters`);

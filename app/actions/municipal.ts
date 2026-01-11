@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getMunicipalAPI } from "@/lib/municipal-api";
 import { generateMockCitizenPulse } from "@/lib/bill-helpers";
+import { syncAllMunicipalities } from "@/lib/municipal/sync-engine";
 import type { MunicipalCase, SupabaseMunicipalCase } from "@/lib/types";
 
 /**
@@ -116,6 +117,21 @@ export async function fetchMunicipalDecisions(municipality: string = "Espoo"): P
   if (error) {
     console.error("Error fetching decisions:", error);
     return [];
+  }
+
+  // If no data, trigger sync and try again
+  if (!data || data.length === 0) {
+    console.log(`[fetchMunicipalDecisions] No data for ${municipality}, syncing...`);
+    await syncAllMunicipalities();
+    
+    const { data: newData } = await supabase
+      .from("municipal_decisions")
+      .select("*")
+      .eq("municipality", municipality)
+      .order("decision_date", { ascending: false })
+      .limit(20);
+      
+    return newData || [];
   }
 
   return data || [];

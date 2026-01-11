@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Map, User, LayoutGrid, Users, Radio, BarChart3, TrendingUp, Activity, Sparkles, Briefcase, Shield, RefreshCw, Search, Database, Newspaper } from "lucide-react";
+import { FileText, Map, User, LayoutGrid, Users, Radio, BarChart3, TrendingUp, Activity, Sparkles, Briefcase, Shield, RefreshCw, Search, Database, Newspaper, Building2 } from "lucide-react";
 import type { DashboardView, UserProfile } from "@/lib/types";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -61,12 +61,14 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
     { id: "workspace", label: "Työhuone", icon: Briefcase, href: "/dashboard" },
     { id: "bills", label: "Äänestysareena", icon: FileText, href: "/?view=bills" },
     { id: "municipal", label: "Valiokunta", icon: Shield, href: "/?view=municipal" },
+    { id: "kuntavahti", label: "Kuntavahti", icon: Building2, href: "/dashboard?view=kuntavahti" },
   ];
 
   const researcherItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
     { id: "consensus", label: "Konsensuskartta", icon: Map, href: "/?view=consensus" },
     { id: "analysis", label: "Takinkääntö-vahti", icon: Activity, href: "/puolueet/analyysi" },
     { id: "ranking", label: "Massadata", icon: Database, href: "/ranking" },
+    { id: "kuntavahti", label: "Kuntadata", icon: Building2, href: "/dashboard?view=kuntavahti" },
   ];
 
   const menuItems = role === 'shadow_mp' 

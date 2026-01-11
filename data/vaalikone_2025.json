@@ -1,0 +1,62 @@
+[
+  {
+    "full_name": "Mervi Katainen",
+    "municipality": "Espoo",
+    "party": "KOK",
+    "promises": {
+      "talous": "Säästöjä ja tehostamista, veroja ei tule nostaa.",
+      "ympäristö": "Kestävä kasvu on tärkeää, mutta asuntorakentaminen edellä.",
+      "arvot": "Perinteiset arvot ja perheiden valinnanvapaus."
+    }
+  },
+  {
+    "full_name": "Henna Partanen",
+    "municipality": "Espoo",
+    "party": "VIHR",
+    "promises": {
+      "talous": "Investointeja koulutukseen ja joukkoliikenteeseen.",
+      "ympäristö": "Metsät ja puistot suojeltava, tiivis kaupunkirakenne.",
+      "arvot": "Yhdenvertaisuus ja luonnon monimuotoisuus."
+    }
+  },
+  {
+    "full_name": "Kai Mykkänen",
+    "municipality": "Espoo",
+    "party": "KOK",
+    "promises": {
+      "talous": "Vahva kuntatalous, työpaikkoja ja kasvua.",
+      "ympäristö": "Puhdas energia ja teknologiset ratkaisut.",
+      "arvot": "Vastuullisuus ja vapaus."
+    }
+  },
+  {
+    "full_name": "Juhana Vartiainen",
+    "municipality": "Helsinki",
+    "party": "KOK",
+    "promises": {
+      "talous": "Työllisyysasteen nosto, säästöt menoissa.",
+      "ympäristö": "Urbanisaatio ja tehokas asuntorakentaminen.",
+      "arvot": "Liberaali markkinatalous."
+    }
+  },
+  {
+    "full_name": "Nasima Razmyar",
+    "municipality": "Helsinki",
+    "party": "SDP",
+    "promises": {
+      "talous": "Panostukset sote-palveluihin ja koulutukseen.",
+      "ympäristö": "Ilmastotavoitteiden saavuttaminen nopeasti.",
+      "arvot": "Yhdenvertaisuus ja sosiaalinen oikeudenmukaisuus."
+    }
+  },
+  {
+    "full_name": "Antti Lindtman",
+    "municipality": "Vantaa",
+    "party": "SDP",
+    "promises": {
+      "talous": "Julkiset palvelut turvattava, oikeudenmukainen verotus.",
+      "ympäristö": "Ilmastotoimet ja luonnonsuojelu.",
+      "arvot": "Solidaarisuus ja heikoimpien puolustaminen."
+    }
+  }
+]

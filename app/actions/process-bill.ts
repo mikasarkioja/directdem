@@ -275,13 +275,56 @@ async function processBillToSelkokieliInternal(
       };
     }
 
-    // 5. Generate AI summary
-    console.log(`[processBillToSelkokieli] Generating AI summary for ${preparedText.length} characters of prepared text...`);
+    // 5. Generate AI summary (Integrated Deep Analysis)
+    console.log(`[processBillToSelkokieli] Generating deep AI summary for ${preparedText.length} characters of prepared text...`);
     
     let summary: string;
     try {
+      // Käytetään nyt aina gpt-4o:ta ja laajaa promptia
       summary = await generateCitizenSummary(preparedText, "parliament");
-      console.log(`[processBillToSelkokieli] AI summary generated: ${summary.length} characters`);
+      console.log(`[processBillToSelkokieli] Deep AI summary generated: ${summary.length} characters`);
+      
+      // HAETAAN SYVÄANALYYSI TIEDOT erilliseen tauluun jos mahdollista
+      try {
+        const { generateText } = await import("ai");
+        const { openai } = await import("@ai-sdk/openai");
+        
+        const { text: deepJson } = await generateText({
+          model: openai("gpt-4o") as any,
+          system: `Olet valtiontalouden ja poliittisen analyysin asiantuntija. Pura tämä lakiesitys JSON-muotoon syväanalyysia varten.`,
+          prompt: `Analysoi tämä laki: ${summary.substring(0, 5000)}\n\nPalauta JSON: {
+            "economic_impact": { "total_cost_estimate": 0, "budget_alignment": "string", "funding_source": "string" },
+            "strategic_analysis": { "primary_driver": "string", "strategy_match_score": 85 },
+            "social_equity": { "winners": [], "losers": [] },
+            "pro_arguments": ["argumentti 1", "argumentti 2"],
+            "con_arguments": ["argumentti 1", "argumentti 2"],
+            "friction_index": 50
+          }`
+        });
+        
+        const deepData = JSON.parse(deepJson.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
+        
+        // Tallennetaan tehostettuun profiiliin
+        await supabase.from("bill_enhanced_profiles").upsert({
+          bill_id: bill.parliament_id || billId,
+          title: bill.parliament_id || "Laki",
+          analysis_data: { analysis_depth: deepData },
+          forecast_metrics: { friction_index: deepData.friction_index }
+        }, { onConflict: "bill_id" });
+
+        // TÄRKEÄÄ: Käynnistetään Takinkääntö-vahti
+        const { detectFlipsWithAI } = await import("@/lib/actions/flip-watch");
+        await detectFlipsWithAI({
+          billId: billId,
+          billTitle: bill.title,
+          deepAnalysis: deepData,
+          context: "parliament"
+        });
+        
+      } catch (deepErr) {
+        console.error("Failed to store deep metadata for bill or detect flips, but summary is OK");
+      }
+
     } catch (aiError: any) {
       // If it's a quota error, return a clear error message
       if (aiError.message?.includes("quota") || aiError.message?.includes("insufficient_quota")) {

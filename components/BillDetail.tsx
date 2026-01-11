@@ -2,17 +2,36 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, RefreshCw, AlertCircle, CheckCircle, Database, Radio, ShieldCheck, Zap, ThumbsUp, CloudSun, Flame } from "lucide-react";
+import { 
+  X, 
+  Sparkles, 
+  RefreshCw, 
+  AlertCircle, 
+  CheckCircle, 
+  Database, 
+  Radio, 
+  ShieldCheck, 
+  Zap, 
+  ThumbsUp, 
+  CloudSun, 
+  Flame,
+  ExternalLink,
+  Info,
+  Calendar,
+  MapPin
+} from "lucide-react";
 import type { Bill, VoteStats, IntegrityAlert } from "@/lib/types";
 import { regenerateBillSummary } from "@/app/actions/process-bill";
 import { getIntegrityAlertsForEvent } from "@/lib/actions/promise-actions";
-import StreamingSummary from "./StreamingSummary";
+import ExpertSummary from "./committee/ExpertSummary";
 import ComparisonMirror from "./ComparisonMirror";
 import VoteButton from "./VoteButton";
 import BillHeatmap from "./BillHeatmap";
 import { getVoteStats } from "@/app/actions/votes";
 import { trackEngagement, confirmAlert } from "@/app/actions/dna";
+import { fetchEnhancedMunicipalProfile } from "@/app/actions/municipal-ai";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
 interface BillDetailProps {
   bill: Bill;
@@ -23,6 +42,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
   const [savedSummary, setSavedSummary] = useState<string | null>(bill.summary || null);
   const [voteStats, setVoteStats] = useState<any>(null);
   const [alerts, setAlerts] = useState<IntegrityAlert[]>([]);
+  const [enhancedData, setEnhancedData] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
   const [confirmedAlerts, setConfirmedAlerts] = useState<Set<string>>(new Set());
 
@@ -31,12 +51,16 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
     const result = await confirmAlert(alertId);
     if (result.success) {
       setConfirmedAlerts(prev => new Set([...Array.from(prev), alertId]));
-      alert(result.message);
+      toast.success(result.message);
     }
   };
 
   useEffect(() => {
     getVoteStats(bill.id).then(setVoteStats);
+    
+    // Fetch deep analysis data
+    const billIdForEnhanced = bill.parliamentId || bill.id;
+    fetchEnhancedMunicipalProfile(billIdForEnhanced, "parliament").then(setEnhancedData);
     
     if (bill.parliamentId) {
       getIntegrityAlertsForEvent(bill.parliamentId).then(setAlerts);
@@ -54,9 +78,17 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
     setProcessing(true);
     try {
       const result = await regenerateBillSummary(bill.id);
-      if (result.success && result.summary) setSavedSummary(result.summary);
+      if (result.success && result.summary) {
+        setSavedSummary(result.summary);
+        // Refresh deep analysis data too
+        const billIdForEnhanced = bill.parliamentId || bill.id;
+        const freshEnhanced = await fetchEnhancedMunicipalProfile(billIdForEnhanced, "parliament");
+        if (freshEnhanced) setEnhancedData(freshEnhanced);
+        toast.success("AI-analyysi päivitetty!");
+      }
     } catch (e) {
       console.error(e);
+      toast.error("Päivitys epäonnistui.");
     } finally {
       setProcessing(false);
     }
@@ -65,6 +97,8 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
   const totalSeats = bill.politicalReality.reduce((sum, p) => sum + p.seats, 0);
   const forSeats = bill.politicalReality.filter((p) => p.position === "for").reduce((sum, p) => sum + p.seats, 0);
   const politicalForPercent = Math.round((forSeats / totalSeats) * 100);
+
+  const frictionIndex = enhancedData?.forecast_metrics?.friction_index || enhancedData?.analysis_data?.analysis_depth?.friction_index;
 
   return (
     <motion.div 
@@ -88,7 +122,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.2em]">{bill.parliamentId || "Eduskunta"}</p>
                 <span className="w-1 h-1 rounded-full bg-slate-700" />
-                <p className="text-emerald-500 text-[9px] font-black uppercase tracking-[0.2em]">Suora datavirta</p>
+                <p className="text-purple-500 text-[9px] font-black uppercase tracking-[0.2em]">Eduskuntavahti</p>
               </div>
             </div>
           </div>
@@ -107,35 +141,132 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
         </div>
 
         <div className="p-6 md:p-12 space-y-16">
-          {/* AI Sector */}
-          <div className="space-y-8">
-            <div className="flex items-center gap-3 text-purple-400">
-              <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                <Sparkles size={20} className="animate-pulse" />
+          {/* Friction Index */}
+          {frictionIndex !== undefined && (
+            <div className="flex items-center gap-6 p-8 bg-white/5 rounded-[2.5rem] border border-white/5 shadow-inner">
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Poliittinen Riskikerroin</span>
+                  <span className={`text-sm font-black ${
+                    frictionIndex > 70 ? "text-rose-500" : 
+                    frictionIndex > 40 ? "text-orange-500" : "text-emerald-500"
+                  }`}>
+                    {frictionIndex}/100
+                  </span>
+                </div>
+                <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden p-1 border border-white/5">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${frictionIndex}%` }}
+                    className={`h-full rounded-full ${
+                      frictionIndex > 70 ? "bg-gradient-to-r from-orange-600 to-rose-600" : 
+                      frictionIndex > 40 ? "bg-gradient-to-r from-yellow-500 to-orange-500" : "bg-gradient-to-r from-emerald-600 to-teal-600"
+                    }`}
+                  />
+                </div>
               </div>
-              <h3 className="text-xs font-black uppercase tracking-[0.2em]">AI-analyytikko</h3>
-            </div>
-            <div className="bg-slate-800/30 border border-white/5 p-8 rounded-[2rem] shadow-inner">
-              <StreamingSummary
-                billId={bill.id}
-                existingSummary={savedSummary}
-                billParliamentId={bill.parliamentId}
-                billTitle={bill.title}
-                publishedDate={bill.publishedDate}
-                onSummaryComplete={setSavedSummary}
-              />
-              <div className="mt-8 pt-8 border-t border-white/5">
-                <button 
-                  onClick={handleRegenerate}
-                  disabled={processing}
-                  className="flex items-center gap-2 px-5 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5 text-slate-400 group"
-                >
-                  <RefreshCw size={14} className={`${processing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-                  Päivitä AI-analyysi
-                </button>
+              <div className="flex flex-col items-center justify-center p-5 bg-white/5 rounded-3xl border border-white/10 min-w-[120px]">
+                <Zap size={24} className={frictionIndex > 60 ? "text-orange-500 animate-pulse" : "text-slate-500"} />
+                <span className="text-[9px] font-black uppercase mt-3 text-slate-400">
+                  {frictionIndex > 70 ? "KORKEA KITKA" : 
+                   frictionIndex > 40 ? "KOHTALAINEN" : "MATALA KITKA"}
+                </span>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Deep Analysis Data Center */}
+          {enhancedData?.analysis_data?.analysis_depth && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-slate-950/50 border border-purple-500/20 rounded-[2.5rem] shadow-inner"
+            >
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-purple-400">
+                  <Zap size={14} />
+                  Taloudellinen vaikutus
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-black uppercase text-slate-500 mb-1">Kustannusarvio (Arvio)</p>
+                    <p className="text-xl font-black text-white">
+                      {enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate > 0 
+                        ? new Intl.NumberFormat('fi-FI', { style: 'currency', currency: 'EUR' }).format(enhancedData.analysis_data.analysis_depth.economic_impact.total_cost_estimate)
+                        : "Selvitetään..."}
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <p className="text-[8px] font-black uppercase text-slate-500 mb-1">Rahoituslähde</p>
+                      <p className="text-[10px] font-bold text-slate-300">{enhancedData.analysis_data.analysis_depth.economic_impact.funding_source}</p>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <p className="text-[8px] font-black uppercase text-slate-500 mb-1">Budjetti-osuma</p>
+                      <p className="text-[10px] font-bold text-slate-300">{enhancedData.analysis_data.analysis_depth.economic_impact.budget_alignment}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-400">
+                  <Sparkles size={14} />
+                  Strateginen analyysi
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-black uppercase text-slate-500 mb-1">Pääasiallinen ajuri</p>
+                    <p className="text-xs font-bold text-slate-200">{enhancedData.analysis_data.analysis_depth.strategic_analysis.primary_driver}</p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <span className="text-[8px] font-black uppercase text-slate-500">Hallitusohjelma-yhteensopivuus</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500" style={{ width: `${enhancedData.analysis_data.analysis_depth.strategic_analysis.strategy_match_score}%` }} />
+                      </div>
+                      <span className="text-[10px] font-black text-blue-400">{enhancedData.analysis_data.analysis_depth.strategic_analysis.strategy_match_score}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                 <div className="space-y-3">
+                    <p className="text-[8px] font-black uppercase text-emerald-500 tracking-widest">Voittajat</p>
+                    <div className="flex flex-wrap gap-2">
+                      {enhancedData.analysis_data.analysis_depth.social_equity.winners.map((w: string, i: number) => (
+                        <span key={i} className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[9px] font-bold rounded-full border border-emerald-500/20">{w}</span>
+                      ))}
+                    </div>
+                 </div>
+                 <div className="space-y-3">
+                    <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">Häviäjät</p>
+                    <div className="flex flex-wrap gap-2">
+                      {enhancedData.analysis_data.analysis_depth.social_equity.losers.map((l: string, i: number) => (
+                        <span key={i} className="px-3 py-1 bg-rose-500/10 text-rose-400 text-[9px] font-bold rounded-full border border-rose-500/20">{l}</span>
+                      ))}
+                    </div>
+                 </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Expert Summary */}
+          {savedSummary && (
+            <ExpertSummary 
+              bill={{
+                ...bill,
+                summary: savedSummary,
+                ...(enhancedData?.analysis_data?.analysis_depth || {})
+              } as any}
+              onGiveStatement={() => {}}
+            />
+          )}
 
           {/* Hotspots Section */}
           <div className="space-y-8">
@@ -184,6 +315,30 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
             </div>
           </div>
 
+          {/* Actions Footer */}
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-8">
+            <button 
+              onClick={handleRegenerate}
+              disabled={processing}
+              className="flex items-center gap-3 px-8 py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-purple-600/20 active:scale-95 disabled:opacity-50"
+            >
+              {processing ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
+              {processing ? "Analysoidaan..." : "Käynnistä Syväanalyysi (AI + Talous)"}
+            </button>
+
+            {bill.url && (
+              <a 
+                href={bill.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-white transition-all group"
+              >
+                Lue koko asiakirja
+                <ExternalLink size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              </a>
+            )}
+          </div>
+
           {/* Promise Watch Sector */}
           {alerts.length > 0 && (
             <div className="space-y-8 pt-16 border-t border-white/5">
@@ -207,6 +362,12 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                     </div>
                     
                     <div className="space-y-4">
+                      {alert.reasoning && (
+                        <p className="text-[11px] text-slate-300 leading-relaxed italic border-l-2 border-purple-500/30 pl-3">
+                          "{alert.reasoning}"
+                        </p>
+                      )}
+                      
                       <div className="flex flex-col gap-1">
                         <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Lupaus (Vaalikone)</span>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">

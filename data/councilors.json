@@ -1,0 +1,21 @@
+{
+  "Helsinki": [
+    { "name": "Anni Sinnemäki", "party": "VIHR" },
+    { "name": "Juhana Vartiainen", "party": "KOK" },
+    { "name": "Nasima Razmyar", "party": "SDP" },
+    { "name": "Paavo Arhinmäki", "party": "VAS" }
+  ],
+  "Espoo": [
+    { "name": "Kai Mykkänen", "party": "KOK" },
+    { "name": "Mervi Katainen", "party": "KOK" },
+    { "name": "Tiina Elo", "party": "VIHR" },
+    { "name": "Henna Partanen", "party": "VIHR" }
+  ],
+  "Vantaa": [
+    { "name": "Antti Lindtman", "party": "SDP" },
+    { "name": "Sari Multala", "party": "KOK" },
+    { "name": "Jari Jääskeläinen", "party": "PS" },
+    { "name": "Eve Rämö", "party": "VIHR" }
+  ]
+}
+

@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchMunicipalDecisions } from "@/app/actions/municipal";
 import type { UserProfile } from "@/lib/types";
-import { Loader2, RefreshCw, Building2, ChevronRight, Calendar, MapPin } from "lucide-react";
+import { Loader2, RefreshCw, Building2, ChevronRight, Calendar, MapPin, XCircle, Zap, Info, CheckCircle2, AlertTriangle } from "lucide-react";
+import MunicipalDetail from "./municipal/MunicipalDetail";
 
 interface MunicipalDashboardProps {
   user: UserProfile | null;
@@ -15,6 +16,7 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
   const [municipality, setMunicipality] = useState(initialMunicipality);
   const [cases, setCases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCase, setSelectedCase] = useState<any | null>(null);
 
   const loadCases = async (muni: string) => {
     try {
@@ -30,12 +32,23 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
 
   useEffect(() => {
     loadCases(municipality);
+    setSelectedCase(null);
   }, [municipality]);
 
   const cities = ["Helsinki", "Espoo", "Vantaa"];
 
   return (
     <div className="space-y-6">
+      {/* Detail View Modal */}
+      <AnimatePresence>
+        {selectedCase && (
+          <MunicipalDetail 
+            item={selectedCase} 
+            onClose={() => setSelectedCase(null)} 
+          />
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1 bg-[var(--accent-primary)]/10 rounded-full border border-[var(--accent-primary)]/20">
@@ -79,7 +92,17 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 p-6 rounded-3xl cursor-pointer hover:border-[var(--accent-primary)]/30 transition-all group relative overflow-hidden"
+              onClick={() => {
+                setSelectedCase(item);
+                // Scroll to top of the list to see the detail
+                const container = document.querySelector('.custom-scrollbar');
+                if (container) {
+                  container.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+              className={`bg-white dark:bg-slate-900/50 border p-6 rounded-3xl cursor-pointer hover:border-[var(--accent-primary)]/30 transition-all group relative overflow-hidden ${
+                selectedCase?.id === item.id ? 'border-[var(--accent-primary)] shadow-lg' : 'border-slate-200 dark:border-white/5'
+              }`}
             >
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1 min-w-0">

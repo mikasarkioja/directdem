@@ -11,8 +11,23 @@ interface ExpertSummaryProps {
 }
 
 export default function ExpertSummary({ bill, onGiveStatement }: ExpertSummaryProps) {
-  // Mock expert opinions for now
-  const expertOpinions = [
+  // Use AI summary arguments if available, otherwise fallback to mock
+  const hasAiArguments = (bill as any).pro_arguments || (bill as any).con_arguments;
+  
+  const expertOpinions = hasAiArguments ? [
+    ...((bill as any).pro_arguments || []).map((text: string) => ({
+      type: "pro",
+      expert: "AI-Analyysi",
+      text,
+      impact: "Korkea"
+    })),
+    ...((bill as any).con_arguments || []).map((text: string) => ({
+      type: "con",
+      expert: "AI-Kritiikki",
+      text,
+      impact: "Kohtalainen"
+    }))
+  ] : [
     { 
       type: "pro", 
       expert: "Professori A. Virtanen", 
@@ -29,14 +44,43 @@ export default function ExpertSummary({ bill, onGiveStatement }: ExpertSummaryPr
 
   return (
     <div className="space-y-8">
-      <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 space-y-4">
-        <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-          <Info size={14} className="text-blue-500" />
-          Tiivistelmä & Analyysi
+      <div className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-8 md:p-12 space-y-8 shadow-inner overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-600 to-purple-600 opacity-50" />
+        
+        <h3 className="text-xs font-black uppercase tracking-[0.3em] text-blue-500 flex items-center gap-3 border-b border-white/5 pb-6">
+          <Info size={18} />
+          Asiantuntijaselonteko & Vaikutusarviointi
         </h3>
-        <p className="text-slate-300 text-sm leading-relaxed">
-          {bill.summary || "Tämä lakiesitys keskittyy lainsäädännön modernisointiin digitaalisella aikakaudella. Tavoitteena on parantaa palveluiden tehokkuutta ja kansalaisten osallistumismahdollisuuksia."}
-        </p>
+        
+        <div className="prose prose-invert max-w-none">
+          <div className="text-slate-300 text-sm leading-[1.7] space-y-4 font-medium">
+            {bill.summary ? bill.summary.split('\n').map((line, i) => {
+              const trimmedLine = line.trim();
+              if (trimmedLine.startsWith('###')) {
+                return (
+                  <h4 key={i} className="text-white text-base font-black uppercase tracking-tight pt-6 pb-1 border-b border-white/10 flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    {trimmedLine.replace('###', '').trim()}
+                  </h4>
+                );
+              }
+              if (trimmedLine === '') return null; // Poistetaan tyhjät rivit kokonaan
+              if (trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
+                return (
+                  <div key={i} className="flex gap-3 pl-4 group py-0.5">
+                    <span className="text-blue-500 font-bold group-hover:scale-125 transition-transform">•</span>
+                    <p className="flex-1">{trimmedLine.substring(1).trim()}</p>
+                  </div>
+                );
+              }
+              return <p key={i} className="text-slate-300/90 leading-relaxed">{trimmedLine}</p>;
+            }).filter(Boolean) : (
+              <div className="flex items-center justify-center py-10 opacity-50">
+                <p className="italic">Analysoidaan esitystä...</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

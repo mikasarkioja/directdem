@@ -2,16 +2,25 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Shield, User, Briefcase, Award, Zap, Radio, Lock } from "lucide-react";
-import type { UserProfile } from "@/lib/types";
+import { Shield, User, Briefcase, Award, Zap, Radio, Lock, MapPin } from "lucide-react";
+import type { UserProfile, LensMode } from "@/lib/types";
 
 interface ShadowIDCardProps {
   user: UserProfile;
+  lens?: LensMode;
 }
 
-export default function ShadowIDCard({ user }: ShadowIDCardProps) {
+export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardProps) {
   const hasDna = user.economic_score !== undefined && user.economic_score !== 0;
   const isLocked = !hasDna;
+
+  const displayRank = lens === "national" 
+    ? (user.rank_title || "Varjokansanedustaja")
+    : `Varjovaltuutettu (${lens.charAt(0).toUpperCase() + lens.slice(1)})`;
+
+  const displayCommittee = lens === "national"
+    ? (user.committee_assignment || "Suuri valiokunta")
+    : `${lens.charAt(0).toUpperCase() + lens.slice(1)}n kaupunginvaltuusto`;
 
   return (
     <motion.div 
@@ -113,18 +122,20 @@ export default function ShadowIDCard({ user }: ShadowIDCardProps) {
             {user.full_name || "Nimetön"}
           </h3>
           <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">
-            {isLocked ? "Jonossa (Odottaa profiilia)" : (user.rank_title || "Varjokansanedustaja")}
+            {isLocked ? "Jonossa (Odottaa profiilia)" : displayRank}
           </p>
         </div>
 
         {/* Assignment & Stats */}
         <div className="w-full space-y-4 pt-4 border-t border-white/5">
           <div className="space-y-1 text-left">
-            <p className="text-[8px] font-black uppercase text-slate-600 tracking-widest">Valiokunta</p>
+            <p className="text-[8px] font-black uppercase text-slate-600 tracking-widest">
+              {lens === "national" ? "Valiokunta" : "Toimielin"}
+            </p>
             <div className="flex items-center gap-2">
-              <Briefcase size={12} className="text-slate-400" />
+              {lens === "national" ? <Briefcase size={12} className="text-slate-400" /> : <MapPin size={12} className="text-slate-400" />}
               <p className="text-[10px] font-bold text-slate-300 uppercase truncate">
-                {user.committee_assignment || "Suuri valiokunta"}
+                {displayCommittee}
               </p>
             </div>
           </div>

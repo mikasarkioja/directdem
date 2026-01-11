@@ -21,6 +21,15 @@ interface MP {
 interface Bill {
   bill_id: string;
   title: string;
+  analysis_data?: any;
+}
+
+interface IntegrityAlert {
+  id: string;
+  mp_id: number;
+  category: string;
+  reasoning: string;
+  severity: string;
 }
 
 export default function ArenaDuelPage() {
@@ -28,6 +37,7 @@ export default function ArenaDuelPage() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [selectedChallenger, setSelectedChallenger] = useState<MP | null>(null);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const [alerts, setAlerts] = useState<IntegrityAlert[]>([]);
   const [isDuelActive, setIsDuelActive] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -109,8 +119,18 @@ export default function ArenaDuelPage() {
     setTensionLevel(level);
   }, [messages]);
 
-  const startDuel = () => {
+  const startDuel = async () => {
     if (!selectedChallenger || !selectedBill) return;
+    
+    // Hae mahdolliset hälytykset edustajille tästä aiheesta
+    try {
+      const res = await fetch(`/api/arena/alerts?billId=${selectedBill.bill_id}&mps=${championId},${selectedChallenger.id}`);
+      const data = await res.json();
+      setAlerts(data || []);
+    } catch (e) {
+      console.error("Failed to fetch alerts:", e);
+    }
+
     setIsDuelActive(true);
     setMessages([]);
     append({ 
@@ -293,35 +313,89 @@ export default function ArenaDuelPage() {
             </div>
           ) : (
             /* Active Duel UI */
-            <div className="space-y-8 max-w-4xl mx-auto">
-              {/* VS Bar */}
-              <div className="grid grid-cols-3 items-center gap-4 bg-slate-900/50 p-6 rounded-[3rem] border border-white/5 backdrop-blur-md">
-                <div className="text-center space-y-2">
-                  <div className="w-16 h-16 bg-slate-800 rounded-full mx-auto flex items-center justify-center border-2 border-yellow-500 shadow-lg shadow-yellow-500/10">
-                    <User size={32} className="text-slate-400" />
-                  </div>
-                  <p className="text-[10px] font-black uppercase truncate">{championName}</p>
-                </div>
+            <div className="space-y-8 max-w-5xl mx-auto">
+              {/* Duel Header & Live Insights */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 
-                <div className="text-center">
-                  <div className="inline-flex p-3 bg-orange-500 text-white rounded-2xl shadow-xl shadow-orange-500/20 font-black italic text-xl">VS</div>
-                  <div className="mt-4 space-y-1">
-                    <p className="text-[8px] font-black uppercase text-slate-500 tracking-widest uppercase">Ideologinen Jännite</p>
-                    <div className="h-1.5 w-32 bg-white/5 rounded-full mx-auto overflow-hidden border border-white/5">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${tensionLevel}%` }}
-                        className={`h-full ${tensionLevel > 70 ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : (tensionLevel > 40 ? 'bg-orange-500' : 'bg-emerald-500')}`}
-                      />
+                {/* Left/Main: VS Bar */}
+                <div className="lg:col-span-2 space-y-8">
+                  <div className="grid grid-cols-3 items-center gap-4 bg-slate-900/50 p-8 rounded-[3rem] border border-white/5 backdrop-blur-md">
+                    <div className="text-center space-y-3">
+                      <div className="w-20 h-20 bg-slate-800 rounded-full mx-auto flex items-center justify-center border-2 border-yellow-500 shadow-lg shadow-yellow-500/10">
+                        <User size={40} className="text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-white truncate">{championName}</p>
+                        <p className="text-[8px] font-bold uppercase text-yellow-500/70">{championParty}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center">
+                      <div className="inline-flex p-4 bg-orange-500 text-white rounded-2xl shadow-xl shadow-orange-500/20 font-black italic text-2xl">VS</div>
+                      <div className="mt-6 space-y-2">
+                        <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Ideologinen Jännite</p>
+                        <div className="h-2 w-32 bg-white/5 rounded-full mx-auto overflow-hidden border border-white/5">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${tensionLevel}%` }}
+                            className={`h-full transition-all duration-500 ${tensionLevel > 70 ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.6)]' : (tensionLevel > 40 ? 'bg-orange-500' : 'bg-emerald-500')}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-center space-y-3">
+                      <div className="w-20 h-20 bg-slate-800 rounded-full mx-auto flex items-center justify-center border-2 border-orange-500 shadow-lg shadow-orange-500/10">
+                        <User size={40} className="text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-white truncate">{selectedChallenger?.first_name} {selectedChallenger?.last_name}</p>
+                        <p className="text-[8px] font-bold uppercase text-orange-500/70">{selectedChallenger?.party}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-center space-y-2">
-                  <div className="w-16 h-16 bg-slate-800 rounded-full mx-auto flex items-center justify-center border-2 border-orange-500 shadow-lg shadow-orange-500/10">
-                    <User size={32} className="text-slate-400" />
+                {/* Right: Live Insights (Hotspots & Alerts) */}
+                <div className="bg-slate-900/80 border border-white/5 rounded-[2.5rem] p-6 space-y-6 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 text-rose-400">
+                    <Flame size={18} fill="currentColor" />
+                    <h3 className="text-[10px] font-black uppercase tracking-widest">Live-analyysi</h3>
                   </div>
-                  <p className="text-[10px] font-black uppercase truncate">{selectedChallenger?.first_name} {selectedChallenger?.last_name}</p>
+
+                  {/* Hotspots */}
+                  <div className="space-y-3">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Lain Hotspotit</p>
+                    <div className="space-y-2">
+                      {((selectedBill?.analysis_data as any)?.hotspots || (selectedBill?.analysis_data as any)?.controversy_hotspots || ["Rahoitusmalli", "Vaikutukset pienituloisiin"]).slice(0, 3).map((h: any, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-[10px] font-bold text-slate-300 bg-white/5 p-2 rounded-xl">
+                          <AlertCircle size={12} className="text-orange-500" />
+                          {typeof h === 'string' ? h : h.topic}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Integrity Alerts */}
+                  <div className="space-y-3 pt-2">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Takinkääntö-hälytykset</p>
+                    <div className="space-y-2">
+                      {alerts.length > 0 ? alerts.map((a, i) => (
+                        <div key={i} className="bg-rose-500/10 border border-rose-500/20 p-2 rounded-xl space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[8px] font-black text-rose-400 uppercase">{a.category}</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                          </div>
+                          <p className="text-[9px] text-slate-400 leading-tight italic">"{a.reasoning.substring(0, 50)}..."</p>
+                        </div>
+                      )) : (
+                        <div className="flex items-center gap-2 text-[9px] font-bold text-emerald-500/70 py-2">
+                          <ShieldCheck size={14} />
+                          Ei havaittuja ristiriitoja
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 

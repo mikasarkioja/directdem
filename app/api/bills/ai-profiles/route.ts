@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("bill_enhanced_profiles")
-    .select("bill_id, title")
+    .select("bill_id, title, analysis_data")
     .order("created_at", { ascending: false })
     .limit(20);
 

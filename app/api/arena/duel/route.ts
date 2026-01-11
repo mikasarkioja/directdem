@@ -70,21 +70,38 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: "Yksi tai molemmat edustajien AI-profiileista puuttuu." }), { status: 404 });
   }
 
-  // 2. Fetch Bill Profile
-  const { data: billProfile } = await supabase
-    .from("bill_enhanced_profiles")
-    .select("*")
-    .eq("bill_id", billId)
-    .single();
+  // 2. Fetch Bill Profile & Integrity Alerts (Takinkääntö-data)
+  const [{ data: billProfile }, { data: alerts }] = await Promise.all([
+    supabase
+      .from("bill_enhanced_profiles")
+      .select("*")
+      .eq("bill_id", billId)
+      .single(),
+    supabase
+      .from("integrity_alerts")
+      .select("*")
+      .eq("event_id", billId)
+      .in("mp_id", [champIdNum, challIdNum])
+  ]);
+
+  const champAlerts = alerts?.filter(a => a.mp_id === champIdNum) || [];
+  const challAlerts = alerts?.filter(a => a.mp_id === challIdNum) || [];
 
   const billContext = billProfile ? `
     VÄITTELYN AIHE (LAKI):
     - Otsikko: ${billProfile.title}
-    - Hotspotit: ${JSON.stringify((billProfile.analysis_data as any).hotspots)}
-    - Voittajat: ${JSON.stringify((billProfile.analysis_data as any).winners)}
-    - Häviäjät: ${JSON.stringify((billProfile.analysis_data as any).losers)}
+    - Hotspotit (Kiistanalaiset kohdat): ${JSON.stringify((billProfile.analysis_data as any).hotspots || (billProfile.analysis_data as any).controversy_hotspots)}
+    - Voittajat: ${JSON.stringify((billProfile.analysis_data as any).winners || (billProfile.analysis_data as any).social_equity?.winners)}
+    - Häviäjät: ${JSON.stringify((billProfile.analysis_data as any).losers || (billProfile.analysis_data as any).social_equity?.losers)}
     - Kitka-ennuste: ${(billProfile.forecast_metrics as any).friction_index}/100
+    - Taloudellinen vaikutus: ${JSON.stringify((billProfile.analysis_data as any).economic_impact || (billProfile.analysis_data as any).economic_impact)}
   ` : "Yleinen poliittinen linjaus.";
+
+  const alertsContext = `
+    TAKINKÄÄNTÖ-HÄLYTYKSET (AMMO):
+    ${champName} (${champParty}): ${champAlerts.map(a => `- ${a.category}: ${a.reasoning} (Vakavuus: ${a.severity})`).join("\n") || "Ei tunnettuja ristiriitoja tässä esityksessä."}
+    ${challName} (${challParty}): ${challAlerts.map(a => `- ${a.category}: ${a.reasoning} (Vakavuus: ${a.severity})`).join("\n") || "Ei tunnettuja ristiriitoja tässä esityksessä."}
+  `;
 
   // 3. Conflict Analysis between the two MPs
   const getDna = (mp: any) => {
@@ -143,14 +160,16 @@ export async function POST(req: Request) {
     KONTEKSTI (LAKI):
     ${billContext}
     
+    ${alertsContext}
+    
     IDEOLOGINEN JÄNNITE: ${distance.toFixed(2)} / 5.0 -> Provokaatio-taso: ${provocationLevel}.
     
-    VÄITTELYN SÄÄNNÖT JA AGENTTI-KETJU:
-    1. Jos viestihistoria on tyhjä (aloitus), kirjoita CHAMPIONIN (Hjalliksen) kärkkäin avausväite.
-    2. Jos edellinen puhuja oli CHAMPION, kirjoita CHALLENGERIN vastaus. CHALLENGERIN on käytettävä faktoja tai aiempia lupauksiaan.
-    3. Jos edellinen puhuja oli CHALLENGER, kirjoita CHAMPIONIN kuitti.
-    4. RISTIINVIITTAUS (SPICY): Etsi edustajan vastapuolen argumenteista ristiriitoja hänen äänestyshistoriaansa tai DNA-profiiliinsa nähden. Jos löydät takinkäännön, HYÖKKÄÄ sitä vastaan.
-    5. PUOLUSTUSLOGIIKKA: Jos edustaja jää kiinni epäjohdonmukaisuudesta, käytä "Puoluekuri-korttia" tai "Reaalipolitiikka-korttia" (esim. "Teimme kompromissin hallituksessa").
+    VÄITTELYN SÄÄNNÖT JA AGENTTI-KETJU (DUEL MODE 2.0):
+    1. PROAKTIIVINEN HYÖKKÄYS: Etsi vastustajan "TAKINKÄÄNTÖ-HÄLYTYKSET" ja käytä niitä välittömästi. Jos vastustaja äänestää vastoin lupauksiaan, MP [X] (Hjallis tai haastaja) on huomautettava siitä kärkkäästi.
+    2. HOTSPOT-HYÖDYNTÄMINEN: Käytä LAIN HOTSPOT-kohtia väittelyn kärkenä. Esim. "Tämä laki leikkaa eläkeläisiltä, vaikka sä lupasit vappusatasen!"
+    3. HJALLIS-TYYLI: Jos Agentti A on Hjallis, hänen on oltava erityisen epäsovinnainen, kyseenalaistettava koko nykyinen poliittinen järjestelmä ja käytettävä "suoraa puhetta" ilman turhia kaunisteluja.
+    4. VASTAUSLOGIIKKA: Jos edellinen puhuja oli Agentti A, kirjoita Agentti B:n vastaus. Jos edellinen puhuja oli Agentti B, kirjoita Agentti A:n kuitti.
+    5. DATA-VIITTEET: Jokaiseen puheenvuoroon on sisällyttävä vähintään yksi viittaus joko MP:n äänestyshistoriaan, lupaukseen tai lain Hotspottiin.
     
     FORMATOINTI:
     - Aloita viesti: [SPEAKER: CHAMPION|CHALLENGER]

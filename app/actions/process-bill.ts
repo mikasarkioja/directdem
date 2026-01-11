@@ -42,7 +42,7 @@ async function processBillToSelkokieliInternal(
     // 1. Check if bill exists and if summary already exists
     const { data: bill, error: billError } = await supabase
       .from("bills")
-      .select("id, parliament_id, raw_text, summary")
+      .select("id, parliament_id, raw_text, summary, title")
       .eq("id", billId)
       .single();
     

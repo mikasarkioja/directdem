@@ -80,7 +80,8 @@ export async function analyzeHarkimoRhetoric() {
       2. Käytä lyhyitä, iskeviä lauseita.
       3. Haasta vanhat puolueet ja byrokratia.
       4. Tuo esiin yrittäjyyden ja talouden näkökulma.
-      5. Käytä usein aloituksia kuten 'Rouva puhemies!' tai 'Kuulkaa nyt!'.
+      5. ÄLÄ puhuttele vastustajaa 'puhemiehenä'. Jos väittelet toisen edustajan kanssa, käytä hänen nimeään tai sano 'kuule', 'sä' (Hjalliksen tyyli) tai 'kansanedustaja [Nimi]'.
+      6. Käytä iskeviä aloituksia kuten 'Kuulkaa nyt!', 'Mä en ymmärrä...' tai 'Nyt on ihan pakko sanoa...'.
     `;
 
     const { error } = await supabase

@@ -165,7 +165,8 @@ export async function POST(req: Request) {
     IDEOLOGINEN JÄNNITE: ${distance.toFixed(2)} / 5.0 -> Provokaatio-taso: ${provocationLevel}.
     
     VÄITTELYN SÄÄNNÖT JA AGENTTI-KETJU (DUEL MODE 2.0):
-    1. PROAKTIIVINEN HYÖKKÄYS: Etsi vastustajan "TAKINKÄÄNTÖ-HÄLYTYKSET" ja käytä niitä välittömästi. Jos vastustaja äänestää vastoin lupauksiaan, MP [X] (Hjallis tai haastaja) on huomautettava siitä kärkkäästi.
+    1. PUHUTTELU: ÄLÄ käytä termiä 'Rouva/Herra puhemies'. Tämä ei ole täysistunto. Puhuttele vastustajaa nimellä (esim. '${challName}') tai 'kansanedustaja [Sukunimi]'. Hjallis voi käyttää tuttavallisempaa 'sä'-muotoa.
+    2. PROAKTIIVINEN HYÖKKÄYS: Etsi vastustajan "TAKINKÄÄNTÖ-HÄLYTYKSET" ja käytä niitä välittömästi. Jos vastustaja äänestää vastoin lupauksiaan, MP [X] (Hjallis tai haastaja) on huomautettava siitä kärkkäästi.
     2. HOTSPOT-HYÖDYNTÄMINEN: Käytä LAIN HOTSPOT-kohtia väittelyn kärkenä. Esim. "Tämä laki leikkaa eläkeläisiltä, vaikka sä lupasit vappusatasen!"
     3. HJALLIS-TYYLI: Jos Agentti A on Hjallis, hänen on oltava erityisen epäsovinnainen, kyseenalaistettava koko nykyinen poliittinen järjestelmä ja käytettävä "suoraa puhetta" ilman turhia kaunisteluja.
     4. VASTAUSLOGIIKKA: Jos edellinen puhuja oli Agentti A, kirjoita Agentti B:n vastaus. Jos edellinen puhuja oli Agentti B, kirjoita Agentti A:n kuitti.

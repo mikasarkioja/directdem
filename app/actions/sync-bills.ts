@@ -73,7 +73,7 @@ export async function syncBillsFromEduskunta(): Promise<{ success: boolean; coun
         const isRealSummary = data.summary && data.summary.length > 800 && data.summary.includes("###");
         if (!isRealSummary) {
           console.log(`[sync] Käynnistetään automaattinen analyysi lakiesitykselle: ${data.parliament_id}`);
-          processBillToSelkokieli(data.id, false).catch(e => console.error(`Auto-analysis failed for ${data.id}:`, e));
+          processBillToSelkokieli(data.id).catch(e => console.error(`Auto-analysis failed for ${data.id}:`, e));
         }
       }
     }

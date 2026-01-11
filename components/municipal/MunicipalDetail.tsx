@@ -12,22 +12,29 @@ import {
   Info, 
   CheckCircle2, 
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Wind
 } from "lucide-react";
 import ExpertSummary from "../committee/ExpertSummary";
 import { generateMunicipalAiSummary, startDeepAnalysis, fetchEnhancedMunicipalProfile } from "@/app/actions/municipal-ai";
 import toast from "react-hot-toast";
+import LocalWeather from "../dashboard/LocalWeather";
+import { UserProfile, LensMode } from "@/lib/types";
 
 interface MunicipalDetailProps {
   item: any;
   onClose: () => void;
+  user?: UserProfile | null;
 }
 
-export default function MunicipalDetail({ item, onClose }: MunicipalDetailProps) {
+export default function MunicipalDetail({ item, onClose, user }: MunicipalDetailProps) {
   const [localItem, setLocalItem] = useState(item);
   const [enhancedData, setEnhancedData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [deepLoading, setDeepLoading] = useState(false);
+
+  // Määritetään linssitila kaupungin nimen perusteella
+  const lensMode: LensMode = (item.municipality?.toLowerCase() || "national") as LensMode;
 
   useEffect(() => {
     async function loadEnhanced() {
@@ -111,7 +118,7 @@ export default function MunicipalDetail({ item, onClose }: MunicipalDetailProps)
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.2em]">{localItem.municipality}</p>
                 <span className="w-1 h-1 rounded-full bg-slate-700" />
-                <p className="text-blue-500 text-[9px] font-black uppercase tracking-[0.2em]">Kuntavahti</p>
+                <p className="text-blue-500 text-[9px] font-black uppercase tracking-[0.2em]">City Lens Active</p>
               </div>
             </div>
           </div>
@@ -121,6 +128,22 @@ export default function MunicipalDetail({ item, onClose }: MunicipalDetailProps)
         </div>
 
         <div className="p-6 md:p-12 space-y-12">
+          {/* City Lens Context Sector */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {user && (
+              <LocalWeather lens={lensMode} user={user} />
+            )}
+            <div className="bg-blue-600/5 border border-blue-500/20 rounded-[2rem] p-6 flex flex-col justify-center space-y-3 shadow-inner">
+              <div className="flex items-center gap-2 text-blue-400">
+                <Wind size={18} />
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400">City Lens Analyysi</h3>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Tämä näkymä on optimoitu kaupungin <span className="text-blue-400 font-bold">{localItem.municipality}</span> päätöksenteon seurantaan. City Lens suodattaa datasta juuri sinun DNA-profiiliisi vaikuttavat paikalliset tekijät.
+              </p>
+            </div>
+          </div>
+
           {/* Friction Index */}
           {(localItem.ai_summary?.friction_index !== undefined || localItem.friction_index !== undefined) && (
             <div className="flex items-center gap-6 p-8 bg-white/5 rounded-[2.5rem] border border-white/5 shadow-inner">

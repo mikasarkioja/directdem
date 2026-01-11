@@ -284,7 +284,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
               <DailyMunicipalQuestion />
 
               {activeView === "kuntavahti" ? (
-                <MunicipalWatchFeed />
+                <MunicipalWatchFeed user={mergedUser} />
               ) : lens === "national" ? (
                 <>
                   <div className="flex justify-between items-end">
@@ -355,6 +355,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                       <MunicipalDetail 
                         item={selectedMunicipalTask} 
                         onClose={() => setSelectedMunicipalTask(null)} 
+                        user={mergedUser}
                       />
                     )}
                   </AnimatePresence>

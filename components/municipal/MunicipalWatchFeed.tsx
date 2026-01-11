@@ -22,7 +22,13 @@ import {
 } from "lucide-react";
 import MunicipalDetail from "./MunicipalDetail";
 
-export default function MunicipalWatchFeed() {
+import { UserProfile } from "@/lib/types";
+
+interface MunicipalWatchFeedProps {
+  user?: UserProfile | null;
+}
+
+export default function MunicipalWatchFeed({ user }: MunicipalWatchFeedProps) {
   const [items, setItems] = useState<MunicipalWatchItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("Kaikki");
@@ -99,6 +105,7 @@ export default function MunicipalWatchFeed() {
             <MunicipalDetail 
               item={selectedItem} 
               onClose={() => setSelectedItem(null)} 
+              user={user}
             />
           )}
         </AnimatePresence>
@@ -230,7 +237,7 @@ export default function MunicipalWatchFeed() {
               </div>
             </motion.div>
           ))}
-        </AnimatePresence>
+        </div>
 
         {filteredItems.length === 0 && (
           <div className="text-center py-20 bg-slate-900/30 border border-dashed border-white/5 rounded-[3rem]">

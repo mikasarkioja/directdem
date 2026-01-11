@@ -1,4 +1,4 @@
-# DirectDem - System Blueprint v3.2
+# DirectDem - System Blueprint v3.5 (Jan 11, 2026)
 
 Tämä dokumentti sisältää DirectDem-alustan täydellisen arkkitehtuurikuvauksen, logiikan ja tietokantarakenteen. Tämän dokumentin avulla Cursor (tai muu AI) voi rakentaa koko sovelluksen uudelleen alusta alkaen.
 
@@ -24,17 +24,20 @@ Tämä dokumentti sisältää DirectDem-alustan täydellisen arkkitehtuurikuvauk
 ### Profiles & Auth
 - **profiles**: `id (uuid, PK)`, `full_name`, `email`, `is_verified`, `vaalipiiri`, `municipality`, `xp`, `level`, `impact_points`, `economic_score`, `liberal_conservative_score`, `environmental_score`, `urban_rural_score`, `international_national_score`, `security_score`, `initialized_from_mp`, `public_stance (bool)`, `trust_score`.
 - **user_profile_history**: `id`, `user_id`, `scores_json`, `archetype`, `timestamp`.
-- **user_profiles**: `id`, `shadow_id_number`, `committee_assignment`, `impact_points`.
+- **user_profiles**: `id`, `shadow_id_number`, `committee_assignment`, `impact_points`, `active_role`.
 
 ### Legislative Data
 - **bills**: `id (uuid, PK)`, `parliament_id`, `title`, `summary`, `status`, `published_date`, `processing_date`, `url`, `category`.
+- **bill_enhanced_profiles**: `bill_id (FK)`, `title`, `analysis_data (jsonb: hotspots, winners, losers)`, `forecast_metrics (jsonb: friction_index)`.
 - **bill_forecasts**: `bill_id`, `predicted_ayes`, `predicted_noes`, `weather_type`, `potential_rebels (jsonb)`.
-- **integrity_alerts**: `mp_id`, `event_id`, `category`, `promise_value`, `vote_type`, `severity`.
+- **integrity_alerts**: `mp_id`, `event_id`, `category`, `promise_value`, `vote_type`, `severity`, `reasoning`.
 
 ### Eduskunta Mass Data
 - **mps**: `id (personId)`, `first_name`, `last_name`, `party`, `is_active`.
+- **mp_ai_profiles**: `mp_id (FK)`, `system_prompt`, `voting_summary`, `rhetoric_style (jsonb)`, `updated_at`.
+- **mp_activity_stream**: `id`, `mp_id`, `activity_type (speech/question)`, `content_summary`, `date`, `metadata (jsonb)`.
 - **mp_candidate_responses**: `mp_id`, `question_id`, `answer_value (1-5)`.
-- **mp_profiles**: `mp_id`, `economic_score`, `liberal_conservative_score`, `environmental_score`, `urban_rural_score`, `international_national_score`, `security_score`, `total_votes_analyzed`.
+- **mp_profiles**: `mp_id`, `economic_score`, `liberal_conservative_score`, `environmental_score`, `urban_rural_score`, `international_national_score`, `security_score`, `total_votes_analyzed`, `activity_index`.
 - **party_rankings**: `party_name (unique)`, `cohesion_score`, `polarization_score`, `polarization_vector`, `pivot_score`, `activity_score`, `mp_count`, `topic_ownership`, `top_category`.
 
 ---

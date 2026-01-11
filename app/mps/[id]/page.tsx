@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { getRecentlyMetOrganizations } from "@/lib/eduskunta/activity-engine";
 
-export default async function MPProfilePage({ params }: { params: { id: string } }) {
+export default async function MPProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 

@@ -296,4 +296,13 @@ export interface UserImpactCitation {
   created_at: string;
 }
 
+export interface PulseQuestion {
+  id: string;
+  question: string;
+  municipality?: string;
+  category: "Talous" | "Arvot" | "Ympäristö" | "Aluepolitiikka" | "Kansainvälisyys" | "Turvallisuus";
+  context: "national" | "municipal";
+  impact_vector: Record<string, number>; // e.g. { economic_score: 0.1 }
+}
+
 

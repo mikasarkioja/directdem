@@ -24,7 +24,7 @@ import ShadowIDCard from "@/components/auth/ShadowIDCard";
 import ExpertSummary from "@/components/committee/ExpertSummary";
 import DNAActivation from "@/components/dashboard/DNAActivation";
 import MunicipalWatchFeed from "@/components/municipal/MunicipalWatchFeed";
-import DailyMunicipalQuestion from "@/components/municipal/DailyMunicipalQuestion";
+import QuickPulse from "@/components/dashboard/QuickPulse";
 import LensSwitcher from "@/components/dashboard/LensSwitcher";
 import LocalWeather from "@/components/dashboard/LocalWeather";
 import MunicipalDetail from "@/components/municipal/MunicipalDetail";
@@ -280,8 +280,8 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
             <DNAActivation />
           ) : (
             <>
-              {/* Päivän Kuntakysymys - Always visible for DNA-activated users */}
-              <DailyMunicipalQuestion />
+              {/* Päivän Pulse - Always visible for DNA-activated users */}
+              <QuickPulse lens={lens} />
 
               {activeView === "kuntavahti" ? (
                 <MunicipalWatchFeed user={mergedUser} />

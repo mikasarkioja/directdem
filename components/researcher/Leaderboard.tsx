@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy, ArrowUpRight, Target, FileText } from "lucide-react";
+import { Trophy, ArrowUpRight, Target, FileText, Users } from "lucide-react";
 import { LobbyistStats } from "@/lib/researcher/influence-stats";
 
 interface LeaderboardProps {

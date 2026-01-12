@@ -31,7 +31,7 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
       // Try to fetch from Supabase first
       const { data: billsData, error } = await supabase
         .from("bills")
-        .select("*")
+        .select("id, title, summary, parliament_id, status, category, published_date, url")
         .order("published_date", { ascending: false })
         .limit(50);
 

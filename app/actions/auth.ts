@@ -20,8 +20,15 @@ export const getUser = cache(async (): Promise<UserProfile | null> => {
       if (guestId) {
         console.log("[getUser] Ghost user detected:", guestId);
         
-        // Haetaan mahdolliset eväste-asetukset (rooli)
+        // Haetaan mahdolliset eväste-asetukset (rooli ja tutkija)
         const guestRole = cookieStore.get("guest_active_role")?.value as any;
+        const researcherInitialized = cookieStore.get("researcher_initialized")?.value === "true";
+        const researcherType = cookieStore.get("researcher_type")?.value;
+        const researcherFocusJson = cookieStore.get("researcher_focus")?.value;
+        let researcherFocus = [];
+        try {
+          researcherFocus = researcherFocusJson ? JSON.parse(researcherFocusJson) : [];
+        } catch (e) {}
 
         // Haetaan profiili jos se on tietokannassa
         const { data: profile } = await supabase
@@ -64,6 +71,9 @@ export const getUser = cache(async (): Promise<UserProfile | null> => {
           international_national_score: guestDna?.international_national_score ?? profile?.international_national_score ?? 0,
           security_score: guestDna?.security_score ?? profile?.security_score ?? 0,
           trust_score: profile?.trust_score ?? 10,
+          researcher_initialized: researcherInitialized,
+          researcher_type: researcherType,
+          researcher_focus: researcherFocus,
         };
       }
       return null;

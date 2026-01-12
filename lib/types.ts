@@ -88,6 +88,9 @@ export interface UserProfile {
   is_admin?: boolean;
   is_guest?: boolean;
   active_role?: 'citizen' | 'shadow_mp' | 'researcher';
+  researcher_type?: 'academic' | 'journalist' | 'policy_expert' | 'strategist';
+  researcher_focus?: string[];
+  researcher_initialized?: boolean;
   current_archetype?: string;
   dna_level?: number;
   impact_points?: number;

@@ -19,7 +19,12 @@ export async function getUserProfile() {
     .single();
 
   if (error && error.code !== "PGRST116") {
-    // Jos on kyseessä Ghost-käyttäjä, palautetaan mockattu profiili jos DB-haku epäonnistuu
+    console.error("Error fetching user profile:", error);
+    return null;
+  }
+
+  // Jos profiilia ei löydy TAI kyseessä on Ghost-käyttäjä, varmistetaan palautus
+  if (!data || user.is_guest) {
     if (user.is_guest) {
       const { committee, rankTitle } = assignToCommittee(user);
       return {
@@ -29,11 +34,13 @@ export async function getUserProfile() {
         rank_title: rankTitle,
         impact_points: user.impact_points || 0,
         active_role: user.active_role || 'citizen',
+        researcher_initialized: (user as any).researcher_initialized || false,
+        researcher_type: (user as any).researcher_type,
+        researcher_focus: (user as any).researcher_focus,
         is_guest: true
       };
     }
-    console.error("Error fetching user profile:", error);
-    return null;
+    return data; // voi olla null jos ei guest eikä löytynyt
   }
 
   return data;
@@ -154,5 +161,37 @@ export async function switchUserRole(role: 'citizen' | 'shadow_mp' | 'researcher
   } catch (error: any) {
     console.error("Critical error in switchUserRole:", error);
     return { success: false, error: error?.message || "Tuntematon virhe" };
+  }
+}
+
+export async function initializeResearcherProfile(data: { type: string; focus: string[] }) {
+  try {
+    const user = await getUser();
+    if (!user) throw new Error("Ei käyttäjää");
+
+    const cookieStore = await cookies();
+    cookieStore.set("researcher_initialized", "true", { maxAge: 60 * 60 * 24 * 30, path: "/" });
+    cookieStore.set("researcher_type", data.type, { maxAge: 60 * 60 * 24 * 30, path: "/" });
+    cookieStore.set("researcher_focus", JSON.stringify(data.focus), { maxAge: 60 * 60 * 24 * 30, path: "/" });
+
+    if (!user.is_guest) {
+      const adminClient = await createAdminClient();
+      await adminClient
+        .from("user_profiles")
+        .upsert({ 
+          id: user.id,
+          researcher_initialized: true,
+          researcher_type: data.type,
+          researcher_focus: data.focus,
+          active_role: 'researcher',
+          updated_at: new Date().toISOString()
+        });
+    }
+
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to initialize researcher profile", error);
+    return { success: false };
   }
 }

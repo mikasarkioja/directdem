@@ -84,7 +84,7 @@ export async function scrapeHelsinkiAhjo() {
   console.log("🕵️ Käynnistetään syvä Helsinki Ahjo -integraatio...");
   
   try {
-    const issues = await fetchLatestHelsinkiIssues(15);
+    const issues = await fetchLatestHelsinkiIssues(60);
     
     for (const issue of issues) {
       const supabase = getSupabase();
@@ -144,7 +144,7 @@ export async function scrapeVantaaRSS() {
   console.log("🕵️ Käynnistetään Vantaa RSS -integraatio...");
   
   try {
-    const issues = await fetchLatestVantaaIssues(15);
+    const issues = await fetchLatestVantaaIssues(60);
     
     for (const issue of issues) {
       const supabase = getSupabase();
@@ -340,11 +340,15 @@ export async function import2025BaseProfiles() {
   const rawData = fs.readFileSync(filePath, "utf-8");
   const candidates = JSON.parse(rawData);
 
+  console.log(`📊 Löydetty yhteensä ${candidates.length} ehdokasta tiedostosta.`);
+  let processedCount = 0;
+
   for (const candidate of candidates) {
     // Suodatetaan vain Espoo, Helsinki, Vantaa
     if (!["Espoo", "Helsinki", "Vantaa"].includes(candidate.municipality)) continue;
 
-    console.log(`👤 Käsitellään: ${candidate.full_name} (${candidate.municipality})`);
+    processedCount++;
+    console.log(`👤 [${processedCount}/${candidates.length}] Käsitellään: ${candidate.full_name} (${candidate.municipality})`);
 
     try {
       // Luodaan alkutilan DNA-sormenjälki tekoälyllä lupausten perusteella
@@ -380,8 +384,12 @@ export async function import2025BaseProfiles() {
         }, { onConflict: 'full_name,municipality' });
 
       if (error) console.error(`❌ Virhe tallennettaessa valtuutettua ${candidate.full_name}:`, error.message);
+      
+      // Pieni viive AI-kutsujen välillä rate-limitien välttämiseksi
+      await new Promise(r => setTimeout(r, 500));
     } catch (err: any) {
       console.error(`⚠️ Virhe ehdokkaan ${candidate.full_name} prosessoinnissa:`, err.message);
     }
   }
+  console.log(`✅ [PROFILOINTI VALMIS] Prosessoitu ${processedCount} valtuutettua.`);
 }

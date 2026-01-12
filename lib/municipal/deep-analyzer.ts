@@ -10,10 +10,21 @@ import { revalidatePath } from "next/cache";
  * Louhii syväanalyysin kuntien päätöksistä liitteineen.
  */
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    // Jos ollaan script-ympäristössä, yritetään ladata .env.local
+    const dotenv = require("dotenv");
+    dotenv.config({ path: ".env.local" });
+  }
+
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 /**
  * 1. Liitteiden lukija (PDF/HTML Scraper)
@@ -130,6 +141,7 @@ export async function performDeepAnalysis(item: {
 
     // 4. Tallennus bill_enhanced_profiles -tauluun
     const enhancedId = `MUNI-${item.municipality.toUpperCase()}-${item.id}`;
+    const supabase = getSupabase();
     const { error: upsertError } = await supabase
       .from("bill_enhanced_profiles")
       .upsert({
@@ -164,6 +176,7 @@ export async function performDeepAnalysis(item: {
  */
 async function detectDeepFlips(itemId: string, municipality: string, analysis: any) {
   // Haetaan valtuutetut
+  const supabase = getSupabase();
   const { data: councilors } = await supabase
     .from("councilors")
     .select("*")

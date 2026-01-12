@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getUserProfile, createUserProfile, addImpactPoints } from "@/app/actions/user-profiles";
+import { getUserProfile, createUserProfile, addImpactPoints, initializeResearcherProfile } from "@/app/actions/user-profiles";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
 import { UserProfile, Bill } from "@/lib/types";
 import { 
@@ -16,13 +16,16 @@ import {
   Newspaper,
   Bell,
   Home,
-  LayoutGrid
+  LayoutGrid,
+  Terminal,
+  Activity
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import ShadowIDCard from "@/components/auth/ShadowIDCard";
 import ExpertSummary from "@/components/committee/ExpertSummary";
 import DNAActivation from "@/components/dashboard/DNAActivation";
+import ResearcherProfiling from "@/components/researcher/ResearcherProfiling";
 import MunicipalWatchFeed from "@/components/municipal/MunicipalWatchFeed";
 import QuickPulse from "@/components/dashboard/QuickPulse";
 import LensSwitcher from "@/components/dashboard/LensSwitcher";
@@ -42,7 +45,7 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ initialUser }: DashboardClientProps) {
   const searchParams = useSearchParams();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(initialUser);
   const [bills, setBills] = useState<Bill[]>([]);
   const [municipalTasks, setMunicipalTasks] = useState<any[]>([]);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
@@ -56,6 +59,10 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
     const view = searchParams.get("view");
     if (view === "kuntavahti") {
       setActiveView("kuntavahti");
+    } else if (view === "researcher") {
+      setActiveView("researcher");
+    } else if (view === "economy") {
+      setActiveView("economy");
     } else {
       setActiveView("committee");
     }
@@ -68,15 +75,22 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
 
   useEffect(() => {
     async function loadData() {
+      // Jos meillä on jo profiili ja olemme tutkijanäkymässä, ja profiili on alustettu,
+      // voimme ohittaa latauksen jos data on jo olemassa.
+      if (profile?.researcher_initialized && activeView === "researcher" && profile.id === initialUser?.id) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const profileData = await getUserProfile();
         setProfile(profileData);
 
-        if (lens === "national") {
+        if (lens === "national" && activeView !== "researcher") {
           const billsData = await fetchBillsFromSupabase();
           setBills(billsData);
-        } else {
+        } else if (lens !== "national") {
           // Map lens to municipality name for query
           const muniName = lens.charAt(0).toUpperCase() + lens.slice(1);
           const tasks = await fetchMunicipalDecisions(muniName);
@@ -94,7 +108,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
     } else {
       setLoading(false);
     }
-  }, [initialUser, lens]);
+  }, [initialUser, lens, activeView]);
 
   const handleCreateProfile = async () => {
     setCreating(true);
@@ -145,6 +159,28 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
     }
   };
 
+  const handleResearcherProfileComplete = async (data: { type: string; focus: string[] }) => {
+    try {
+      const res = await initializeResearcherProfile(data);
+      if (res.success) {
+        // Päivitetään paikallinen tila välittömästi, jotta UI ei hyppää takaisin
+        setProfile((prev: any) => ({
+          ...(prev || {}),
+          researcher_initialized: true,
+          researcher_type: data.type,
+          researcher_focus: data.focus
+        }));
+        toast.success("Tutkijaprofiili aktivoitu!");
+        
+        // Annetaan revalidatePathin vaikuttaa ja haetaan tuore data varmuuden vuoksi
+        const freshProfile = await getUserProfile();
+        if (freshProfile) setProfile(freshProfile);
+      }
+    } catch (err) {
+      toast.error("Profilointi epäonnistui.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
@@ -169,7 +205,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
     );
   }
 
-  if (!profile) {
+  if (!profile && activeView !== "researcher") {
     return (
       <div className="max-w-2xl mx-auto mt-20 p-12 bg-slate-900 rounded-[3rem] border border-white/10 text-center space-y-8 shadow-2xl relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-transparent pointer-events-none" />
@@ -198,10 +234,10 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
 
   const mergedUser: UserProfile = {
     ...initialUser,
-    shadow_id_number: profile.shadow_id_number,
-    committee_assignment: profile.committee_assignment,
-    impact_points: profile.impact_points,
-    rank_title: profile.rank_title,
+    shadow_id_number: profile?.shadow_id_number,
+    committee_assignment: profile?.committee_assignment,
+    impact_points: profile?.impact_points ?? initialUser.impact_points,
+    rank_title: profile?.rank_title ?? initialUser.rank_title,
   };
 
   const hasDna = (initialUser?.economic_score !== undefined && initialUser?.economic_score !== 0) || 
@@ -225,24 +261,28 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
           </Link>
         </div>
         <div className="flex items-center bg-white/5 rounded-xl p-1 gap-1">
-          <button 
-            onClick={() => setActiveView("committee")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "committee" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
-          >
-            Työhuone
-          </button>
-          <button 
-            onClick={() => setActiveView("kuntavahti")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "kuntavahti" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
-          >
-            Kuntavahti
-          </button>
-          <button 
-            onClick={() => setActiveView("economy")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "economy" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
-          >
-            Talous
-          </button>
+          {activeView !== "researcher" && (
+            <>
+              <button 
+                onClick={() => setActiveView("committee")}
+                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "committee" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              >
+                Työhuone
+              </button>
+              <button 
+                onClick={() => setActiveView("kuntavahti")}
+                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "kuntavahti" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              >
+                Kuntavahti
+              </button>
+              <button 
+                onClick={() => setActiveView("economy")}
+                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "economy" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              >
+                Talous
+              </button>
+            </>
+          )}
           <button 
             onClick={() => setActiveView("researcher")}
             className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "researcher" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"}`}
@@ -265,41 +305,113 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Sidebar: ID Card & Agenda */}
         <aside className="lg:col-span-3 space-y-8">
-          <ShadowIDCard user={mergedUser} lens={lens} />
-          
-          <LocalWeather lens={lens} user={mergedUser} />
-
-          <div className="bg-slate-900/50 border border-white/5 rounded-[2rem] p-6 space-y-6">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-              <Calendar size={14} className="text-purple-500" />
-              Päivän asialista
-            </h4>
-            <div className="space-y-4">
-              {[
-                { time: "09:00", task: "Valiokunnan istunto" },
-                { time: "12:00", task: "Asiantuntijakuuleminen" },
-                { time: "14:00", task: "Lausunnon valmistelu" }
-              ].map((item, i) => (
-                <div key={i} className="flex gap-4 items-start">
-                  <span className="text-[9px] font-black text-purple-400 w-8">{item.time}</span>
-                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">{item.task}</p>
+          {activeView !== "researcher" ? (
+            <>
+              <ShadowIDCard user={mergedUser} lens={lens} />
+              <LocalWeather lens={lens} user={mergedUser} />
+              <div className="bg-slate-900/50 border border-white/5 rounded-[2rem] p-6 space-y-6">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                  <Calendar size={14} className="text-purple-500" />
+                  Päivän asialista
+                </h4>
+                <div className="space-y-4">
+                  {[
+                    { time: "09:00", task: "Valiokunnan istunto" },
+                    { time: "12:00", task: "Asiantuntijakuuleminen" },
+                    { time: "14:00", task: "Lausunnon valmistelu" }
+                  ].map((item, i) => (
+                    <div key={i} className="flex gap-4 items-start">
+                      <span className="text-[9px] font-black text-purple-400 w-8">{item.time}</span>
+                      <p className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">{item.task}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            </>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-200 rounded-[2rem] p-8 space-y-6 shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5">
+                  <Terminal size={48} className="text-slate-900" />
+                </div>
+                <div className="space-y-1 relative z-10">
+                  <h3 className="text-lg font-black uppercase tracking-tighter text-slate-900 italic">
+                    {profile?.researcher_type ? {
+                      academic: "Academic_Terminal",
+                      journalist: "Journalist_Console",
+                      policy_expert: "Policy_Intelligence",
+                      strategist: "Strategy_Monitor"
+                    }[profile.researcher_type as string] : "Researcher_ID"}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-900" />
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                      {profile?.researcher_type === 'academic' ? 'Verified Academic Account' : 
+                       profile?.researcher_type === 'journalist' ? 'Press Protocol Active' : 'Professional Access'}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4 border-t border-slate-100 pt-6">
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile?.researcher_focus?.map((f: string) => (
+                      <span key={f} className="px-2 py-0.5 bg-slate-50 rounded-full text-[8px] font-black text-slate-400 uppercase border border-slate-100 italic">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
+                    <div className="space-y-0.5">
+                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Analyses</span>
+                      <p className="text-base font-black text-slate-900 leading-none">1,402</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Observations</span>
+                      <p className="text-base font-black text-emerald-600 leading-none">84</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-[2rem] p-6 space-y-6 shadow-inner">
+                <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-3">
+                  <Activity size={14} className="text-slate-900" />
+                  Behavioral Anomalies
+                </h4>
+                <div className="space-y-4">
+                  {[
+                    { type: "Puoluekuri", desc: "KOK ryhmäkurin poikkeava tiivistyminen (Q1)", status: "High" },
+                    { type: "Divergenssi", desc: "SDP:n äänestyskäyttäytyminen vs. vaalilupaukset", status: "Alert" },
+                    { type: "Lobbaus", desc: "EK:n intensiivinen asiantuntijakuulemisjakso", status: "Active" }
+                  ].map((alert, i) => (
+                    <div key={i} className="space-y-1 border-l-2 border-slate-200 pl-3 py-0.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[8px] font-black text-slate-400 uppercase italic">{alert.type}</span>
+                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded ${
+                          alert.status === 'Alert' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-600'
+                        }`}>{alert.status}</span>
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-700 uppercase tracking-tight leading-tight">{alert.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </aside>
 
         {/* Center: Task Stream (Committee Bills) or DNA Activation or Municipal Watch */}
-        <main className="lg:col-span-6 space-y-8">
-          {!hasDna ? (
+        <main className={`${activeView === "researcher" ? "lg:col-span-9" : "lg:col-span-6"} space-y-8`}>
+          {activeView === "researcher" && !profile?.researcher_initialized ? (
+            <ResearcherProfiling onComplete={handleResearcherProfileComplete} />
+          ) : !hasDna && activeView !== "researcher" ? (
             <DNAActivation />
           ) : (
             <>
-              {/* Päivän Pulse - Always visible for DNA-activated users */}
-              <QuickPulse lens={lens} />
+              {/* Päivän Pulse - Only visible for non-researchers */}
+              {activeView !== "researcher" && <QuickPulse lens={lens} />}
 
               {activeView === "researcher" ? (
-                <ResearcherWorkspace userPlan={mergedUser.plan_type || 'free'} />
+                <ResearcherWorkspace userPlan={mergedUser.plan_type || 'free'} researcherProfile={profile} />
               ) : activeView === "economy" ? (
                 <PricingTable userId={mergedUser.id} hasStripeId={!!mergedUser.stripe_customer_id} />
               ) : activeView === "kuntavahti" ? (
@@ -400,44 +512,46 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
         </main>
 
         {/* Right Sidebar: Live News & Notifications */}
-        <aside className="lg:col-span-3 space-y-8 h-full flex flex-col">
-          <div className="flex-1">
-            <TransactionFeed />
-          </div>
-
-          <div className="bg-slate-900/80 border border-white/10 rounded-[2.5rem] p-8 space-y-8 backdrop-blur-md">
-            <h4 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
-              <Newspaper size={16} className="text-purple-500" />
-              {lens === "national" ? "Valtakunnallinen Feed" : `${lens.charAt(0).toUpperCase() + lens.slice(1)} Feed`}
-            </h4>
-            
-            <div className="space-y-6">
-              {(lens === "national" ? news : [
-                { id: 101, title: `${lens.charAt(0).toUpperCase() + lens.slice(1)}n valtuusto keskusteli kaavoituksesta`, time: "2h sitten" },
-                { id: 102, title: "Paikallinen kouluinvestointi etenee", time: "5h sitten" }
-              ]).map((item) => (
-                <div key={item.id} className="space-y-2 relative pl-4 border-l border-purple-500/20">
-                  <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest leading-none">{item.time}</p>
-                  <p className="text-xs font-bold text-slate-300 tracking-tight leading-snug">{item.title}</p>
-                </div>
-              ))}
+        {activeView !== "researcher" && (
+          <aside className="lg:col-span-3 space-y-8 h-full flex flex-col">
+            <div className="flex-1">
+              <TransactionFeed />
             </div>
 
-            <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 transition-all">
-              Näytä kaikki uutiset
-            </button>
-          </div>
+            <div className="bg-slate-900/80 border border-white/10 rounded-[2.5rem] p-8 space-y-8 backdrop-blur-md">
+              <h4 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
+                <Newspaper size={16} className="text-purple-500" />
+                {lens === "national" ? "Valtakunnallinen Feed" : `${lens.charAt(0).toUpperCase() + lens.slice(1)} Feed`}
+              </h4>
+              
+              <div className="space-y-6">
+                {(lens === "national" ? news : [
+                  { id: 101, title: `${lens.charAt(0).toUpperCase() + lens.slice(1)}n valtuusto keskusteli kaavoituksesta`, time: "2h sitten" },
+                  { id: 102, title: "Paikallinen kouluinvestointi etenee", time: "5h sitten" }
+                ]).map((item) => (
+                  <div key={item.id} className="space-y-2 relative pl-4 border-l border-purple-500/20">
+                    <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest leading-none">{item.time}</p>
+                    <p className="text-xs font-bold text-slate-300 tracking-tight leading-snug">{item.title}</p>
+                  </div>
+                ))}
+              </div>
 
-          <div className="bg-gradient-to-br from-purple-600 to-blue-700 rounded-[2.5rem] p-8 text-white space-y-4 shadow-xl">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-              <Bell size={24} />
+              <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 transition-all">
+                Näytä kaikki uutiset
+              </button>
             </div>
-            <div className="space-y-1">
-              <h4 className="text-sm font-black uppercase tracking-tight">Pikailmoitus</h4>
-              <p className="text-xs font-medium text-white/80 leading-relaxed">Äänestys valiokunnassa alkaa 15 minuutin kuluttua.</p>
+
+            <div className="bg-gradient-to-br from-purple-600 to-blue-700 rounded-[2.5rem] p-8 text-white space-y-4 shadow-xl">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                <Bell size={24} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black uppercase tracking-tight">Pikailmoitus</h4>
+                <p className="text-xs font-medium text-white/80 leading-relaxed">Äänestys valiokunnassa alkaa 15 minuutin kuluttua.</p>
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
     </div>
   );

@@ -155,10 +155,10 @@ export async function submitPulseVote(question: PulseQuestion, stance: "YES" | "
 
   // --- Economy Rewards ---
   // Reward for participating in Pulse
-  let finalUserId = user.id;
+  let finalUserId: string | undefined = user.id;
   if (!finalUserId && user.is_guest) {
-    const cookies = await import("next/headers").then(h => h.cookies());
-    finalUserId = (await cookies).get("guest_user_id")?.value;
+    const cookieStore = await cookies();
+    finalUserId = cookieStore.get("guest_user_id")?.value;
   }
 
   if (finalUserId) {

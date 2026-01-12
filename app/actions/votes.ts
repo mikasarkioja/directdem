@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { unstable_cache } from "next/cache";
+import { cookies } from "next/headers";
 import type { VoteStats, VotePosition } from "@/lib/types";
 import { addDNAPoints } from "./dna";
 import { updateUserPoliticalDNA } from "@/lib/actions/user-dna-engine";
@@ -19,8 +20,8 @@ export async function submitVote(billId: string, position: VotePosition) {
   // Handle ghost user if auth.user is missing
   let userId = user?.id;
   if (!userId) {
-    const cookies = await import("next/headers").then(h => h.cookies());
-    userId = (await cookies).get("guest_user_id")?.value;
+    const cookieStore = await cookies();
+    userId = cookieStore.get("guest_user_id")?.value;
   }
 
   if (!userId) {

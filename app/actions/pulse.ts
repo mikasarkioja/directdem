@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath, unstable_cache } from "next/cache";
+import { cookies } from "next/headers";
 import { PulseQuestion } from "@/lib/types";
 import { getUser } from "./auth";
 import { saveGhostDNA } from "@/lib/auth/ghost-actions";

@@ -216,7 +216,7 @@ export async function POST(req: Request) {
     model: openai("gpt-4o"),
     system: systemPrompt,
     messages,
-    onFinish(completion) {
+    onFinish(completion: any) {
       // Log AI Cost
       logAiCost(
         "Arena Duel", 

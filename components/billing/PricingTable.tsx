@@ -31,7 +31,7 @@ const SUBSCRIPTION_PLANS = [
   },
 ];
 
-export default function PricingTable({ userId }: PricingTableProps) {
+export default function PricingTable({ userId, hasStripeId }: PricingTableProps) {
   const [activeTab, setActiveTab] = useState<"credits" | "subscription">("credits");
   const [loadingId, setLoadingId] = useState<string | null>(null);
 

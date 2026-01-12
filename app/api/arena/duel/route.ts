@@ -51,50 +51,140 @@ export async function POST(req: Request) {
   const champIdNum = parseInt(championId);
   const challIdNum = parseInt(challengerId);
 
+  // --- MP / Councilor Fetching Logic ---
   const supabase = createSupabaseJS(supabaseUrl, serviceKey);
 
-  // 1. Fetch both MP profiles by starting from the base 'mps' table
-  const { data: mpsData, error: mpsError } = await supabase
-    .from("mps")
-    .select(`
-      id,
-      first_name,
-      last_name,
-      party,
-      mp_ai_profiles!inner (
-        system_prompt,
-        voting_summary,
-        rhetoric_style
-      ),
-      mp_profiles (
-        economic_score,
-        liberal_conservative_score,
-        environmental_score,
-        urban_rural_score,
-        international_national_score,
-        security_score
-      )
-    `)
-    .in("id", [champIdNum, challIdNum]);
+  async function getParticipantData(id: string) {
+    // Check if ID is a UUID (councilor) or numeric (MP)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    if (isUuid) {
+      // 1. Fetch councilor data
+      const { data: councilor, error: councilorError } = await supabase
+        .from("councilors")
+        .select(`
+          id,
+          full_name,
+          party,
+          municipality,
+          dna_fingerprint,
+          election_promises
+        `)
+        .eq("id", id)
+        .single();
 
-  console.log("Arena Duel - MP Data Fetch:", { 
-    count: mpsData?.length, 
-    error: mpsError?.message,
-    foundIds: mpsData?.map(m => m.id)
-  });
+      if (councilorError || !councilor) return null;
 
-  if (mpsError || !mpsData || mpsData.length < 2) {
-    const foundIds = mpsData?.map(m => m.id.toString()) || [];
-    const missing = [championId, challengerId].filter(id => !foundIds.includes(id.toString()));
+      // 2. Try to find a matching MP by name
+      const { data: mpMatch } = await supabase
+        .from("mps")
+        .select(`
+          id,
+          first_name,
+          last_name,
+          party,
+          mp_ai_profiles (
+            system_prompt,
+            voting_summary,
+            rhetoric_style
+          ),
+          mp_profiles (
+            economic_score,
+            liberal_conservative_score,
+            environmental_score,
+            urban_rural_score,
+            international_national_score,
+            security_score
+          )
+        `)
+        .ilike("first_name", councilor.full_name.split(" ")[0])
+        .ilike("last_name", councilor.full_name.split(" ").slice(1).join(" "))
+        .maybeSingle();
+
+      if (mpMatch?.mp_ai_profiles) {
+        // Use MP AI profile if found
+        return {
+          id: councilor.id,
+          first_name: councilor.full_name.split(" ")[0],
+          last_name: councilor.full_name.split(" ").slice(1).join(" "),
+          party: councilor.party,
+          ai_profile: mpMatch.mp_ai_profiles,
+          dna: mpMatch.mp_profiles || councilor.dna_fingerprint
+        };
+      }
+
+      // 3. Fallback: Generate a basic AI profile for the councilor
+      // In a real app, we'd trigger a background profiling task.
+      // For now, we'll return a basic structure.
+      return {
+        id: councilor.id,
+        first_name: councilor.full_name.split(" ")[0],
+        last_name: councilor.full_name.split(" ").slice(1).join(" "),
+        party: councilor.party,
+        ai_profile: {
+          system_prompt: `Olet kunnallisvaltuutettu ${councilor.full_name} (${councilor.party}) kaupungissa ${councilor.municipality}. 
+          Vaalilupauksesi ovat: ${JSON.stringify(councilor.election_promises)}. 
+          DNA-profiilisi on: ${JSON.stringify(councilor.dna_fingerprint)}.
+          Puhu suoraan ja puolusta kuntalaisten etua.`,
+          voting_summary: [],
+          rhetoric_style: "Asiallinen ja kuntakeskeinen"
+        },
+        dna: councilor.dna_fingerprint
+      };
+    } else {
+      // Fetch national MP data
+      const { data: mp, error: mpError } = await supabase
+        .from("mps")
+        .select(`
+          id,
+          first_name,
+          last_name,
+          party,
+          mp_ai_profiles (
+            system_prompt,
+            voting_summary,
+            rhetoric_style
+          ),
+          mp_profiles (
+            economic_score,
+            liberal_conservative_score,
+            environmental_score,
+            urban_rural_score,
+            international_national_score,
+            security_score
+          )
+        `)
+        .eq("id", id)
+        .single();
+
+      if (mpError || !mp) return null;
+
+      return {
+        id: mp.id,
+        first_name: mp.first_name,
+        last_name: mp.last_name,
+        party: mp.party,
+        ai_profile: mp.mp_ai_profiles,
+        dna: mp.mp_profiles
+      };
+    }
+  }
+
+  const championData = await getParticipantData(championId);
+  const challengerData = await getParticipantData(challengerId);
+
+  if (!championData || !challengerData || !championData.ai_profile || !challengerData.ai_profile) {
+    const missing = [];
+    if (!championData || !championData.ai_profile) missing.push(championId);
+    if (!challengerData || !challengerData.ai_profile) missing.push(challengerId);
     
     return new Response(JSON.stringify({ 
       error: `Edustajien AI-profiilit puuttuvat: ${missing.join(", ")}. Profiloi heidät ensin.` 
     }), { status: 400 });
   }
 
-  // Map the data back to the format the rest of the script expects
-  const champion = mpsData.find(m => m.id === champIdNum);
-  const challenger = mpsData.find(m => m.id === challIdNum);
+  const champion = championData;
+  const challenger = challengerData;
 
   if (!champion || !challenger) {
     return new Response(JSON.stringify({ error: "Yksi tai molemmat edustajien AI-profiileista puuttuu." }), { status: 404 });

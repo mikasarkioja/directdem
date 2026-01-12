@@ -4,9 +4,10 @@ import Navbar from "@/components/Navbar";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
-export default async function DashboardPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const user = await getUser();
-  const isResearcher = searchParams.view === "researcher";
+  const resolvedSearchParams = await searchParams;
+  const isResearcher = resolvedSearchParams.view === "researcher";
 
   return (
     <div className="min-h-screen bg-nordic-white">

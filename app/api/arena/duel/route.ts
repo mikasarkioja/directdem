@@ -33,6 +33,8 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: "Kirjaudu sisään tai käytä pikakirjautumista." }), { status: 401 });
   }
 
+  // --- Credit Check - TEMPORARILY DISABLED ---
+  /*
   try {
     await processTransaction(userId, 20, "AI Arena Duel Message", "SPEND");
   } catch (error: any) {
@@ -40,6 +42,8 @@ export async function POST(req: Request) {
       error: "Ei tarpeeksi krediittejä. Suorita tehtäviä tai osta lisää. (Tarvitset 20 ⚡)" 
     }), { status: 402 });
   }
+  */
+  console.log(`[Arena Duel] Credit check bypassed for user ${userId}`);
 
   console.log("Arena Duel - Starting:", { championId, challengerId, billId, userId });
 

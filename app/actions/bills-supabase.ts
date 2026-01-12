@@ -37,7 +37,7 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
 
       // If we have bills in Supabase, use them
       if (billsData && billsData.length > 0 && !error) {
-        return billsData.map((bill: SupabaseBill) => ({
+        return billsData.map((bill: any) => ({
           id: bill.id,
           title: bill.title,
           summary: bill.summary || "",
@@ -78,7 +78,7 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
             .select();
 
           if (insertedBills && !insertError) {
-            return insertedBills.map((bill: SupabaseBill) => ({
+            return insertedBills.map((bill: any) => ({
               id: bill.id,
               title: bill.title,
               summary: bill.summary || "",

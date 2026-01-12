@@ -87,7 +87,7 @@ export async function POST(req: Request) {
           .eq("stripe_customer_id", customerId)
           .single();
 
-        if (profile && invoice.subscription) {
+        if (profile && (invoice as any).subscription) {
           await supabase
             .from("user_profiles")
             .update({ subscription_status: "active" })

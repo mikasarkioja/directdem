@@ -5,6 +5,7 @@ import { getBillContent } from "@/lib/eduskunta-api";
 import { generateCitizenSummary } from "@/lib/ai-summary";
 import { prepareBillTextForAI } from "@/lib/text-cleaner";
 import { parseSummary } from "@/lib/summary-parser";
+import { trackFeatureUsage, logAiCost } from "@/lib/analytics/tracker";
 import type { Bill } from "@/lib/types";
 
 /**
@@ -35,6 +36,9 @@ async function processBillToSelkokieliInternal(
 }> {
   console.log(`[processBillToSelkokieli] Function called with billId: ${billId}, forceRegenerate: ${forceRegenerate}`);
   const supabase = await createClient();
+  
+  // Track usage
+  await trackFeatureUsage("Bill Analysis", "GENERATE");
   console.log(`[processBillToSelkokieli] Supabase client created`);
 
   try {
@@ -289,7 +293,7 @@ async function processBillToSelkokieliInternal(
         const { generateText } = await import("ai");
         const { openai } = await import("@ai-sdk/openai");
         
-        const { text: deepJson } = await generateText({
+        const { text: deepJson, usage: deepUsage } = await generateText({
           model: openai("gpt-4o") as any,
           system: `Olet valtiontalouden ja poliittisen analyysin asiantuntija. Pura tämä lakiesitys JSON-muotoon syväanalyysia varten.`,
           prompt: `Analysoi tämä laki: ${summary.substring(0, 5000)}\n\nPalauta JSON: {
@@ -301,6 +305,14 @@ async function processBillToSelkokieliInternal(
             "friction_index": 50
           }`
         });
+
+        // Log AI Cost for Deep Analysis
+        await logAiCost(
+          "Bill Deep Analysis",
+          "gpt-4o",
+          deepUsage.promptTokens,
+          deepUsage.completionTokens
+        );
         
         const deepData = JSON.parse(deepJson.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
         

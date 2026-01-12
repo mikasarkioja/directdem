@@ -7,6 +7,7 @@ import { getUser } from "./auth";
 import { saveGhostDNA } from "@/lib/auth/ghost-actions";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { processTransaction, awardImpactPoints } from "@/lib/logic/economy";
 
 /**
  * Fetches a daily pulse question for the user.
@@ -150,6 +151,19 @@ export async function submitPulseVote(question: PulseQuestion, stance: "YES" | "
       stance: stance,
       created_at: new Date().toISOString()
     });
+  }
+
+  // --- Economy Rewards ---
+  // Reward for participating in Pulse
+  let finalUserId = user.id;
+  if (!finalUserId && user.is_guest) {
+    const cookies = await import("next/headers").then(h => h.cookies());
+    finalUserId = (await cookies).get("guest_user_id")?.value;
+  }
+
+  if (finalUserId) {
+    await processTransaction(finalUserId, 5, `Pulse: ${question.id}`, "EARN");
+    await awardImpactPoints(finalUserId, 2, `Pulse: ${question.id}`);
   }
 
   revalidatePath("/dashboard");

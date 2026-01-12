@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Map, User, LayoutGrid, Users, Radio, BarChart3, TrendingUp, Activity, Sparkles, Briefcase, Shield, RefreshCw, Search, Database, Newspaper, Building2 } from "lucide-react";
+import { FileText, Map, User, LayoutGrid, Users, Radio, BarChart3, TrendingUp, Activity, Sparkles, Briefcase, Shield, RefreshCw, Search, Database, Newspaper, Building2, Terminal, Settings } from "lucide-react";
 import type { DashboardView, UserProfile } from "@/lib/types";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -65,15 +65,18 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
   ];
 
   const researcherItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
+    { id: "researcher", label: "Research Terminal", icon: Terminal, href: "/dashboard?view=researcher" },
     { id: "consensus", label: "Konsensuskartta", icon: Map, href: "/?view=consensus" },
     { id: "analysis", label: "Takinkääntö-vahti", icon: Activity, href: "/puolueet/analyysi" },
     { id: "ranking", label: "Massadata", icon: Database, href: "/ranking" },
-    { id: "kuntavahti", label: "Kuntadata", icon: Building2, href: "/dashboard?view=kuntavahti" },
   ];
 
   const menuItems = role === 'shadow_mp' 
     ? shadowItems 
     : (role === 'researcher' ? researcherItems : citizenItems);
+
+  // const isAdmin = user?.email === 'nika.sarkioja@gmail.com' || user?.email?.includes('admin');
+  const isAdmin = true; // TEMPORARY: Show for all users
 
   return (
     <aside className="hidden md:flex w-72 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-r border-slate-200 dark:border-white/10 flex-col h-full shadow-2xl relative overflow-hidden transition-colors duration-500">
@@ -86,6 +89,18 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
         </div>
         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Democracy OS v1.0</p>
       </div>
+
+      {isAdmin && (
+        <div className="px-6 mb-4 relative z-10">
+          <Link
+            href="/admin/analytics"
+            className="flex items-center gap-3 px-4 py-2 text-[10px] font-black text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl hover:bg-rose-500/20 transition-all uppercase tracking-widest"
+          >
+            <Shield size={12} />
+            Admin Control
+          </Link>
+        </div>
+      )}
 
       <div className="px-6 mb-6 relative z-10">
         <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10">

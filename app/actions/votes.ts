@@ -7,6 +7,8 @@ import { addDNAPoints } from "./dna";
 import { updateUserPoliticalDNA } from "@/lib/actions/user-dna-engine";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { processTransaction, awardImpactPoints } from "@/lib/logic/economy";
+import { trackFeatureUsage } from "@/lib/analytics/tracker";
 
 export async function submitVote(billId: string, position: VotePosition) {
   const supabase = await createClient();
@@ -14,16 +16,26 @@ export async function submitVote(billId: string, position: VotePosition) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  // Handle ghost user if auth.user is missing
+  let userId = user?.id;
+  if (!userId) {
+    const cookies = await import("next/headers").then(h => h.cookies());
+    userId = (await cookies).get("guest_user_id")?.value;
+  }
+
+  if (!userId) {
     throw new Error("Sinun täytyy olla kirjautunut äänestääksesi");
   }
+
+  // Track usage
+  await trackFeatureUsage("Vote", "SUBMIT", userId);
 
   // Get previous vote to check for mediator logic (changing stance)
   const { data: previousVote } = await supabase
     .from("votes")
     .select("position")
     .eq("bill_id", billId)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .single();
 
   // Upsert vote (insert or update)
@@ -32,7 +44,7 @@ export async function submitVote(billId: string, position: VotePosition) {
     .upsert(
       {
         bill_id: billId,
-        user_id: user.id,
+        user_id: userId,
         position,
       },
       {
@@ -43,6 +55,11 @@ export async function submitVote(billId: string, position: VotePosition) {
   if (error) {
     throw new Error(`Äänestys epäonnistui: ${error.message}`);
   }
+
+  // --- Economy Rewards ---
+  // Award 10 credits and 5 impact points for voting
+  await processTransaction(userId, 10, `Äänestys: ${billId}`, "EARN");
+  await awardImpactPoints(userId, 5, `Äänestys: ${billId}`);
 
   // --- Political DNA Update ---
   await updateUserPoliticalDNA(billId, position);

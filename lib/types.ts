@@ -91,6 +91,10 @@ export interface UserProfile {
   current_archetype?: string;
   dna_level?: number;
   impact_points?: number;
+  credits?: number;
+  subscription_status?: 'active' | 'inactive' | 'past_due' | 'canceled';
+  plan_type?: 'free' | 'premium' | 'enterprise';
+  stripe_customer_id?: string;
   xp?: number;
   level?: number;
   committee_assignment?: string;
@@ -212,7 +216,7 @@ export interface DebateParticipant {
 }
 
 // Dashboard view types
-export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate" | "ranking" | "analysis" | "workspace" | "arena" | "kuntavahti";
+export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate" | "ranking" | "analysis" | "workspace" | "arena" | "kuntavahti" | "researcher";
 
 // API Test types
 export interface TestResult {

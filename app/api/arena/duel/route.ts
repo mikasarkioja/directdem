@@ -1,6 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseJS } from "@supabase/supabase-js";
 import { streamText, StreamData } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { createClient } from "@/lib/supabase/server";
+import { processTransaction } from "@/lib/logic/economy";
+import { trackFeatureUsage, logAiCost } from "@/lib/analytics/tracker";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +18,36 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: "Palvelimen konfiguraatiovirhe (API keys missing)." }), { status: 500 });
   }
 
-  console.log("Arena Duel - Starting:", { championId, challengerId, billId });
+  // --- Credit Check ---
+  const userSupabase = await createClient();
+  const { data: { user } } = await userSupabase.auth.getUser();
+
+  // If not logged in via Supabase, check for Ghost user via cookie
+  let userId = user?.id;
+  if (!userId) {
+    const cookies = await import("next/headers").then(h => h.cookies());
+    userId = (await cookies).get("guest_user_id")?.value;
+  }
+
+  if (!userId) {
+    return new Response(JSON.stringify({ error: "Kirjaudu sisään tai käytä pikakirjautumista." }), { status: 401 });
+  }
+
+  try {
+    await processTransaction(userId, 20, "AI Arena Duel Message", "SPEND");
+  } catch (error: any) {
+    return new Response(JSON.stringify({ 
+      error: "Ei tarpeeksi krediittejä. Suorita tehtäviä tai osta lisää. (Tarvitset 20 ⚡)" 
+    }), { status: 402 });
+  }
+
+  console.log("Arena Duel - Starting:", { championId, challengerId, billId, userId });
 
   // Varmistetaan että ID:t ovat numeroita
   const champIdNum = parseInt(championId);
   const challIdNum = parseInt(challengerId);
 
-  const supabase = createClient(supabaseUrl, serviceKey);
+  const supabase = createSupabaseJS(supabaseUrl, serviceKey);
 
   // 1. Fetch both MP profiles by starting from the base 'mps' table
   const { data: mpsData, error: mpsError } = await supabase
@@ -183,11 +209,22 @@ export async function POST(req: Request) {
 
   const data = new StreamData();
 
+  // Track feature usage start
+  await trackFeatureUsage("Arena Duel", "GENERATE", userId);
+
   const result = await streamText({
     model: openai("gpt-4o"),
     system: systemPrompt,
     messages,
-    onFinish() {
+    onFinish(completion) {
+      // Log AI Cost
+      logAiCost(
+        "Arena Duel", 
+        "gpt-4o", 
+        completion.usage.promptTokens, 
+        completion.usage.completionTokens, 
+        userId
+      );
       data.close();
     },
   } as any);

@@ -1,11 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import { streamText, StreamData } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { trackFeatureUsage, logAiCost } from "@/lib/analytics/tracker";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const { messages, mpId, userDna, billId } = await req.json();
+  const { messages, mpId, userDna, billId, userId } = await req.json();
+
+  // Track usage
+  await trackFeatureUsage("MP Chat (Hjallis Challenge)", "GENERATE", userId);
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -139,7 +143,14 @@ export async function POST(req: Request) {
     model: openai("gpt-4o"),
     system: fullSystemPrompt,
     messages,
-    onFinish() {
+    onFinish(completion) {
+      logAiCost(
+        "MP Chat (Hjallis Challenge)", 
+        "gpt-4o", 
+        completion.usage.promptTokens, 
+        completion.usage.completionTokens, 
+        userId
+      );
       data.close();
     },
   } as any);

@@ -42,6 +42,17 @@ export async function updateSession(request: NextRequest) {
   }
 
   const isProtectedPath = path.startsWith("/dashboard") || path.startsWith("/testi/tulokset");
+  const isAdminPath = path.startsWith("/admin");
+
+  // TEMPORARY: Allow all users to access /admin for testing
+  /*
+  if (isAdminPath) {
+    if (!user || (user.email !== 'nika.sarkioja@gmail.com' && !user.email?.includes('admin'))) {
+      const homeUrl = new URL("/", request.url);
+      return NextResponse.redirect(homeUrl);
+    }
+  }
+  */
 
   if (isProtectedPath && !user && !isGhost) {
     const loginUrl = new URL("/login", request.url);

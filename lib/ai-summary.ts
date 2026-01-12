@@ -1,11 +1,12 @@
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import { logAiCost } from "@/lib/analytics/tracker";
 
 /**
  * Generates a citizen-friendly summary in plain Finnish (selkokieli)
  * from complex parliamentary or municipal legal text.
  */
-export async function generateCitizenSummary(rawText: string, context: "parliament" | "municipal" = "parliament"): Promise<string> {
+export async function generateCitizenSummary(rawText: string, context: "parliament" | "municipal" = "parliament", userId?: string): Promise<string> {
   const isMunicipal = context === "municipal";
   
   const systemPrompt = isMunicipal 
@@ -88,7 +89,7 @@ Rakenne:
     console.log(`[generateCitizenSummary] Generating summary for ${rawText.length} characters of text`);
     
     // Use OpenAI API to generate summary
-    const { text } = await generateText({
+    const result = await generateText({
       model: openai("gpt-4o") as any, // Upgraded to gpt-4o for deep analysis
       system: systemPrompt,
       prompt: `Tiivistä tämä lakiteksti selkokielelle virallisena KONSULTIN SELONTEKONA. 
@@ -105,6 +106,17 @@ Rakenne:
       temperature: 0.7,
       maxTokens: 8000, 
     } as any);
+
+    const { text, usage } = result;
+
+    // Log AI Cost
+    await logAiCost(
+      `Bill Summary (${context})`,
+      "gpt-4o",
+      usage.promptTokens,
+      usage.completionTokens,
+      userId
+    );
 
     console.log(`[generateCitizenSummary] Generated summary: ${text.length} characters`);
     

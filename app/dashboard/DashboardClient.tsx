@@ -28,6 +28,9 @@ import QuickPulse from "@/components/dashboard/QuickPulse";
 import LensSwitcher from "@/components/dashboard/LensSwitcher";
 import LocalWeather from "@/components/dashboard/LocalWeather";
 import MunicipalDetail from "@/components/municipal/MunicipalDetail";
+import TransactionFeed from "@/components/dashboard/TransactionFeed";
+import ResearcherWorkspace from "@/components/researcher/ResearcherWorkspace";
+import PricingTable from "@/components/billing/PricingTable";
 import { fetchMunicipalDecisions } from "@/app/actions/municipal";
 import toast, { Toaster } from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
@@ -46,7 +49,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
   const [selectedMunicipalTask, setSelectedMunicipalTask] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [activeView, setActiveView] = useState<"committee" | "kuntavahti">("committee");
+  const [activeView, setActiveView] = useState<"committee" | "kuntavahti" | "economy" | "researcher">("committee");
   const [lens, setLens] = useState<LensMode>("national");
 
   useEffect(() => {
@@ -234,6 +237,18 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
           >
             Kuntavahti
           </button>
+          <button 
+            onClick={() => setActiveView("economy")}
+            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "economy" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+          >
+            Talous
+          </button>
+          <button 
+            onClick={() => setActiveView("researcher")}
+            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "researcher" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"}`}
+          >
+            Tutkija
+          </button>
         </div>
 
         <div className="flex items-center gap-4">
@@ -283,7 +298,11 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
               {/* Päivän Pulse - Always visible for DNA-activated users */}
               <QuickPulse lens={lens} />
 
-              {activeView === "kuntavahti" ? (
+              {activeView === "researcher" ? (
+                <ResearcherWorkspace userPlan={mergedUser.plan_type || 'free'} />
+              ) : activeView === "economy" ? (
+                <PricingTable userId={mergedUser.id} hasStripeId={!!mergedUser.stripe_customer_id} />
+              ) : activeView === "kuntavahti" ? (
                 <MunicipalWatchFeed user={mergedUser} />
               ) : lens === "national" ? (
                 <>
@@ -381,7 +400,11 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
         </main>
 
         {/* Right Sidebar: Live News & Notifications */}
-        <aside className="lg:col-span-3 space-y-8">
+        <aside className="lg:col-span-3 space-y-8 h-full flex flex-col">
+          <div className="flex-1">
+            <TransactionFeed />
+          </div>
+
           <div className="bg-slate-900/80 border border-white/10 rounded-[2.5rem] p-8 space-y-8 backdrop-blur-md">
             <h4 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
               <Newspaper size={16} className="text-purple-500" />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { User, LogOut } from "lucide-react";
 import VerifiedBadge from "./VerifiedBadge";
+import CreditDisplay from "./CreditDisplay";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { clearGhostSession } from "@/lib/auth/ghost-actions";
@@ -40,24 +41,30 @@ export default function Navbar({ user }: NavbarProps) {
             </div>
 
             {/* Desktop Navigation - Hidden on mobile */}
-            <div className="hidden md:flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-6">
               {user ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-nordic-light dark:bg-nordic-darker rounded-lg">
-                    <User size={18} className="text-nordic-blue" />
-                    <span className="text-sm font-medium text-nordic-darker dark:text-nordic-white">
-                      {user.full_name || user.email}
-                    </span>
-                    {user.is_verified && <VerifiedBadge />}
+                <div className="flex items-center gap-6">
+                  <CreditDisplay 
+                    credits={user.credits || 0} 
+                    impactPoints={user.impact_points || 0} 
+                  />
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-nordic-light dark:bg-nordic-darker rounded-lg">
+                      <User size={18} className="text-nordic-blue" />
+                      <span className="text-sm font-medium text-nordic-darker dark:text-nordic-white">
+                        {user.full_name || user.email}
+                      </span>
+                      {user.is_verified && <VerifiedBadge />}
+                    </div>
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors touch-manipulation select-none"
+                      style={{ minWidth: "44px", minHeight: "44px" }}
+                    >
+                      <LogOut size={16} />
+                      <span>Kirjaudu ulos</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors touch-manipulation select-none"
-                    style={{ minWidth: "44px", minHeight: "44px" }}
-                  >
-                    <LogOut size={16} />
-                    <span>Kirjaudu ulos</span>
-                  </button>
                 </div>
               ) : (
                 <button
@@ -97,22 +104,30 @@ export default function Navbar({ user }: NavbarProps) {
           {showMobileMenu && (
             <div className="md:hidden pb-4 border-t border-nordic-gray dark:border-nordic-darker mt-2 pt-4">
               {user ? (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-nordic-light dark:bg-nordic-darker rounded-lg">
-                    <User size={18} className="text-nordic-blue" />
-                    <span className="text-sm font-medium text-nordic-darker dark:text-nordic-white">
-                      {user.full_name || user.email}
-                    </span>
-                    {user.is_verified && <VerifiedBadge />}
+                <div className="flex flex-col gap-4">
+                  <div className="px-3">
+                    <CreditDisplay 
+                      credits={user.credits || 0} 
+                      impactPoints={user.impact_points || 0} 
+                    />
                   </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors touch-manipulation select-none"
-                    style={{ minWidth: "44px", minHeight: "44px" }}
-                  >
-                    <LogOut size={16} />
-                    <span>Kirjaudu ulos</span>
-                  </button>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-nordic-light dark:bg-nordic-darker rounded-lg">
+                      <User size={18} className="text-nordic-blue" />
+                      <span className="text-sm font-medium text-nordic-darker dark:text-nordic-white">
+                        {user.full_name || user.email}
+                      </span>
+                      {user.is_verified && <VerifiedBadge />}
+                    </div>
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-nordic-dark dark:text-nordic-gray hover:text-nordic-darker dark:hover:text-nordic-white transition-colors touch-manipulation select-none"
+                      style={{ minWidth: "44px", minHeight: "44px" }}
+                    >
+                      <LogOut size={16} />
+                      <span>Kirjaudu ulos</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button

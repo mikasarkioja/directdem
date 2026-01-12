@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { processTransaction, awardImpactPoints } from "@/lib/logic/economy";
 
 export interface MunicipalQuestion {
   id: string;
@@ -45,7 +46,13 @@ export async function voteOnMunicipalQuestion(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return { success: false, error: "Kirjaudu sisään äänestääksesi." };
+  let userId = user?.id;
+  if (!userId) {
+    const cookies = await import("next/headers").then(h => h.cookies());
+    userId = (await cookies).get("guest_user_id")?.value;
+  }
+
+  if (!userId) return { success: false, error: "Kirjaudu sisään äänestääksesi." };
 
   // Käytetään user_profiles-taulua tai vastaavaa tallentamaan ääni
   // Tässä tapauksessa voidaan tallentaa se uuteen tauluun 'meeting_votes'
@@ -53,7 +60,7 @@ export async function voteOnMunicipalQuestion(
     .from("meeting_votes")
     .upsert({
       meeting_id: meetingId,
-      user_id: user.id,
+      user_id: userId,
       stance: stance,
       created_at: new Date().toISOString()
     }, { onConflict: "meeting_id,user_id" });
@@ -62,6 +69,10 @@ export async function voteOnMunicipalQuestion(
     console.error("Error voting on municipal question:", error);
     return { success: false, error: "Äänestys epäonnistui." };
   }
+
+  // --- Economy Rewards ---
+  await processTransaction(userId, 10, `Municipal Vote: ${meetingId}`, "EARN");
+  await awardImpactPoints(userId, 5, `Municipal Vote: ${meetingId}`);
 
   revalidatePath("/dashboard");
   return { success: true };

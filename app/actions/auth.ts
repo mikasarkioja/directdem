@@ -30,6 +30,12 @@ export const getUser = cache(async (): Promise<UserProfile | null> => {
           .eq("id", guestId)
           .single();
 
+        const { data: userProfile } = await supabase
+          .from("user_profiles")
+          .select("credits, impact_points, active_role, subscription_status, plan_type")
+          .eq("id", guestId)
+          .single();
+
         // Haetaan mahdolliset eväste-DNA-tulokset
         const guestDnaJson = cookieStore.get("guest_dna")?.value;
         let guestDna = null;
@@ -44,9 +50,12 @@ export const getUser = cache(async (): Promise<UserProfile | null> => {
           full_name: profile?.full_name || guestName || "Ghost User",
           email: profile?.email || "guest@local",
           is_guest: true,
-          active_role: guestRole || 'citizen',
+          active_role: userProfile?.active_role || guestRole || 'citizen',
           is_verified: false,
-          impact_points: profile?.impact_points || 0,
+          impact_points: userProfile?.impact_points || profile?.impact_points || 0,
+          credits: userProfile?.credits ?? 100,
+          subscription_status: userProfile?.subscription_status || 'inactive',
+          plan_type: userProfile?.plan_type || 'free',
           level: profile?.level || 1,
           economic_score: guestDna?.economic_score ?? profile?.economic_score ?? 0,
           liberal_conservative_score: guestDna?.liberal_conservative_score ?? profile?.liberal_conservative_score ?? 0,
@@ -66,13 +75,18 @@ export const getUser = cache(async (): Promise<UserProfile | null> => {
     const guestRole = cookieStore.get("guest_active_role")?.value as any;
 
     const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    const { data: userProfile } = await supabase.from("user_profiles").select("active_role").eq("id", user.id).single();
+    const { data: userProfile } = await supabase.from("user_profiles").select("active_role, credits, impact_points, subscription_status, plan_type, stripe_customer_id").eq("id", user.id).single();
 
     return { 
       id: user.id, 
       email: user.email, 
       ...profile,
-      active_role: userProfile?.active_role || guestRole || 'citizen'
+      active_role: userProfile?.active_role || guestRole || 'citizen',
+      credits: userProfile?.credits ?? 100,
+      impact_points: userProfile?.impact_points ?? (profile?.impact_points || 0),
+      subscription_status: userProfile?.subscription_status || 'inactive',
+      plan_type: userProfile?.plan_type || 'free',
+      stripe_customer_id: userProfile?.stripe_customer_id
     };
   } catch {
     return null;

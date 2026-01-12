@@ -143,7 +143,7 @@ export async function POST(req: Request) {
     model: openai("gpt-4o"),
     system: fullSystemPrompt,
     messages,
-    onFinish(completion) {
+    onFinish(completion: any) {
       logAiCost(
         "MP Chat (Hjallis Challenge)", 
         "gpt-4o", 

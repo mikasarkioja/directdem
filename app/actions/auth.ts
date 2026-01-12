@@ -72,7 +72,7 @@ export const getUser = cache(async (): Promise<UserProfile | null> => {
           security_score: guestDna?.security_score ?? profile?.security_score ?? 0,
           trust_score: profile?.trust_score ?? 10,
           researcher_initialized: researcherInitialized,
-          researcher_type: researcherType,
+          researcher_type: researcherType as any,
           researcher_focus: researcherFocus,
         };
       }

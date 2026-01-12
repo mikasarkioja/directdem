@@ -4,11 +4,7 @@ import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/server";
 import { processTransaction } from "@/lib/logic/economy";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-01-27.acacia" as any,
-});
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+export const dynamic = "force-dynamic";
 
 // Mapping Price IDs to Credit amounts
 const PRICE_TO_CREDITS: Record<string, number> = {
@@ -20,6 +16,11 @@ const PRICE_TO_CREDITS: Record<string, number> = {
 };
 
 export async function POST(req: Request) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: "2025-01-27.acacia" as any,
+  });
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const body = await req.text();
   const signature = (await headers()).get("stripe-signature");
 

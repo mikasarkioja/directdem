@@ -37,20 +37,18 @@ export async function analyzeConflicts(billId: string, mpId: string | number): P
     throw new Error("Bill not found");
   }
 
-  // 2. Fetch MP Dependencies and Meetings
-  const [{ data: dependencies }, { data: meetings }] = await Promise.all([
-    supabase
-      .from("mp_dependencies")
-      .select("*")
-      .eq("mp_id", mpId),
-    supabase
-      .from("lobbyist_meetings")
-      .select("*")
-      .eq("mp_id", mpId)
-  ]);
+  // 2. Fetch MP Dependencies and Meetings from mp_ai_profiles (Source of truth)
+  const { data: profile } = await supabase
+    .from("mp_ai_profiles")
+    .select("lobbyist_meetings, affiliations")
+    .eq("mp_id", mpId)
+    .single();
 
-  const depsContext = (dependencies || []).map(d => `- ${d.category}: ${d.organization} (${d.description})`).join("\n");
-  const meetingsContext = (meetings || []).map(m => `- ${m.meeting_date}: ${m.lobbyist_name} (${m.organization}) - Aihe: ${m.topic}`).join("\n");
+  const affiliations = profile?.affiliations || [];
+  const meetings = profile?.lobbyist_meetings || [];
+
+  const depsContext = (affiliations as any[]).map(d => `- ${d.org || d.organization}: ${d.role || d.description}`).join("\n");
+  const meetingsContext = (meetings as any[]).map(m => `- ${m.date || m.meeting_date}: ${m.org || m.organization} - Aihe: ${m.topic}`).join("\n");
 
   const prompt = `
     POLIITTINEN SIDONNAISUUS-TUTKA (Dependency Radar)

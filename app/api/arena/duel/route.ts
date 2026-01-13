@@ -50,24 +50,10 @@ export async function POST(req: Request) {
   console.log("Arena Duel - Starting:", { championId, challengerId, billId, userId });
 
   // Varmistetaan että ID:t ovat numeroita
-          const champIdNum = parseInt(championId);
-          const challIdNum = parseInt(challengerId);
+  const champIdNum = parseInt(championId);
+  const challIdNum = parseInt(challengerId);
 
-          // 1.5 Fetch Conflict Analysis (Dependency Radar)
-          let champConflicts = null;
-          let challConflicts = null;
-          if (billId) {
-            try {
-              [champConflicts, challConflicts] = await Promise.all([
-                analyzeConflicts(billId, championId),
-                analyzeConflicts(billId, challengerId)
-              ]);
-            } catch (err) {
-              console.warn("Conflict Analysis failed, continuing without it.", err);
-            }
-          }
-
-          // --- MP / Councilor Fetching Logic ---
+  // --- MP / Councilor Fetching Logic ---
   const supabase = createSupabaseJS(supabaseUrl, serviceKey);
 
   async function getParticipantData(id: string) {
@@ -125,6 +111,7 @@ export async function POST(req: Request) {
         // Use MP AI profile if found
         return {
           id: councilor.id,
+          national_id: mpMatch.id, // Lisätty numeric ID
           first_name: councilor.full_name.split(" ")[0],
           last_name: councilor.full_name.split(" ").slice(1).join(" "),
           party: councilor.party,
@@ -187,6 +174,7 @@ export async function POST(req: Request) {
 
       return {
         id: mp.id,
+        national_id: mp.id, // Numeric ID is the same
         first_name: mp.first_name,
         last_name: mp.last_name,
         party: mp.party,
@@ -209,6 +197,23 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ 
       error: `Edustajien AI-profiilit puuttuvat: ${missing.join(", ")}. Profiloi heidät ensin.` 
     }), { status: 400 });
+  }
+
+  // 1.5 Fetch Conflict Analysis (Dependency Radar) - Moved here
+  let champConflicts = null;
+  let challConflicts = null;
+  if (billId) {
+    try {
+      const champMpId = championData.national_id || championId;
+      const challMpId = challengerData.national_id || challengerId;
+
+      [champConflicts, challConflicts] = await Promise.all([
+        analyzeConflicts(billId, champMpId),
+        analyzeConflicts(billId, challMpId)
+      ]);
+    } catch (err) {
+      console.warn("Conflict Analysis failed, continuing without it.", err);
+    }
   }
 
   const champion = championData;

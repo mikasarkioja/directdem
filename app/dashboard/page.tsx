@@ -20,14 +20,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const billsPromise = fetchBillsFromSupabase();
   
   // Kunnalliset päätökset jos ollaan kuntanäkymässä tai linssi on asetettu
-  let municipalPromise = Promise.resolve([]);
+  let municipalPromise: Promise<any[]> = Promise.resolve([]);
   if (view === "kuntavahti" || lens !== "national") {
     const muniName = lens !== "national" ? lens.charAt(0).toUpperCase() + lens.slice(1) : "Espoo";
     municipalPromise = fetchMunicipalDecisions(muniName);
   }
   
   // Tutkijatilastot jos ollaan tutkijanäkymässä
-  let statsPromise = Promise.resolve(null);
+  let statsPromise: Promise<any> = Promise.resolve(null);
   if (view === "researcher") {
     statsPromise = getResearcherStats();
   }

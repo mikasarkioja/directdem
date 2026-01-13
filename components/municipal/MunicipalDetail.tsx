@@ -120,7 +120,7 @@ export default function MunicipalDetail({ item, onClose, user }: MunicipalDetail
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.2em]">{localItem.municipality}</p>
                 <span className="w-1 h-1 rounded-full bg-slate-700" />
-                <p className="text-blue-500 text-[9px] font-black uppercase tracking-[0.2em]">City Lens Active</p>
+                <p className="text-blue-500 text-[9px] font-black uppercase tracking-[0.2em]">Kaupunkilinssi Aktiivinen</p>
               </div>
             </div>
           </div>

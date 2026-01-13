@@ -65,7 +65,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
   ];
 
   const researcherItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
-    { id: "researcher", label: "Research Terminal", icon: Terminal, href: "/dashboard?view=researcher" },
+    { id: "researcher", label: "Tutkimus-terminaali", icon: Terminal, href: "/dashboard?view=researcher" },
     { id: "consensus", label: "Konsensuskartta", icon: Map, href: "/?view=consensus" },
     { id: "analysis", label: "Takinkääntö-vahti", icon: Activity, href: "/puolueet/analyysi" },
     { id: "ranking", label: "Massadata", icon: Database, href: "/ranking" },
@@ -97,7 +97,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
             className="flex items-center gap-3 px-4 py-2 text-[10px] font-black text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl hover:bg-rose-500/20 transition-all uppercase tracking-widest"
           >
             <Shield size={12} />
-            Admin Control
+            Ylläpito
           </Link>
         </div>
       )}
@@ -128,7 +128,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
       <nav className="flex-1 px-6 space-y-1 overflow-y-auto custom-scrollbar relative z-10">
         <div className="mb-4 pt-4">
           <p className="px-4 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-2">
-            The Lens: {role.replace('_', ' ').toUpperCase()}
+            Näkymä: {role.replace('_', ' ').toUpperCase()}
           </p>
           {menuItems.map((item) => {
             const Icon = item.icon;

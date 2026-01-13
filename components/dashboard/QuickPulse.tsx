@@ -96,7 +96,7 @@ export default function QuickPulse({ lens = "national" }: QuickPulseProps) {
                 </span>
                 {question.municipality && (
                   <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest">
-                    Local: {question.municipality}
+                    Paikallinen: {question.municipality}
                   </span>
                 )}
               </div>

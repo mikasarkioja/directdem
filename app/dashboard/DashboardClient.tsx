@@ -90,11 +90,17 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
         if (lens === "national" && activeView !== "researcher") {
           const billsData = await fetchBillsFromSupabase();
           setBills(billsData);
+          if (billsData.length > 0 && !selectedBill) {
+            setSelectedBill(billsData[0]);
+          }
         } else if (lens !== "national") {
           // Map lens to municipality name for query
           const muniName = lens.charAt(0).toUpperCase() + lens.slice(1);
           const tasks = await fetchMunicipalDecisions(muniName);
           setMunicipalTasks(tasks);
+          if (tasks.length > 0 && !selectedMunicipalTask) {
+            setSelectedMunicipalTask(tasks[0]);
+          }
         }
       } catch (err) {
         console.error("Failed to load dashboard data", err);
@@ -267,7 +273,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                 onClick={() => setActiveView("committee")}
                 className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "committee" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
               >
-                Työhuone
+                Eduskunta
               </button>
               <button 
                 onClick={() => setActiveView("kuntavahti")}
@@ -337,17 +343,17 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                 <div className="space-y-1 relative z-10">
                   <h3 className="text-lg font-black uppercase tracking-tighter text-slate-900 italic">
                     {profile?.researcher_type ? {
-                      academic: "Academic_Terminal",
-                      journalist: "Journalist_Console",
-                      policy_expert: "Policy_Intelligence",
-                      strategist: "Strategy_Monitor"
-                    }[profile.researcher_type as string] : "Researcher_ID"}
+                      academic: "Akateeminen_Terminaali",
+                      journalist: "Toimittaja_Konsoli",
+                      policy_expert: "Politiikka_Analyysi",
+                      strategist: "Strategia_Seuranta"
+                    }[profile.researcher_type as string] : "Tutkija_ID"}
                   </h3>
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-slate-900" />
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                      {profile?.researcher_type === 'academic' ? 'Verified Academic Account' : 
-                       profile?.researcher_type === 'journalist' ? 'Press Protocol Active' : 'Professional Access'}
+                      {profile?.researcher_type === 'academic' ? 'Vahvistettu Akateeminen Tili' : 
+                       profile?.researcher_type === 'journalist' ? 'Lehdistöprotokolla Aktiivinen' : 'Ammattilaistason Pääsy'}
                     </p>
                   </div>
                 </div>
@@ -361,11 +367,11 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                   </div>
                   <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
                     <div className="space-y-0.5">
-                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Analyses</span>
+                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Analyysit</span>
                       <p className="text-base font-black text-slate-900 leading-none">1,402</p>
                     </div>
                     <div className="space-y-0.5">
-                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Observations</span>
+                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Havainnot</span>
                       <p className="text-base font-black text-emerald-600 leading-none">84</p>
                     </div>
                   </div>
@@ -375,19 +381,19 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
               <div className="bg-slate-50 border border-slate-200 rounded-[2rem] p-6 space-y-6 shadow-inner">
                 <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-3">
                   <Activity size={14} className="text-slate-900" />
-                  Behavioral Anomalies
+                  Käyttäytymispoikkeamat
                 </h4>
                 <div className="space-y-4">
                   {[
-                    { type: "Puoluekuri", desc: "KOK ryhmäkurin poikkeava tiivistyminen (Q1)", status: "High" },
-                    { type: "Divergenssi", desc: "SDP:n äänestyskäyttäytyminen vs. vaalilupaukset", status: "Alert" },
-                    { type: "Lobbaus", desc: "EK:n intensiivinen asiantuntijakuulemisjakso", status: "Active" }
+                    { type: "Puoluekuri", desc: "KOK ryhmäkurin poikkeava tiivistyminen (Q1)", status: "Korkea" },
+                    { type: "Divergenssi", desc: "SDP:n äänestyskäyttäytyminen vs. vaalilupaukset", status: "Hälytys" },
+                    { type: "Lobbaus", desc: "EK:n intensiivinen asiantuntijakuulemisjakso", status: "Aktiivinen" }
                   ].map((alert, i) => (
                     <div key={i} className="space-y-1 border-l-2 border-slate-200 pl-3 py-0.5">
                       <div className="flex justify-between items-center">
                         <span className="text-[8px] font-black text-slate-400 uppercase italic">{alert.type}</span>
                         <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded ${
-                          alert.status === 'Alert' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-600'
+                          alert.status === 'Hälytys' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-600'
                         }`}>{alert.status}</span>
                       </div>
                       <p className="text-[10px] font-bold text-slate-700 uppercase tracking-tight leading-tight">{alert.desc}</p>
@@ -420,7 +426,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                 <>
                   <div className="flex justify-between items-end">
                     <div className="space-y-1">
-                      <h2 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">Tehtävävirta</h2>
+                      <h2 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">Eduskuntavahti</h2>
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Valiokunta: {mergedUser.committee_assignment}</p>
                     </div>
                     <div className="bg-slate-900 px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase text-purple-400">
@@ -459,12 +465,18 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                       <div 
                         key={bill.id}
                         onClick={() => setSelectedBill(bill)}
-                        className="p-6 bg-slate-900/40 border border-white/5 rounded-[2rem] hover:border-purple-500/30 transition-all cursor-pointer group"
+                        className="p-6 bg-slate-900/40 border border-white/5 rounded-[2rem] hover:border-purple-500/30 transition-all cursor-pointer group flex flex-col justify-between min-h-[120px]"
                       >
-                        <p className="text-[8px] font-black uppercase text-slate-600 mb-2">{bill.parliamentId}</p>
-                        <h4 className="text-xs font-black uppercase tracking-tight text-white group-hover:text-purple-400 transition-colors line-clamp-2">
-                          {bill.title}
-                        </h4>
+                        <div>
+                          <p className="text-[8px] font-black uppercase text-slate-600 mb-2">{bill.parliamentId}</p>
+                          <h4 className="text-xs font-black uppercase tracking-tight text-white group-hover:text-purple-400 transition-colors line-clamp-2">
+                            {bill.title}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-1 mt-4 text-[7px] font-black uppercase tracking-widest text-slate-500 group-hover:text-purple-400 transition-colors">
+                          <ChevronRight size={10} />
+                          Avaa analyysi
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -496,12 +508,18 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                       <div 
                         key={task.id}
                         onClick={() => setSelectedMunicipalTask(task)}
-                        className="p-6 bg-slate-900/40 border border-white/5 rounded-[2rem] hover:border-blue-500/30 transition-all cursor-pointer group"
+                        className="p-6 bg-slate-900/40 border border-white/5 rounded-[2rem] hover:border-blue-500/30 transition-all cursor-pointer group flex flex-col justify-between min-h-[120px]"
                       >
-                        <p className="text-[8px] font-black uppercase text-slate-600 mb-2">{task.proposer || "Kaupunginhallitus"}</p>
-                        <h4 className="text-xs font-black uppercase tracking-tight text-white group-hover:text-blue-400 transition-colors line-clamp-2">
-                          {task.title}
-                        </h4>
+                        <div>
+                          <p className="text-[8px] font-black uppercase text-slate-600 mb-2">{task.proposer || "Kaupunginhallitus"}</p>
+                          <h4 className="text-xs font-black uppercase tracking-tight text-white group-hover:text-blue-400 transition-colors line-clamp-2">
+                            {task.title}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-1 mt-4 text-[7px] font-black uppercase tracking-widest text-slate-500 group-hover:text-blue-400 transition-colors">
+                          <ChevronRight size={10} />
+                          Avaa analyysi
+                        </div>
                       </div>
                     ))}
                   </div>

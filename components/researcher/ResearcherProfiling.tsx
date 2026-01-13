@@ -93,7 +93,7 @@ export default function ResearcherProfiling({ onComplete }: ResearcherProfilingP
       <div className="relative z-10 flex items-center justify-between mb-12">
         <div className="flex items-center gap-3">
           <BookOpen className="text-slate-900" />
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 italic">Researcher_Protocol_Init</h2>
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 italic">Asiantuntija_Protokolla_Alustus</h2>
         </div>
         <div className="flex gap-1">
           {[1, 2].map(i => (

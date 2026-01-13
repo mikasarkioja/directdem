@@ -60,9 +60,9 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
     { id: "democracy_state", label: "Demokratian Tila", icon: BarChart2, group: "Poliittinen Analyysi" },
     { id: "scorecard", label: "Lobby-Scorecard", icon: Target, group: "Vaikuttavuus" },
     { id: "impact", label: "Tekstuaalinen Vaikutus", icon: Search, group: "Vaikuttavuus" },
-    { id: "meeting_timeline", label: "The Meeting Timeline", icon: Calendar, group: "Vaikuttavuus" },
+    { id: "meeting_timeline", label: "Tapaamis-aikajana", icon: Calendar, group: "Vaikuttavuus" },
     { id: "discipline", label: "Puoluekuri-indeksi", icon: Users, group: "Poliittinen Analyysi" },
-    { id: "export", label: "Dataset Export", icon: Download, group: "Data" }
+    { id: "export", label: "Datan ulosvienti", icon: Download, group: "Data" }
   ];
 
   const researcherTypeLabels: Record<string, string> = {
@@ -123,8 +123,8 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
     return (
       <div className="bg-white border border-slate-200 rounded-[2rem] p-12 text-center space-y-8 min-h-[600px] flex flex-col items-center justify-center shadow-2xl">
         <Lock className="text-slate-300 w-16 h-16 mb-4" />
-        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Researcher Authentication Required</h2>
-        <p className="text-slate-400 max-w-md mx-auto font-serif">Deep analysis modules are restricted to verified academic and journalistic accounts.</p>
+        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Tutkijan tunnistautuminen vaaditaan</h2>
+        <p className="text-slate-400 max-w-md mx-auto font-serif">Syväanalyysimoduulit on rajoitettu vain vahvistetuille akateemisille ja journalistisille tileille.</p>
       </div>
     );
   }
@@ -140,10 +140,10 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
             </div>
             <div className="min-w-0">
               <h2 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 leading-none mb-1 truncate">
-                {researcherProfile?.researcher_type ? researcherTypeLabels[researcherProfile.researcher_type] : "Academic_Protocol"}
+                {researcherProfile?.researcher_type ? researcherTypeLabels[researcherProfile.researcher_type] : "Akateeminen_Protokolla"}
               </h2>
               <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate">
-                ID: {researcherProfile?.id?.substring(0, 8) || "GUEST"}
+                ID: {researcherProfile?.id?.substring(0, 8) || "VIERAS"}
               </p>
             </div>
           </div>
@@ -176,7 +176,7 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
         <div className="p-6 border-t border-slate-200 bg-white">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Live Research Environment</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Aktiivinen tutkimusympäristö</span>
           </div>
         </div>
       </aside>
@@ -185,9 +185,9 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
       <main className="flex-1 flex flex-col bg-white">
         <header className="h-20 border-b border-slate-100 flex items-center justify-between px-10">
           <div className="flex items-center gap-4">
-            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Current Project</span>
+            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Nykyinen projekti</span>
             <div className="w-px h-4 bg-slate-200" />
-            <span className="text-xs font-bold text-slate-900">Direct Democracy & Legislative Impact Index 2025</span>
+            <span className="text-xs font-bold text-slate-900">Suora demokratia & Lainsäädännöllinen vaikutusindeksi 2025</span>
           </div>
           <div className="flex gap-2">
             <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
@@ -212,9 +212,9 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                 <div className="space-y-16">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                     {[
-                      { label: "Corpus Size", value: stats.corpusSize.toLocaleString(), sub: "Analysoitua asiatekstiä", color: "border-slate-200" },
-                      { label: "Significance Spikes", value: stats.significanceSpikes.toLocaleString(), sub: "Käyttäytymishavaintoa", color: "border-emerald-200" },
-                      { label: "Collaborative Peak", value: stats.collaborativePeak.toLocaleString(), sub: "Asiantuntijaverkosto", color: "border-purple-200" }
+                      { label: "Analyysikorpuksen koko", value: stats.corpusSize.toLocaleString(), sub: "Analysoitua asiatekstiä", color: "border-slate-200" },
+                      { label: "Merkittävyyspiikit", value: stats.significanceSpikes.toLocaleString(), sub: "Käyttäytymishavaintoa", color: "border-emerald-200" },
+                      { label: "Yhteistyön huippuarvo", value: stats.collaborativePeak.toLocaleString(), sub: "Asiantuntijaverkosto", color: "border-purple-200" }
                     ].map((stat, i) => (
                       <div key={i} className={`bg-white border-b-2 ${stat.color} p-10 space-y-4 shadow-sm rounded-2xl`}>
                         <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">{stat.label}</p>
@@ -229,8 +229,8 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                     <div className="grid grid-cols-1 gap-10 font-serif">
                       <div className="p-12 bg-slate-50 border border-slate-200 rounded-[2.5rem] space-y-8 shadow-inner">
                         <div className="flex items-center justify-between mb-4">
-                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">OBS_REF: 2025-01-12-A | AI_SUMMARY</span>
-                          <span className="px-4 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-600 shadow-sm">High Confidence</span>
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">REF_KOODI: 2025-01-12-A | AI_YHTEENVETO</span>
+                          <span className="px-4 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-600 shadow-sm">Korkea Luottamusväli</span>
                         </div>
                         <p className="text-2xl text-slate-800 leading-relaxed italic border-l-4 border-slate-200 pl-10 py-2">
                           "Suurin havaittu poikkeama kansalaismielipiteen ja parlamentaarisen toiminnan välillä liittyy **ympäristöpolitiikkaan**. 
@@ -241,7 +241,7 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                           {[
                             { label: "Kansalais-DNA (Env)", val: "8.2/10" },
                             { label: "Päättäjä-Vaste (Env)", val: "3.4/10" },
-                            { label: "Divergenssi", val: "4.8 pts" },
+                            { label: "Divergenssi", val: "4.8 pistettä" },
                             { label: "Trendi", val: "Kasvava" }
                           ].map((m, i) => (
                             <div key={i} className="space-y-2">
@@ -315,7 +315,7 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                   {isLoadingTimeline ? (
                     <div className="flex flex-col items-center justify-center h-64 space-y-4">
                       <Loader2 className="animate-spin text-slate-300" size={48} />
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Computing Correlations...</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Lasketaan korrelaatioita...</p>
                     </div>
                   ) : (
                     <DependencyTimeline 
@@ -339,7 +339,7 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Ideologinen Vastaavuus (DNA vs Äänestykset)</h4>
                         <div className="h-64 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center relative overflow-hidden">
                           <div className="absolute inset-0 bg-[linear-gradient(45deg,_transparent_25%,_rgba(0,0,0,.02)_25%,_rgba(0,0,0,.02)_50%,_transparent_50%,_transparent_75%,_rgba(0,0,0,.02)_75%,_rgba(0,0,0,.02))] bg-[length:20px_20px]" />
-                          <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest z-10 animate-pulse">Computing Representation Index...</p>
+                          <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest z-10 animate-pulse">Lasketaan edustavuusindeksiä...</p>
                         </div>
                         <div className="space-y-4 font-serif">
                           <p className="text-sm text-slate-600 leading-relaxed">
@@ -387,7 +387,7 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
               {activeModule === "meeting_timeline" && (
                 <div className="space-y-12">
                   <div className="space-y-4">
-                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">The Meeting Timeline</h3>
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Tapaamis-aikajana</h3>
                     <p className="text-base text-slate-500 font-serif italic">Aikajana tapaamisista, lausunnoista ja lakitekstin muutoksista.</p>
                   </div>
                   <MeetingTimeline points={meetingPoints} />
@@ -424,7 +424,7 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                     <Download className="text-slate-900 w-12 h-12" />
                   </div>
                   <div className="space-y-6">
-                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">Dataset_Export_Protocol</h3>
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">Datan_vienti_protokolla</h3>
                     <p className="text-slate-500 text-sm font-serif leading-relaxed max-w-lg mx-auto italic">
                       Nouda DirectDem-alustan keräämä anonymisoitu raakadata akateemista tutkimusta varten. 
                       Datasetit sisältävät koodatut äänestystulokset, DNA-trendit ja kielimallien analyysit.
@@ -433,11 +433,11 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <button className="p-10 bg-slate-900 text-white rounded-3xl font-black uppercase tracking-widest text-xs transition-all shadow-2xl hover:bg-slate-800 flex flex-col items-center gap-6 border border-white/10">
                       <Database size={32} />
-                      Download JSON Bundle (Full)
+                      Lataa täysi JSON-paketti
                     </button>
                     <button className="p-10 bg-white border-2 border-slate-900 text-slate-900 rounded-3xl font-black uppercase tracking-widest text-xs transition-all hover:bg-slate-50 flex flex-col items-center gap-6">
                       <Layers size={32} />
-                      Export Tabular CSV (Stats)
+                      Vie CSV-muodossa (tilastot)
                     </button>
                   </div>
                 </div>

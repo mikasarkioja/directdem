@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
+import axios from "axios";
 
 dotenv.config({ path: ".env.local" });
 
@@ -25,29 +26,56 @@ export interface RhetoricProfile {
 }
 
 /**
- * Analyzes speeches from a JSON file and creates a rhetoric profile for Harry Harkimo.
+ * Analyzes speeches for a specific MP and updates their AI profile.
  */
-export async function analyzeHarkimoRhetoric() {
-  console.log("🧠 Käynnistetään Harry Harkimo 2025 Rhetoric Analysis...");
+export async function analyzeMPRhetoric(mpId: string | number, firstName: string, lastName: string, party: string) {
+  console.log(`🧠 Analyzing rhetoric for: ${firstName} ${lastName} (${mpId})...`);
 
-  const filePath = path.join(process.cwd(), "data", "harkimo_speeches_2025.json");
-  if (!fs.existsSync(filePath)) {
-    throw new Error("Puhedataa ei löytynyt. Aja fetch-skripti ensin.");
+  // 1. Fetch speeches from Eduskunta API
+  const API_URL = `https://avoindata.eduskunta.fi/api/v1/data/SaliPuheenvuoro`;
+  let speeches = [];
+  
+  try {
+    const response = await axios.get(API_URL, {
+      params: {
+        filter: `PuhujaHenkiloId eq ${mpId}`,
+      }
+    });
+
+    if (response.data && response.data.rowData) {
+      const columnNames = response.data.columnNames || [];
+      const rowData = response.data.rowData || [];
+      const contentIndex = columnNames.indexOf("SisaltoTeksti");
+      const subjectIndex = columnNames.indexOf("AiheTeksti");
+      const dateIndex = columnNames.indexOf("PuhevuoroPaivamaara");
+
+      speeches = rowData.slice(0, 20).map((row: any) => ({
+        date: row[dateIndex],
+        subject: row[subjectIndex] || "Ei aihetta",
+        content: row[contentIndex] || ""
+      }));
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ Could not fetch speeches for ${mpId}:`, err.message);
   }
 
-  const speeches = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  const speechesContext = speeches.map((s: any) => `Päivämäärä: ${s.date}\nAihe: ${s.subject}\nSisältö: ${s.content}`).join("\n\n---\n\n");
+  if (speeches.length === 0) {
+    console.log(`ℹ️ No speeches found for ${mpId}. Skipping profiling.`);
+    return null;
+  }
+
+  const speechesContext = speeches.map((s: any) => `Aihe: ${s.subject}\nSisältö: ${s.content}`).join("\n\n---\n\n");
 
   try {
     const { text: profileJson } = await generateText({
-      model: openai("gpt-4o") as any,
+      model: openai("gpt-4o-mini") as any,
       system: `Olet poliittisen viestinnän ja retoriikan asiantuntija. 
-      Tehtäväsi on luoda 'Harry Harkimo 2025 Rhetoric Profile' annettujen puheiden perusteella.
+      Tehtäväsi on luoda 'Rhetoric Profile' annettujen puheiden perusteella.
       
       Analyysin on sisällettävä:
-      1. Kielellinen tyyli: Lyhyet/pitkät lauseet, slangi, liikemiestermit, muodollisuus.
+      1. Kielellinen tyyli: Lyhyet/pitkät lauseet, slangi, asiasanat, muodollisuus.
       2. Toistuvat teemat: 3–5 pääaihetta.
-      3. Risteilypisteet (Conflict patterns): Kritiikin kohteet ja vastaustyyli.
+      3. Risteilypisteet (Conflict patterns): Mitä tai ketä henkilö tyypillisesti kritisoi.
       4. Tyypilliset aloitukset ja lopetukset.
       
       Palauta tiedot VAIN JSON-muodossa:
@@ -57,37 +85,31 @@ export async function analyzeHarkimoRhetoric() {
         "conflict_patterns": "string",
         "openings_closings": "string"
       }`,
-      prompt: `HARRY HARKIMON PUHEET 2025:\n\n${speechesContext}`
+      prompt: `EDUSTAJAN ${firstName.toUpperCase()} ${lastName.toUpperCase()} PUHEET:\n\n${speechesContext}`
     });
 
     const rhetoricProfile: RhetoricProfile = JSON.parse(profileJson.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
 
-    // Update Supabase
-    // Harkimo's MP ID in our DB is 1328
-    const mpId = 1328;
-
     const systemPrompt = `
-      Olet Harry 'Hjallis' Harkimo, Liike Nytin puheenjohtaja ja kansanedustaja.
+      Olet kansanedustaja ${firstName} ${lastName}, puolueesi on ${party}.
       
-      RETORIIKKA-PROFIILISI (2025):
+      RETORIIKKA-PROFIILISI:
       - TYYLI: ${rhetoricProfile.linguistic_style}
       - TEEMAT: ${rhetoricProfile.recurring_themes.join(", ")}
       - KONFLIKTIT: ${rhetoricProfile.conflict_patterns}
       - PUHETAPA: ${rhetoricProfile.openings_closings}
       
       OHJEET VÄITTELYYN:
-      1. Puhu suoraan, vältä 'poliittista jargonia'.
-      2. Käytä lyhyitä, iskeviä lauseita.
-      3. Haasta vanhat puolueet ja byrokratia.
-      4. Tuo esiin yrittäjyyden ja talouden näkökulma.
-      5. ÄLÄ puhuttele vastustajaa 'puhemiehenä'. Jos väittelet toisen edustajan kanssa, käytä hänen nimeään tai sano 'kuule', 'sä' (Hjalliksen tyyli) tai 'kansanedustaja [Nimi]'.
-      6. Käytä iskeviä aloituksia kuten 'Kuulkaa nyt!', 'Mä en ymmärrä...' tai 'Nyt on ihan pakko sanoa...'.
+      1. Noudata omaa kielellistä tyyliäsi.
+      2. Käytä referensseinä aiempia puheitasi ja teemojasi.
+      3. ÄLÄ puhuttele vastustajaa 'puhemiehenä'. Jos väittelet toisen edustajan kanssa, käytä hänen nimeään tai sano 'kuule', 'kansanedustaja [Nimi]'.
+      4. Jos kysymys liippaa läheltä kärkiteemojasi, mainitse että olet pitänyt aiheesta puheita eduskunnassa.
     `;
 
     const { error } = await supabase
       .from("mp_ai_profiles")
       .upsert({
-        mp_id: mpId,
+        mp_id: mpId.toString(),
         rhetoric_style: rhetoricProfile,
         system_prompt: systemPrompt,
         updated_at: new Date().toISOString()
@@ -95,13 +117,20 @@ export async function analyzeHarkimoRhetoric() {
 
     if (error) throw error;
 
-    console.log("✅ Rhetoric Profile tallennettu ja System Prompt päivitetty!");
+    console.log(`✅ Rhetoric Profile updated for ${lastName}.`);
     return rhetoricProfile;
 
   } catch (error: any) {
-    console.error("❌ Rhetoric Analysis failed:", error.message);
+    console.error(`❌ Rhetoric Analysis failed for ${mpId}:`, error.message);
     return null;
   }
+}
+
+/**
+ * Analyzes speeches from a JSON file and creates a rhetoric profile for Harry Harkimo.
+ */
+export async function analyzeHarkimoRhetoric() {
+  return analyzeMPRhetoric(1140, "Harry", "Harkimo", "Liike Nyt");
 }
 
 /**

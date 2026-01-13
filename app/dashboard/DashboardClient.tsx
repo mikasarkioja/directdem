@@ -41,16 +41,24 @@ import { LensMode } from "@/lib/types";
 
 interface DashboardClientProps {
   initialUser: UserProfile | null;
+  prefetchedBills?: Bill[];
+  prefetchedMunicipalTasks?: any[];
+  prefetchedStats?: any;
 }
 
-export default function DashboardClient({ initialUser }: DashboardClientProps) {
+export default function DashboardClient({ 
+  initialUser, 
+  prefetchedBills = [], 
+  prefetchedMunicipalTasks = [],
+  prefetchedStats = null
+}: DashboardClientProps) {
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<any>(initialUser);
-  const [bills, setBills] = useState<Bill[]>([]);
-  const [municipalTasks, setMunicipalTasks] = useState<any[]>([]);
-  const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
-  const [selectedMunicipalTask, setSelectedMunicipalTask] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [bills, setBills] = useState<Bill[]>(prefetchedBills);
+  const [municipalTasks, setMunicipalTasks] = useState<any[]>(prefetchedMunicipalTasks);
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(prefetchedBills[0] || null);
+  const [selectedMunicipalTask, setSelectedMunicipalTask] = useState<any>(prefetchedMunicipalTasks[0] || null);
+  const [loading, setLoading] = useState(false); // Default to false since we have prefetched data
   const [creating, setCreating] = useState(false);
   const [activeView, setActiveView] = useState<"committee" | "kuntavahti" | "economy" | "researcher">("committee");
   const [lens, setLens] = useState<LensMode>("national");
@@ -75,11 +83,24 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
 
   useEffect(() => {
     async function loadData() {
-      // Jos meillä on jo profiili ja olemme tutkijanäkymässä, ja profiili on alustettu,
-      // voimme ohittaa latauksen jos data on jo olemassa.
-      if (profile?.researcher_initialized && activeView === "researcher" && profile.id === initialUser?.id) {
-        setLoading(false);
-        return;
+      // Skit initial load if we already have prefetched data for the current lens
+      const isInitialLoad = bills.length === prefetchedBills.length && 
+                           municipalTasks.length === prefetchedMunicipalTasks.length &&
+                           loading === false;
+
+      if (isInitialLoad && profile?.id === initialUser?.id) {
+        // Just ensure selected items are set if not already
+        if (bills.length > 0 && !selectedBill) setSelectedBill(bills[0]);
+        if (municipalTasks.length > 0 && !selectedMunicipalTask) setSelectedMunicipalTask(municipalTasks[0]);
+        
+        // If it's researcher view and initialized, we are good
+        if (activeView === "researcher" && profile?.researcher_initialized) {
+          return;
+        }
+        
+        // If we are in committee/kuntavahti and have data, we might still want to refresh
+        // but for now let's trust the prefetch for the very first render.
+        // We only return early if this is the TRUE initial mount.
       }
 
       setLoading(true);

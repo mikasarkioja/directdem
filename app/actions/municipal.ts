@@ -5,6 +5,8 @@ import { getMunicipalAPI } from "@/lib/municipal-api";
 import { generateMockCitizenPulse } from "@/lib/bill-helpers";
 import { syncAllMunicipalities } from "@/lib/municipal/sync-engine";
 import type { MunicipalCase, SupabaseMunicipalCase } from "@/lib/types";
+import { unstable_cache } from "next/cache";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Fetches municipal cases from Supabase or syncs from API if empty
@@ -105,53 +107,52 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
  * Fetches municipal decisions from the new modular table
  */
 export async function fetchMunicipalDecisions(municipality: string = "Espoo"): Promise<any[]> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("municipal_decisions")
-    .select("*")
-    .eq("municipality", municipality)
-    .order("decision_date", { ascending: false })
-    .limit(20);
-
-  if (error) {
-    console.error("Error fetching decisions:", error);
-    return [];
-  }
-
-  // If no data, trigger sync and try again
-  const finalData = data || [];
-  if (finalData.length === 0) {
-    console.log(`[fetchMunicipalDecisions] No data for ${municipality}, syncing...`);
-    await syncAllMunicipalities();
-    
-    const { data: newData } = await supabase
-      .from("municipal_decisions")
-      .select("*")
-      .eq("municipality", municipality)
-      .order("decision_date", { ascending: false })
-      .limit(20);
+  const fetcher = unstable_cache(
+    async () => {
+      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
       
-    finalData.push(...(newData || []));
-  }
+      if (!url || !key) return [];
+      const supabase = createSupabaseClient(url, key);
 
-  // Haetaan myös mahdolliset kustannusarviot bill_enhanced_profiles -taulusta
-  const enhancedIds = finalData.map(d => `MUNI-${municipality.toUpperCase()}-${d.id}`);
-  const { data: enhanced } = await supabase
-    .from("bill_enhanced_profiles")
-    .select("bill_id, analysis_data")
-    .in("bill_id", enhancedIds);
+      const { data, error } = await supabase
+        .from("municipal_decisions")
+        .select("*")
+        .eq("municipality", municipality)
+        .order("decision_date", { ascending: false })
+        .limit(20);
 
-  const enhancedMap = new Map();
-  enhanced?.forEach(e => {
-    const cost = e.analysis_data?.analysis_depth?.economic_impact?.total_cost_estimate;
-    if (cost) enhancedMap.set(e.bill_id, cost);
-  });
+      if (error) {
+        console.error("Error fetching decisions:", error);
+        return [];
+      }
 
-  return finalData.map(d => ({
-    ...d,
-    cost_estimate: enhancedMap.get(`MUNI-${municipality.toUpperCase()}-${d.id}`)
-  }));
+      const finalData = data || [];
+      if (finalData.length === 0) return [];
+
+      // Haetaan myös mahdolliset kustannusarviot bill_enhanced_profiles -taulusta
+      const enhancedIds = finalData.map(d => `MUNI-${municipality.toUpperCase()}-${d.id}`);
+      const { data: enhanced } = await supabase
+        .from("bill_enhanced_profiles")
+        .select("bill_id, analysis_data")
+        .in("bill_id", enhancedIds);
+
+      const enhancedMap = new Map();
+      enhanced?.forEach(e => {
+        const cost = e.analysis_data?.analysis_depth?.economic_impact?.total_cost_estimate;
+        if (cost) enhancedMap.set(e.bill_id, cost);
+      });
+
+      return finalData.map(d => ({
+        ...d,
+        cost_estimate: enhancedMap.get(`MUNI-${municipality.toUpperCase()}-${d.id}`)
+      }));
+    },
+    [`municipal-decisions-${municipality}`],
+    { revalidate: 3600, tags: [`municipal-${municipality}`] }
+  );
+
+  return fetcher();
 }
 
 /**

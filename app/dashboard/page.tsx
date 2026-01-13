@@ -3,11 +3,42 @@ import DashboardClient from "./DashboardClient";
 import Navbar from "@/components/Navbar";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
+import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
+import { fetchMunicipalDecisions } from "@/app/actions/municipal";
+import { getResearcherStats } from "@/app/actions/researcher";
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const user = await getUser();
   const resolvedSearchParams = await searchParams;
-  const isResearcher = resolvedSearchParams.view === "researcher";
+  const view = (resolvedSearchParams.view as string) || "committee";
+  const lens = (resolvedSearchParams.lens as string) || "national";
+  
+  // Esihaku: Ladataan kriittinen data jo palvelimella
+  const initialDataPromises = [];
+  
+  // Kansalliset lakiesitykset ladataan lähes aina
+  const billsPromise = fetchBillsFromSupabase();
+  
+  // Kunnalliset päätökset jos ollaan kuntanäkymässä tai linssi on asetettu
+  let municipalPromise = Promise.resolve([]);
+  if (view === "kuntavahti" || lens !== "national") {
+    const muniName = lens !== "national" ? lens.charAt(0).toUpperCase() + lens.slice(1) : "Espoo";
+    municipalPromise = fetchMunicipalDecisions(muniName);
+  }
+  
+  // Tutkijatilastot jos ollaan tutkijanäkymässä
+  let statsPromise = Promise.resolve(null);
+  if (view === "researcher") {
+    statsPromise = getResearcherStats();
+  }
+
+  const [initialBills, initialMunicipalTasks, initialStats] = await Promise.all([
+    billsPromise,
+    municipalPromise,
+    statsPromise
+  ]);
+
+  const isResearcher = view === "researcher";
 
   return (
     <div className="min-h-screen bg-nordic-white">
@@ -21,7 +52,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </p>
           </div>
         }>
-          <DashboardClient initialUser={user} />
+          <DashboardClient 
+            initialUser={user} 
+            prefetchedBills={initialBills}
+            prefetchedMunicipalTasks={initialMunicipalTasks}
+            prefetchedStats={initialStats}
+          />
         </Suspense>
       </main>
     </div>

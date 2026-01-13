@@ -1,6 +1,7 @@
 "use server";
 
-import { calculateInfluenceStats, LobbyistStats } from "@/lib/researcher/influence-stats";
+import { calculateInfluenceStats } from "@/lib/researcher/influence-stats";
+import { LobbyistStats } from "@/lib/types";
 import { getUser } from "@/app/actions/auth";
 
 export async function getLobbyistLeaderboard(): Promise<LobbyistStats[]> {

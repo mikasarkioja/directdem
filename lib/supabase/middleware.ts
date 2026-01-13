@@ -6,6 +6,7 @@ export async function updateSession(request: NextRequest) {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
   const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
+  // 1. Luodaan alustava vastaus
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -15,19 +16,30 @@ export async function updateSession(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
-        cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
+      setAll(cookiesToSet) {
+        // Päivitetään pyynnön evästeet, jotta Server Componentit näkevät ne heti
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        
+        // Luodaan uusi vastaus päivitetyillä pyynnön evästeillä
         supabaseResponse = NextResponse.next({
           request,
         });
+
+        // Päivitetään vastauksen evästeet, jotta selain tallentaa ne
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options)
         );
       },
     },
+    // Pakotetaan SameSite: Lax Firefox-ongelmien välttämiseksi
+    cookieOptions: {
+      sameSite: 'lax',
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+    }
   });
 
-  // Tarkistetaan käyttäjä
+  // TÄRKEÄÄ: Tämä tarkistus kutsuu setAll-funktiota, jos token on vanhentunut
   const { data: { user } } = await supabase.auth.getUser();
 
   // TARKISTETAAN GHOST-KÄYTTÄJÄ
@@ -42,21 +54,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   const isProtectedPath = path.startsWith("/dashboard") || path.startsWith("/testi/tulokset");
-  const isAdminPath = path.startsWith("/admin");
-
-  // TEMPORARY: Allow all users to access /admin for testing
-  /*
-  if (isAdminPath) {
-    if (!user || (user.email !== 'nika.sarkioja@gmail.com' && !user.email?.includes('admin'))) {
-      const homeUrl = new URL("/", request.url);
-      return NextResponse.redirect(homeUrl);
-    }
-  }
-  */
-
+  
+  // Jos olet suojatulla polulla ja user on null (eikä ole ghost), ohjaa kirjautumiseen
   if (isProtectedPath && !user && !isGhost) {
-    const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;

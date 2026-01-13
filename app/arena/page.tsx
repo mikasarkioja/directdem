@@ -6,12 +6,14 @@ import { useChat } from "ai/react";
 import { 
   Trophy, Sword, Shield, Zap, Flame, User, Bot, 
   ChevronRight, Send, ShieldCheck, AlertCircle, Info,
-  Loader2, Search, X, MessageSquare, Play
+  Loader2, Search, X, MessageSquare, Play, Link as LinkIcon
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import { fetchMunicipalCouncilors } from "@/app/actions/councilors";
 import { useRole } from "@/lib/context/RoleContext";
+
+import { RadarAlert } from "@/components/arena/RadarAlert";
 
 interface MP {
   id: string;
@@ -45,6 +47,8 @@ export default function ArenaDuelPage() {
   const [loading, setLoading] = useState(true);
   const [tensionLevel, setTensionLevel] = useState(0);
   const [lens, setLens] = useState<"national" | "Helsinki" | "Espoo" | "Vantaa">("national");
+  const [champConflict, setChampConflict] = useState<any>(null);
+  const [challengerConflict, setChallengerConflict] = useState<any>(null);
 
   // Harry Harkimo ID (Champion)
   const championId = "1328";
@@ -119,7 +123,7 @@ export default function ArenaDuelPage() {
         const statusMatch = m.content.match(/\[STATUS: (.*?)\]/);
         if (statusMatch) {
           const status = statusMatch[1];
-          if (status === "Hyökkää" || status === "Haastaa takinkäännöstä") level = Math.min(100, level + 15);
+          if (status === "Hyökkää" || status === "Haastaa takinkäännöstä" || status === "Haastaa kytköksistä") level = Math.min(100, level + 15);
           else if (status === "Kunnioittaa") level = Math.max(0, level - 10);
         }
       }
@@ -132,11 +136,17 @@ export default function ArenaDuelPage() {
     
     // Hae mahdolliset hälytykset edustajille tästä aiheesta
     try {
-      const res = await fetch(`/api/arena/alerts?billId=${selectedBill.bill_id}&mps=${championId},${selectedChallenger.id}`);
-      const data = await res.json();
-      setAlerts(data || []);
+      const [alertsRes, champConflictsRes, challConflictsRes] = await Promise.all([
+        fetch(`/api/arena/alerts?billId=${selectedBill.bill_id}&mps=${championId},${selectedChallenger.id}`).then(r => r.json()),
+        fetch(`/api/arena/conflicts?billId=${selectedBill.bill_id}&mpId=${championId}`).then(r => r.json()),
+        fetch(`/api/arena/conflicts?billId=${selectedBill.bill_id}&mpId=${selectedChallenger.id}`).then(r => r.json())
+      ]);
+      
+      setAlerts(alertsRes || []);
+      setChampConflict(champConflictsRes);
+      setChallengerConflict(challConflictsRes);
     } catch (e) {
-      console.error("Failed to fetch alerts:", e);
+      console.error("Failed to fetch alerts/conflicts:", e);
     }
 
     setIsDuelActive(true);
@@ -352,6 +362,15 @@ export default function ArenaDuelPage() {
                       <div>
                         <p className="text-[10px] font-black uppercase text-white truncate">{championName}</p>
                         <p className="text-[8px] font-bold uppercase text-yellow-500/70">{championParty}</p>
+                        {champConflict && (
+                          <div className="mt-2">
+                            <RadarAlert 
+                              score={champConflict.score} 
+                              explanation={champConflict.explanation} 
+                              connections={champConflict.detected_connections} 
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                     
@@ -376,6 +395,15 @@ export default function ArenaDuelPage() {
                       <div>
                         <p className="text-[10px] font-black uppercase text-white truncate">{selectedChallenger?.first_name} {selectedChallenger?.last_name}</p>
                         <p className="text-[8px] font-bold uppercase text-orange-500/70">{selectedChallenger?.party}</p>
+                        {challengerConflict && (
+                          <div className="mt-2">
+                            <RadarAlert 
+                              score={challengerConflict.score} 
+                              explanation={challengerConflict.explanation} 
+                              connections={challengerConflict.detected_connections} 
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -466,12 +494,18 @@ export default function ArenaDuelPage() {
                             </div>
 
                             {m.role === "assistant" && parsed.facts && (
-                              <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex items-start gap-3 ml-2">
-                                <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+                              <div className={`p-3 border rounded-2xl flex items-start gap-3 ml-2 ${parsed.facts.source === 'Sidonnaisuus' ? 'bg-orange-500/5 border-orange-500/20' : 'bg-emerald-500/5 border-emerald-500/20'}`}>
+                                {parsed.facts.source === 'Sidonnaisuus' ? (
+                                  <LinkIcon size={14} className="text-orange-400 shrink-0" />
+                                ) : (
+                                  <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+                                )}
                                 <div className="space-y-1">
-                                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-400">Referenssi</p>
+                                  <p className={`text-[8px] font-black uppercase tracking-widest ${parsed.facts.source === 'Sidonnaisuus' ? 'text-orange-400' : 'text-emerald-400'}`}>
+                                    {parsed.facts.source === 'Sidonnaisuus' ? 'Kytkökset' : 'Referenssi'}
+                                  </p>
                                   <p className="text-[10px] font-bold text-slate-400">
-                                    {parsed.facts.bill} ({parsed.facts.vote})
+                                    {parsed.facts.details || parsed.facts.bill} {parsed.facts.vote ? `(${parsed.facts.vote})` : ''}
                                   </p>
                                 </div>
                               </div>

@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { processTransaction } from "@/lib/logic/economy";
 import { trackFeatureUsage, logAiCost } from "@/lib/analytics/tracker";
 
+import { analyzeConflicts } from "@/lib/ai/dependency-radar";
+
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
@@ -48,10 +50,24 @@ export async function POST(req: Request) {
   console.log("Arena Duel - Starting:", { championId, challengerId, billId, userId });
 
   // Varmistetaan että ID:t ovat numeroita
-  const champIdNum = parseInt(championId);
-  const challIdNum = parseInt(challengerId);
+          const champIdNum = parseInt(championId);
+          const challIdNum = parseInt(challengerId);
 
-  // --- MP / Councilor Fetching Logic ---
+          // 1.5 Fetch Conflict Analysis (Dependency Radar)
+          let champConflicts = null;
+          let challConflicts = null;
+          if (billId) {
+            try {
+              [champConflicts, challConflicts] = await Promise.all([
+                analyzeConflicts(billId, championId),
+                analyzeConflicts(billId, challengerId)
+              ]);
+            } catch (err) {
+              console.warn("Conflict Analysis failed, continuing without it.", err);
+            }
+          }
+
+          // --- MP / Councilor Fetching Logic ---
   const supabase = createSupabaseJS(supabaseUrl, serviceKey);
 
   async function getParticipantData(id: string) {
@@ -86,7 +102,11 @@ export async function POST(req: Request) {
           mp_ai_profiles (
             system_prompt,
             voting_summary,
-            rhetoric_style
+            rhetoric_style,
+            lobbyist_meetings,
+            affiliations,
+            current_sentiment,
+            regional_bias
           ),
           mp_profiles (
             economic_score,
@@ -140,10 +160,16 @@ export async function POST(req: Request) {
           first_name,
           last_name,
           party,
+          constituency,
+          hometown,
           mp_ai_profiles (
             system_prompt,
             voting_summary,
-            rhetoric_style
+            rhetoric_style,
+            lobbyist_meetings,
+            affiliations,
+            current_sentiment,
+            regional_bias
           ),
           mp_profiles (
             economic_score,
@@ -164,6 +190,8 @@ export async function POST(req: Request) {
         first_name: mp.first_name,
         last_name: mp.last_name,
         party: mp.party,
+        constituency: mp.constituency,
+        hometown: mp.hometown,
         ai_profile: mp.mp_ai_profiles,
         dna: mp.mp_profiles
       };
@@ -268,12 +296,22 @@ export async function POST(req: Request) {
     
     OSAPUOLET:
     1. CHAMPION (Agentti A): ${champName} (${champParty}). 
+       - Vaalipiiri: ${champion.constituency || "Suomi"}, Kotikunta: ${champion.hometown || "tuntematon"}
        - Tyyli: ${champAi?.rhetoric_style} (Hjalliksen tyyli: suora, liikemiesmäinen, populistinen, kriittinen valtavirtaa kohtaan).
+       - Sidonnaisuudet: ${JSON.stringify(champAi?.affiliations)}
+       - Lobbaustapaamiset: ${JSON.stringify(champAi?.lobbyist_meetings)}
+       - ETURISTIRIITA-ANALYYSI (TUTKA): ${JSON.stringify(champConflicts)}
+       - Moodi (some): ${champAi?.current_sentiment}
        - Perustus: ${champAi?.system_prompt}
        - Äänestykset: ${JSON.stringify(champAi?.voting_summary)}
     
     2. CHALLENGER (Agentti B): ${challName} (${challParty}). 
+       - Vaalipiiri: ${challenger.constituency || "Suomi"}, Kotikunta: ${challenger.hometown || "tuntematon"}
        - Tyyli: ${challAi?.rhetoric_style}
+       - Sidonnaisuudet: ${JSON.stringify(challAi?.affiliations)}
+       - Lobbaustapaamiset: ${JSON.stringify(challAi?.lobbyist_meetings)}
+       - ETURISTIRIITA-ANALYYSI (TUTKA): ${JSON.stringify(challConflicts)}
+       - Moodi (some): ${challAi?.current_sentiment}
        - Perustus: ${challAi?.system_prompt}
        - Äänestykset: ${JSON.stringify(challAi?.voting_summary)}
     
@@ -286,16 +324,17 @@ export async function POST(req: Request) {
     
     VÄITTELYN SÄÄNNÖT JA AGENTTI-KETJU (DUEL MODE 2.0):
     1. PUHUTTELU: ÄLÄ käytä termiä 'Rouva/Herra puhemies'. Tämä ei ole täysistunto. Puhuttele vastustajaa nimellä (esim. '${challName}') tai 'kansanedustaja [Sukunimi]'. Hjallis voi käyttää tuttavallisempaa 'sä'-muotoa.
-    2. PROAKTIIVINEN HYÖKKÄYS: Etsi vastustajan "TAKINKÄÄNTÖ-HÄLYTYKSET" ja käytä niitä välittömästi. Jos vastustaja äänestää vastoin lupauksiaan, MP [X] (Hjallis tai haastaja) on huomautettava siitä kärkkäästi.
-    2. HOTSPOT-HYÖDYNTÄMINEN: Käytä LAIN HOTSPOT-kohtia väittelyn kärkenä. Esim. "Tämä laki leikkaa eläkeläisiltä, vaikka sä lupasit vappusatasen!"
-    3. HJALLIS-TYYLI: Jos Agentti A on Hjallis, hänen on oltava erityisen epäsovinnainen, kyseenalaistettava koko nykyinen poliittinen järjestelmä ja käytettävä "suoraa puhetta" ilman turhia kaunisteluja.
-    4. VASTAUSLOGIIKKA: Jos edellinen puhuja oli Agentti A, kirjoita Agentti B:n vastaus. Jos edellinen puhuja oli Agentti B, kirjoita Agentti A:n kuitti.
-    5. DATA-VIITTEET: Jokaiseen puheenvuoroon on sisällyttävä vähintään yksi viittaus joko MP:n äänestyshistoriaan, lupaukseen tai lain Hotspottiin.
+    2. HIDDEN MOTIVATIONS (TÄRKEÄ): Jos väittely koskee aihetta, joka liippaa MP:n sidonnaisuuksia tai tapaamisia, MP:n on käytettävä itsepuolustusta. Vastustajan (varsinkin Hjalliksen) on HAISTETTAVA tämä ja HAESTETTAVA edustaja kytköksistä. Esim. "Sä tapaat EK:ta ja nyt sä puhut täällä niiden pussiin!"
+    3. ALUEELLINEN PAINOTUS: MP:n on suosittava argumentteja, jotka hyödyttävät heidän omaa vaalipiiriään tai kotikuntaansa.
+    4. PROAKTIIVINEN HYÖKKÄYS: Etsi vastustajan "TAKINKÄÄNTÖ-HÄLYTYKSET" ja käytä niitä välittömästi. Jos vastustaja äänestää vastoin lupauksiaan, MP [X] (Hjallis tai haastaja) on huomautettava siitä kärkkäästi.
+    5. HJALLIS-TYYLI: Jos Agentti A on Hjallis, hänen on oltava erityisen epäsovinnainen, kyseenalaistettava koko nykyinen poliittinen järjestelmä ja käytettävä "suoraa puhetta" ilman turhia kaunisteluja.
+    6. VASTAUSLOGIIKKA: Jos edellinen puhuja oli Agentti A, kirjoita Agentti B:n vastaus. Jos edellinen puhuja oli Agentti B, kirjoita Agentti A:n kuitti.
+    7. DATA-VIITTEET: Jokaiseen puheenvuoroon on sisällyttävä vähintään yksi viittaus joko MP:n äänestyshistoriaan, lupaukseen, lain Hotspottiin tai SIDONNAISUUKSIIN.
     
     FORMATOINTI:
     - Aloita viesti: [SPEAKER: CHAMPION|CHALLENGER]
-    - Lisää tila: [STATUS: Hyökkää|Puolustautuu|Selittää kompromissia|Kunnioittaa|Haastaa takinkäännöstä]
-    - Jos viittaat dataan: [FACTS: {"bill": "Lain nimi", "vote": "Jaa/Ei", "source": "Äänestys/Lupaus"}]
+    - Lisää tila: [STATUS: Hyökkää|Puolustautuu|Selittää kompromissia|Kunnioittaa|Haastaa takinkäännöstä|Haastaa kytköksistä]
+    - Jos viittaat dataan: [FACTS: {"bill": "Lain nimi", "vote": "Jaa/Ei", "source": "Äänestys/Lupaus/Sidonnaisuus", "details": "EK-tapaaminen / Hallituspaikka tms."}]
     
     KÄYTTÄJÄN ROOLI:
     Käyttäjä on "Erotuomari". Jos hän heittää väliin kysymyksen, molemmat agentit vastaavat siihen peräkkäin lyhyesti omasta näkökulmastaan.

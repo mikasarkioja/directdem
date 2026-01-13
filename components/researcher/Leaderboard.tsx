@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Trophy, ArrowUpRight, Target, FileText, Users } from "lucide-react";
-import { LobbyistStats } from "@/lib/researcher/influence-stats";
+import { LobbyistStats } from "@/lib/types";
 
 interface LeaderboardProps {
   stats: LobbyistStats[];

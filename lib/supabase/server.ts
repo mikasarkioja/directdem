@@ -16,13 +16,14 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+        setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Server Component ignore
+            // Server Componenteissa ei voi asettaa evästeitä, 
+            // mutta se on ok, koska Middleware hoitaa sen.
           }
         },
       },

@@ -19,14 +19,20 @@ import {
   ChevronRight,
   TrendingUp,
   PieChart,
-  FileText
+  FileText,
+  Clock,
+  Calendar
 } from "lucide-react";
+import { DependencyTimeline } from "./DependencyTimeline";
+import { getDependencyTimelineData } from "@/app/actions/dependency-timeline";
+import { MeetingTimeline } from "./MeetingTimeline";
+import { getMeetingTimelineData } from "@/app/actions/researcher";
 import { motion, AnimatePresence } from "framer-motion";
 import { getResearchNotes, addResearchNote, ResearchNote } from "@/app/actions/research-notes";
 import LobbyistScorecard from "./LobbyistScorecard";
 import ImpactMap from "./ImpactMap";
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { exportResearcherData, getLoyaltyData } from "@/app/actions/researcher";
+import { exportResearcherData, getLoyaltyData, getResearcherStats } from "@/app/actions/researcher";
 import { UserProfile } from "@/lib/types";
 
 interface ResearcherWorkspaceProps {
@@ -40,15 +46,21 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
   const [newNote, setNewNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loyaltyData, setLoyaltyData] = useState<any[]>([]);
+  const [timelineData, setTimelineData] = useState<{events: any[], summary: string}>({ events: [], summary: "" });
+  const [meetingPoints, setMeetingPoints] = useState<any[]>([]);
+  const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
+  const [stats, setStats] = useState({ corpusSize: 0, significanceSpikes: 0, collaborativePeak: 0 });
 
   const isLocked = false; 
 
   const modules = [
     { id: "overview", label: "Tutkimus-terminaali", icon: Terminal, group: "Yleinen" },
     { id: "behavior", label: "Päättäjä-analytiikka", icon: Activity, group: "Poliittinen Analyysi" },
+    { id: "dependency_timeline", label: "Sidonnaisuus-aikajana", icon: Clock, group: "Poliittinen Analyysi" },
     { id: "democracy_state", label: "Demokratian Tila", icon: BarChart2, group: "Poliittinen Analyysi" },
     { id: "scorecard", label: "Lobby-Scorecard", icon: Target, group: "Vaikuttavuus" },
     { id: "impact", label: "Tekstuaalinen Vaikutus", icon: Search, group: "Vaikuttavuus" },
+    { id: "meeting_timeline", label: "The Meeting Timeline", icon: Calendar, group: "Vaikuttavuus" },
     { id: "discipline", label: "Puoluekuri-indeksi", icon: Users, group: "Poliittinen Analyysi" },
     { id: "export", label: "Dataset Export", icon: Download, group: "Data" }
   ];
@@ -70,6 +82,26 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
     if (!isLocked && activeModule === "discipline") {
       getLoyaltyData().then(setLoyaltyData);
     }
+
+    if (!isLocked && activeModule === "dependency_timeline") {
+      setIsLoadingTimeline(true);
+      // Using a sample MP ID (e.g., 1328 for Harkimo) for the timeline demo
+      getDependencyTimelineData(1328).then(data => {
+        setTimelineData(data);
+        setIsLoadingTimeline(false);
+      });
+    }
+
+    if (!isLocked && activeModule === "meeting_timeline") {
+      setIsLoadingTimeline(true);
+      getMeetingTimelineData("latest").then(points => {
+        setMeetingPoints(points);
+        setIsLoadingTimeline(false);
+      });
+    }
+
+    // Fetch live stats
+    getResearcherStats().then(setStats);
   }, [activeModule, isLocked]);
 
   const handleSendNote = async () => {
@@ -180,9 +212,9 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                 <div className="space-y-16">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                     {[
-                      { label: "Corpus Size", value: "14,209", sub: "Analysoitua asiatekstiä", color: "border-slate-200" },
-                      { label: "Significance Spikes", value: "182", sub: "Käyttäytymishavaintoa", color: "border-emerald-200" },
-                      { label: "Collaborative Peak", value: "42", sub: "Asiantuntijaverkosto", color: "border-purple-200" }
+                      { label: "Corpus Size", value: stats.corpusSize.toLocaleString(), sub: "Analysoitua asiatekstiä", color: "border-slate-200" },
+                      { label: "Significance Spikes", value: stats.significanceSpikes.toLocaleString(), sub: "Käyttäytymishavaintoa", color: "border-emerald-200" },
+                      { label: "Collaborative Peak", value: stats.collaborativePeak.toLocaleString(), sub: "Asiantuntijaverkosto", color: "border-purple-200" }
                     ].map((stat, i) => (
                       <div key={i} className={`bg-white border-b-2 ${stat.color} p-10 space-y-4 shadow-sm rounded-2xl`}>
                         <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">{stat.label}</p>
@@ -273,6 +305,27 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                 </div>
               )}
 
+              {activeModule === "dependency_timeline" && (
+                <div className="space-y-12">
+                  <div className="space-y-4">
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Sidonnaisuus-aikajana</h3>
+                    <p className="text-base text-slate-500 font-serif italic">Sidonnaisuuksien kehitys suhteessa poliittiseen toimintaan.</p>
+                  </div>
+                  
+                  {isLoadingTimeline ? (
+                    <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                      <Loader2 className="animate-spin text-slate-300" size={48} />
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Computing Correlations...</p>
+                    </div>
+                  ) : (
+                    <DependencyTimeline 
+                      events={timelineData.events} 
+                      summary={timelineData.summary} 
+                    />
+                  )}
+                </div>
+              )}
+
               {activeModule === "democracy_state" && (
                 <div className="space-y-12">
                   <div className="space-y-2">
@@ -330,6 +383,16 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
 
               {activeModule === "scorecard" && <LobbyistScorecard userPlan={userPlan} />}
               {activeModule === "impact" && <ImpactMap billId="latest" />}
+              
+              {activeModule === "meeting_timeline" && (
+                <div className="space-y-12">
+                  <div className="space-y-4">
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">The Meeting Timeline</h3>
+                    <p className="text-base text-slate-500 font-serif italic">Aikajana tapaamisista, lausunnoista ja lakitekstin muutoksista.</p>
+                  </div>
+                  <MeetingTimeline points={meetingPoints} />
+                </div>
+              )}
               
               {activeModule === "discipline" && (
                 <div className="space-y-12">

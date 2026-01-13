@@ -1,19 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/server";
+import { LobbyistStats } from "@/lib/types";
 
 /**
  * lib/researcher/influence-stats.ts
  * Logic for aggregating lobbyist influence data.
  */
 
-export interface LobbyistStats {
-  organization_name: string;
-  influence_index: number;
-  bills_count: number;
-  direct_contacts: number;
-  main_committee: string;
-}
-
-export async function calculateInfluenceStats() {
+export async function calculateInfluenceStats(): Promise<LobbyistStats[]> {
   const supabase = await createAdminClient();
 
   // 1. Fetch impact analyses
@@ -33,7 +26,7 @@ export async function calculateInfluenceStats() {
   // 2. Fetch meeting data for weighting
   const { data: meetings } = await supabase
     .from("lobbyist_meetings")
-    .select("organization_name, bill_id, is_committee_lead");
+    .select("organization, bill_id, is_committee_lead");
 
   if (!analyses) return [];
 
@@ -51,14 +44,22 @@ export async function calculateInfluenceStats() {
     const bill = item.bills as any;
     
     // Calculate Meeting Multiplier (M)
-    const orgMeetings = meetings?.filter(m => m.organization_name === org && m.bill_id === item.bill_id) || [];
+    // We match by organization name (case-insensitive)
+    const orgMeetings = meetings?.filter(m => 
+      m.organization.toLowerCase() === org.toLowerCase() && 
+      (m.bill_id === item.bill_id || !m.bill_id) // Match specific bill OR general interest
+    ) || [];
+    
     let multiplier = 1.0;
     
     if (orgMeetings.length > 0) {
-      multiplier = 1.2; // Base contact bonus
+      multiplier = 1.3; // Base contact bonus increased to 1.3x
       if (orgMeetings.some(m => m.is_committee_lead)) {
-        multiplier = 1.5; // Lead contact bonus
+        multiplier = 1.6; // Lead contact bonus increased to 1.6x
       }
+      
+      // Time-based bonus: if meeting happened recently (simulated check)
+      multiplier += (orgMeetings.length * 0.05); // +5% per meeting
     }
 
     const complexity = bill?.category === 'Talous' ? 10 : 5;

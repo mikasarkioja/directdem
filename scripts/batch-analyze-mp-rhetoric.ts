@@ -154,45 +154,77 @@ async function analyzeMPRhetoricWithSpeeches(mpId: any, firstName: string, lastN
   const { generateText } = await import("ai");
   const { openai } = await import("@ai-sdk/openai");
   
+  // 1. Fetch MP metadata (constituency, hometown)
+  const { data: mpData } = await supabase
+    .from("mps")
+    .select("constituency, hometown")
+    .eq("id", mpId)
+    .single();
+
+  // 2. Fetch motivations (lobbyist meetings, affiliations, sentiment)
+  const { data: aiProfile } = await supabase
+    .from("mp_ai_profiles")
+    .select("lobbyist_meetings, affiliations, current_sentiment, regional_bias")
+    .eq("mp_id", mpId.toString())
+    .maybeSingle();
+
+  const lobbyistMeetings = aiProfile?.lobbyist_meetings || [];
+  const affiliations = aiProfile?.affiliations || [];
+  const currentSentiment = aiProfile?.current_sentiment || "Neutraali";
+
   const speechesContext = speeches.map((s: any) => `Aihe: ${s.subject}\nSisältö: ${s.content}`).join("\n\n---\n\n");
+
+  const motivationsContext = `
+    PIILOMOTIIVIT JA SIDONNAISUUDET:
+    - Lobbaustapaamiset: ${JSON.stringify(lobbyistMeetings)}
+    - Sidonnaisuudet (Hallituspaikat yms): ${JSON.stringify(affiliations)}
+    - Nykyinen mielentila (some): ${currentSentiment}
+    - Alueellinen painotus: ${mpData?.constituency || "Valtakunnallinen"}, ${mpData?.hometown || ""}
+  `;
 
   const { text: profileJson } = await generateText({
     model: openai("gpt-4o-mini") as any,
     system: `Olet poliittisen viestinnän ja retoriikan asiantuntija. 
-    Tehtäväsi on luoda 'Rhetoric Profile' annettujen puheiden perusteella.
+    Tehtäväsi on luoda 'Rhetoric Profile' annettujen puheiden ja motivaatiodatan perusteella.
     
     Analyysin on sisällettävä:
     1. Kielellinen tyyli: Lyhyet/pitkät lauseet, slangi, asiasanat, muodollisuus.
     2. Toistuvat teemat: 3–5 pääaihetta.
     3. Risteilypisteet (Conflict patterns): Mitä tai ketä henkilö tyypillisesti kritisoi.
     4. Tyypilliset aloitukset ja lopetukset.
+    5. Piilomotiivien vaikutus: Miten sidonnaisuudet vaikuttavat puheeseen?
     
     Palauta tiedot VAIN JSON-muodossa:
     {
       "linguistic_style": "string",
       "recurring_themes": ["string"],
       "conflict_patterns": "string",
-      "openings_closings": "string"
+      "openings_closings": "string",
+      "motivation_influence": "string"
     }`,
-    prompt: `EDUSTAJAN ${firstName.toUpperCase()} ${lastName.toUpperCase()} PUHEET:\n\n${speechesContext}`
+    prompt: `EDUSTAJAN ${firstName.toUpperCase()} ${lastName.toUpperCase()} DATA:\n\nPUHEET:\n${speechesContext}\n\nMOTIVAATIOT:\n${motivationsContext}`
   });
 
   const rhetoricProfile = JSON.parse(profileJson.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
 
   const systemPrompt = `
     Olet kansanedustaja ${firstName} ${lastName}, puolueesi on ${party}.
+    Vaalipiirisi on ${mpData?.constituency || "Suomi"} ja kotikuntasi ${mpData?.hometown || "tuntematon"}.
     
     RETORIIKKA-PROFIILISI:
     - TYYLI: ${rhetoricProfile.linguistic_style}
     - TEEMAT: ${rhetoricProfile.recurring_themes.join(", ")}
     - KONFLIKTIT: ${rhetoricProfile.conflict_patterns}
     - PUHETAPA: ${rhetoricProfile.openings_closings}
+    - MOTIVAATIO-OHJE: ${rhetoricProfile.motivation_influence}
     
     OHJEET VÄITTELYYN:
     1. Noudata omaa kielellistä tyyliäsi.
-    2. Käytä referensseinä aiempia puheitasi ja teemojasi.
-    3. ÄLÄ puhuttele vastustajaa 'puhemiehenä'. Jos väittelet toisen edustajan kanssa, käytä hänen nimeään tai sano 'kuule', 'kansanedustaja [Nimi]'.
-    4. Jos kysymys liippaa läheltä kärkiteemojasi, mainitse että olet pitänyt aiheesta puheita eduskunnassa.
+    2. Suosi argumentteja, jotka hyödyttävät vaalipiiriäsi tai kotikuntaasi.
+    3. Jos väittely koskee aihetta, joka liittyy sidonnaisuuksiisi tai lobbaustapaamisiisi (esim. ${affiliations.map((a:any) => a.org).join(", ")}), käytä itsepuolustus-retoriikkaa: selitä ne asiantuntijuutena, ei korruptiona.
+    4. ÄLÄ puhuttele vastustajaa 'puhemiehenä'. Jos väittelet toisen edustajan kanssa, käytä hänen nimeään tai sano 'kuule', 'kansanedustaja [Nimi]'.
+    5. Hyödynnä nykyistä mielentilaasi: ${currentSentiment}.
+    6. Jos kysymys liippaa läheltä kärkiteemojasi, mainitse että olet pitänyt aiheesta puheita eduskunnassa.
   `;
 
   await supabase

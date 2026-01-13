@@ -127,6 +127,35 @@ export interface PartyStanceData {
   source?: string;
 }
 
+// MP types
+export interface SupabaseMP {
+  id: number;
+  first_name: string;
+  last_name: string;
+  party: string;
+  constituency: string | null;
+  hometown?: string | null;
+  image_url: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface SupabaseMPAIProfile {
+  mp_id: string;
+  voting_summary: any[];
+  promise_data: any;
+  rhetoric_style: any;
+  system_prompt: string;
+  conflicts: any[];
+  updated_at: string;
+  last_speech_sync: string | null;
+  debate_instructions: string | null;
+  lobbyist_meetings: any[];
+  affiliations: any[];
+  current_sentiment: string | null;
+  regional_bias: string | null;
+}
+
 // Supabase database types (matching schema)
 export interface SupabaseBill {
   id: string;
@@ -310,6 +339,14 @@ export interface PulseQuestion {
   category: "Talous" | "Arvot" | "Ympäristö" | "Aluepolitiikka" | "Kansainvälisyys" | "Turvallisuus";
   context: "national" | "municipal";
   impact_vector: Record<string, number>; // e.g. { economic_score: 0.1 }
+}
+
+export interface LobbyistStats {
+  organization_name: string;
+  influence_index: number;
+  bills_count: number;
+  direct_contacts: number;
+  main_committee: string;
 }
 
 

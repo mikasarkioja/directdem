@@ -8,10 +8,19 @@ import {
   ChevronRight, Clock, ShieldCheck
 } from "lucide-react";
 import { getRecentlyMetOrganizations } from "@/lib/eduskunta/activity-engine";
+import FingerprintDownloadButton from "@/components/researcher/FingerprintDownloadButton";
 
 export default async function MPProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
+
+  // 0. Get user plan
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("plan_type")
+    .eq("id", user?.id)
+    .single();
 
   // 1. Fetch MP data
   const { data: mp } = await supabase
@@ -76,6 +85,10 @@ export default async function MPProfilePage({ params }: { params: Promise<{ id: 
                       Vaalipiiri: {mp.vaalipiiri || "Suomi"}
                     </span>
                   </div>
+                </div>
+
+                <div className="pt-4">
+                  <FingerprintDownloadButton mpId={id} userPlan={profile?.plan_type} />
                 </div>
               </div>
             </div>

@@ -23,7 +23,7 @@ export async function analyzeAndEnhanceBill(billId: string) {
 
   // 2. AI Analyysi
   const { text: analysisText } = await generateText({
-    model: openai("gpt-4o"),
+    model: openai("gpt-4o") as any,
     system: `Olet edistynyt lainsäädännön analyytikko ja poliittinen strategi. 
     Tehtäväsi on purkaa lakiesitys osiin ja tunnistaa sen ideologiset jännitteet, voittajat ja häviäjät.`,
     prompt: `

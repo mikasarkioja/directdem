@@ -77,7 +77,7 @@ export async function analyzeInterestCorrelations(mpId: string | number) {
 
   try {
     const { text } = await generateText({
-      model: openai("gpt-4o"),
+      model: openai("gpt-4o") as any,
       system: "Olet poliittisen analytiikan ja korruptiontutkimuksen AI-moottori.",
       prompt: prompt
     });

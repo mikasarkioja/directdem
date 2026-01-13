@@ -140,7 +140,7 @@ export async function POST(req: Request) {
   const data = new StreamData();
 
   const result = await streamText({
-    model: openai("gpt-4o"),
+    model: openai("gpt-4o") as any,
     system: fullSystemPrompt,
     messages,
     onFinish(completion: any) {

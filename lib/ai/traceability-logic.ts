@@ -50,10 +50,10 @@ export async function analyzeLobbyistImpact(
 
   try {
     const { text } = await generateText({
-      model: openai("gpt-4o"),
+      model: openai("gpt-4o") as any,
       system: systemPrompt,
       prompt: prompt,
-    } as any);
+    });
 
     const analysis = JSON.parse(text.replace(/```json|```/g, ""));
 

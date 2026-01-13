@@ -15,6 +15,7 @@ import Leaderboard from "./Leaderboard";
 import CommitteeHeatmap from "./CommitteeHeatmap";
 import { MeetingTimeline } from "./MeetingTimeline";
 import { getLobbyistLeaderboard, generateLobbyistReport } from "@/app/actions/lobbyist-stats";
+import { getMeetingTimelineData } from "@/app/actions/researcher";
 import { LobbyistStats } from "@/lib/types";
 
 interface LobbyistScorecardProps {
@@ -24,6 +25,7 @@ interface LobbyistScorecardProps {
 export default function LobbyistScorecard({ userPlan }: LobbyistScorecardProps) {
   const [stats, setStats] = useState<LobbyistStats[]>([]);
   const [report, setReport] = useState<string>("");
+  const [meetingPoints, setMeetingPoints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // TEMPORARY: Access suspended for testing
@@ -36,9 +38,15 @@ export default function LobbyistScorecard({ userPlan }: LobbyistScorecardProps) 
         return;
       }
       
-      const data = await getLobbyistLeaderboard();
-      setStats(data);
-      const rep = await generateLobbyistReport(data);
+      const [leaderboardData, timelineData] = await Promise.all([
+        getLobbyistLeaderboard(),
+        getMeetingTimelineData("latest")
+      ]);
+
+      setStats(leaderboardData);
+      setMeetingPoints(timelineData);
+      
+      const rep = await generateLobbyistReport(leaderboardData);
       setReport(rep);
       setLoading(false);
     }
@@ -122,7 +130,7 @@ export default function LobbyistScorecard({ userPlan }: LobbyistScorecardProps) 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-5 space-y-10">
           <Leaderboard stats={stats} />
-          <MeetingTimeline />
+          <MeetingTimeline points={meetingPoints} />
         </div>
         <div className="lg:col-span-7">
           <CommitteeHeatmap />

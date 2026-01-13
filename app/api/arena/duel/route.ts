@@ -346,7 +346,7 @@ export async function POST(req: Request) {
   await trackFeatureUsage("Arena Duel", "GENERATE", userId);
 
   const result = await streamText({
-    model: openai("gpt-4o"),
+    model: openai("gpt-4o") as any,
     system: systemPrompt,
     messages,
     onFinish(completion: any) {
@@ -360,7 +360,7 @@ export async function POST(req: Request) {
       );
       data.close();
     },
-  } as any);
+  });
 
   return result.toDataStreamResponse({ data });
 }

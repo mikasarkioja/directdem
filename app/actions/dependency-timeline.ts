@@ -55,7 +55,7 @@ export async function getDependencyTimelineData(mpId: string | number) {
 
   // 4. Generate AI Summary
   const { text: summary } = await generateText({
-    model: openai("gpt-4o"),
+    model: openai("gpt-4o") as any,
     system: "Olet poliittinen tutkija.",
     prompt: `Tiivistä seuraava data lyhyeksi tutkijan raportiksi (max 2 lausetta):
     ${JSON.stringify(events.slice(0, 10))}`

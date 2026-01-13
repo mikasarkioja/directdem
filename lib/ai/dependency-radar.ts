@@ -88,7 +88,7 @@ export async function analyzeConflicts(billId: string, mpId: string | number): P
 
   try {
     const { text } = await generateText({
-      model: openai("gpt-4o"),
+      model: openai("gpt-4o") as any,
       system: "Olet korruption ja poliittisen vaikuttamisen asiantuntija.",
       prompt: prompt
     });

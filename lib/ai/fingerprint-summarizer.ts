@@ -34,7 +34,7 @@ export async function summarizeMPFingerprint(data: any) {
 
   try {
     const { text } = await generateText({
-      model: openai("gpt-4o"),
+      model: openai("gpt-4o") as any,
       system: "Olet poliittisen analytiikan ja korruptiontutkimuksen johtava asiantuntija.",
       prompt: prompt
     });

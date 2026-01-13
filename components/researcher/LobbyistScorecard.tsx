@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Leaderboard from "./Leaderboard";
 import CommitteeHeatmap from "./CommitteeHeatmap";
-import MeetingTimeline from "./MeetingTimeline";
+import { MeetingTimeline } from "./MeetingTimeline";
 import { getLobbyistLeaderboard, generateLobbyistReport } from "@/app/actions/lobbyist-stats";
 import { LobbyistStats } from "@/lib/types";
 

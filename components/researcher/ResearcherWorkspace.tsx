@@ -21,7 +21,10 @@ import {
   PieChart,
   FileText,
   Clock,
-  Calendar
+  Calendar,
+  LayoutGrid,
+  ShieldCheck,
+  AlertTriangle
 } from "lucide-react";
 import { DependencyTimeline } from "./DependencyTimeline";
 import { getDependencyTimelineData } from "@/app/actions/dependency-timeline";
@@ -54,12 +57,12 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
   const isLocked = false; 
 
   const modules = [
-    { id: "overview", label: "Tutkimus-terminaali", icon: Terminal, group: "Yleinen" },
+    { id: "overview", label: "Tutkijan Dashboard", icon: LayoutGrid, group: "Yleinen" },
     { id: "behavior", label: "Päättäjä-analytiikka", icon: Activity, group: "Poliittinen Analyysi" },
     { id: "dependency_timeline", label: "Sidonnaisuus-aikajana", icon: Clock, group: "Poliittinen Analyysi" },
     { id: "democracy_state", label: "Demokratian Tila", icon: BarChart2, group: "Poliittinen Analyysi" },
     { id: "scorecard", label: "Lobby-Scorecard", icon: Target, group: "Vaikuttavuus" },
-    { id: "impact", label: "Tekstuaalinen Vaikutus", icon: Search, group: "Vaikuttavuus" },
+    { id: "impact", label: "Lobbari-jäljitys", icon: Search, group: "Vaikuttavuus" },
     { id: "meeting_timeline", label: "Tapaamis-aikajana", icon: Calendar, group: "Vaikuttavuus" },
     { id: "discipline", label: "Puoluekuri-indeksi", icon: Users, group: "Poliittinen Analyysi" },
     { id: "export", label: "Datan ulosvienti", icon: Download, group: "Data" }
@@ -210,6 +213,12 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
             >
               {activeModule === "overview" && (
                 <div className="space-y-16">
+                  {/* Dashboard Header */}
+                  <div className="space-y-4">
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Tutkijan Dashboard</h3>
+                    <p className="text-base text-slate-500 font-serif italic">Keskitetty näkymä poliittiseen dataan, analyyseihin ja havaintoihin.</p>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                     {[
                       { label: "Analyysikorpuksen koko", value: stats.corpusSize.toLocaleString(), sub: "Analysoitua asiatekstiä", color: "border-slate-200" },
@@ -224,33 +233,88 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
                     ))}
                   </div>
 
-                  <div className="space-y-8">
-                    <h3 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Kansalaisten ja Päättäjien Välinen Kuilu (Gap Analysis)</h3>
-                    <div className="grid grid-cols-1 gap-10 font-serif">
-                      <div className="p-12 bg-slate-50 border border-slate-200 rounded-[2.5rem] space-y-8 shadow-inner">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">REF_KOODI: 2025-01-12-A | AI_YHTEENVETO</span>
-                          <span className="px-4 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-600 shadow-sm">Korkea Luottamusväli</span>
+                  {/* Summary Widgets Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    {/* Widget 1: Gap Analysis */}
+                    <div className="p-10 bg-slate-50 border border-slate-200 rounded-[2.5rem] space-y-8 shadow-inner">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Kansalaiskuilu (Gap Analysis)</h4>
+                        <button onClick={() => setActiveModule("behavior")} className="text-[8px] font-black uppercase text-blue-600 hover:underline flex items-center gap-1">
+                          Kaikki analyysit <ChevronRight size={10} />
+                        </button>
+                      </div>
+                      <p className="text-xl text-slate-800 leading-relaxed italic font-serif border-l-4 border-slate-200 pl-6">
+                        "Suurin divergenssi havaittu **ympäristöpolitiikassa**: Kansalaiset +8.2 vs. Päättäjät 3.4."
+                      </p>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-black text-slate-400 uppercase">Divergenssi</p>
+                          <p className="text-xl font-black text-rose-600">4.8 pistettä</p>
                         </div>
-                        <p className="text-2xl text-slate-800 leading-relaxed italic border-l-4 border-slate-200 pl-10 py-2">
-                          "Suurin havaittu poikkeama kansalaismielipiteen ja parlamentaarisen toiminnan välillä liittyy **ympäristöpolitiikkaan**. 
-                          Siinä missä 82% DirectDem-käyttäjistä suosii tiukempia luonnonsuojelutoimia, eduskunnan äänestysyhtenäisyys suosii 
-                          teollisia investointeja 64% todennäköisyydellä."
-                        </p>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 pt-10 border-t border-slate-200/50">
-                          {[
-                            { label: "Kansalais-DNA (Env)", val: "8.2/10" },
-                            { label: "Päättäjä-Vaste (Env)", val: "3.4/10" },
-                            { label: "Divergenssi", val: "4.8 pistettä" },
-                            { label: "Trendi", val: "Kasvava" }
-                          ].map((m, i) => (
-                            <div key={i} className="space-y-2">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{m.label}</p>
-                              <p className="text-2xl font-black text-slate-900">{m.val}</p>
-                            </div>
-                          ))}
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-black text-slate-400 uppercase">Trendi</p>
+                          <p className="text-xl font-black text-slate-900">Kasvava</p>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Widget 2: Transparency & Radar */}
+                    <div className="p-10 bg-white border border-slate-200 rounded-[2.5rem] space-y-8 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Läpinäkyvyys-tutka</h4>
+                        <button onClick={() => setActiveModule("scorecard")} className="text-[8px] font-black uppercase text-cyan-600 hover:underline flex items-center gap-1">
+                          Lobby-scorecard <ChevronRight size={10} />
+                        </button>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 shrink-0">
+                            <AlertTriangle size={20} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 uppercase">Korkea sidonnaisuus-riski</p>
+                            <p className="text-[11px] text-slate-500 leading-tight mt-1">HE 123/2025: 12 edustajalla havaittu suora kytkös toimialaan.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
+                            <ShieldCheck size={20} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 uppercase">Lobbari-jäljitys aktiivinen</p>
+                            <p className="text-[11px] text-slate-500 leading-tight mt-1">EK:n asiantuntijalausuntojen tekstivaste noussut 15%:iin talousvaliokunnassa.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Collaborative Notes Preview */}
+                  <div className="bg-slate-900 rounded-[3rem] p-12 text-white space-y-8">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-6">
+                      <div className="flex items-center gap-4">
+                        <Users className="text-purple-400" size={24} />
+                        <h4 className="text-xl font-black uppercase tracking-tighter">Asiantuntijaverkosto & Huomiot</h4>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{notes.length} Aktiivista keskustelua</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {notes.slice(0, 4).map((note) => (
+                        <div key={note.id} className="p-6 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded">
+                              {note.category || "Yleinen"}
+                            </span>
+                            <span className="text-[8px] text-slate-500 uppercase">{new Date(note.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <p className="text-xs text-slate-300 italic leading-relaxed">"{note.content.substring(0, 120)}..."</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pt-4 text-center">
+                      <button className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
+                        Avaa yhteistyö-terminaali ja lisää huomioita
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -382,13 +446,21 @@ export default function ResearcherWorkspace({ userPlan, researcherProfile }: Res
               )}
 
               {activeModule === "scorecard" && <LobbyistScorecard userPlan={userPlan} />}
-              {activeModule === "impact" && <ImpactMap billId="latest" />}
+              {activeModule === "impact" && (
+                <div className="space-y-12">
+                  <div className="space-y-4">
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Lobbari-jäljitys</h3>
+                    <p className="text-base text-slate-500 font-serif italic">Analyysi etujärjestöjen lausuntojen vaikutuksesta lopulliseen lakitekstiin.</p>
+                  </div>
+                  <ImpactMap billId="latest" />
+                </div>
+              )}
               
               {activeModule === "meeting_timeline" && (
                 <div className="space-y-12">
                   <div className="space-y-4">
                     <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Tapaamis-aikajana</h3>
-                    <p className="text-base text-slate-500 font-serif italic">Aikajana tapaamisista, lausunnoista ja lakitekstin muutoksista.</p>
+                    <p className="text-base text-slate-500 font-serif italic">Lakiesityksen elinkaari: Tunnista korrelaatiot lobbaustapaamisten ja lakitekstin muutosten välillä.</p>
                   </div>
                   <MeetingTimeline points={meetingPoints} />
                 </div>

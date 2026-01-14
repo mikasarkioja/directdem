@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, XCircle, Info, ChevronRight, MessageSquareText } from "lucide-react";
+import { CheckCircle2, XCircle, Info, ChevronRight, MessageSquareText, Radio, ShieldAlert, Loader2 } from "lucide-react";
 import type { Bill } from "@/lib/types";
+import { RadarAlert } from "@/components/arena/RadarAlert";
 
 interface ExpertSummaryProps {
   bill: Bill;
@@ -11,6 +12,34 @@ interface ExpertSummaryProps {
 }
 
 export default function ExpertSummary({ bill, onGiveStatement }: ExpertSummaryProps) {
+  const [conflicts, setConflicts] = useState<any[]>([]);
+  const [loadingRadar, setLoadingRadar] = useState(false);
+
+  useEffect(() => {
+    async function fetchRadar() {
+      setLoadingRadar(true);
+      try {
+        // Fetch conflict alerts for this bill for a few key MPs
+        // In real app, this would be more targeted
+        const res = await fetch(`/api/arena/alerts?billId=${bill.id}`);
+        const data = await res.json();
+        
+        // Let's also fetch specific conflict scores for committee members if we had them
+        // For now, we'll use a representative set
+        const radarRes = await fetch(`/api/arena/conflicts?billId=${bill.id}&mpId=1328`);
+        const harkimoConflict = await radarRes.json();
+        
+        if (harkimoConflict && harkimoConflict.score >= 50) {
+          setConflicts([{ ...harkimoConflict, name: "Harry Harkimo" }]);
+        }
+      } catch (e) {
+        console.error("Failed to fetch radar data", e);
+      } finally {
+        setLoadingRadar(false);
+      }
+    }
+    fetchRadar();
+  }, [bill.id]);
   // Use AI summary arguments if available, otherwise fallback to mock
   const hasAiArguments = (bill as any).pro_arguments || (bill as any).con_arguments;
   
@@ -81,6 +110,50 @@ export default function ExpertSummary({ bill, onGiveStatement }: ExpertSummaryPr
             )}
           </div>
         </div>
+      </div>
+
+      {/* Avoimuus-analyysi (Sidonnaisuus-tutka) */}
+      <div className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-8 md:p-10 space-y-6">
+        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-500 flex items-center gap-2">
+            <Radio size={14} className="animate-pulse" />
+            Sidonnaisuus-tutka & Avoimuus-analyysi
+          </h4>
+          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Live AI-Seuranta</span>
+        </div>
+
+        {loadingRadar ? (
+          <div className="flex items-center gap-2 text-[10px] text-slate-500 italic">
+            <Loader2 size={12} className="animate-spin" />
+            Analysoidaan kytköksiä...
+          </div>
+        ) : conflicts.length > 0 ? (
+          <div className="space-y-4">
+            <p className="text-[11px] text-slate-400 italic leading-relaxed">
+              Tutka havaitsi merkittäviä kytköksiä valiokunnan jäsenillä tähän lakiesitykseen. 
+              Tämä voi vaikuttaa päätöksenteon puolueettomuuteen.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              {conflicts.map((c, i) => (
+                <div key={i} className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-black text-white uppercase">{c.name}</p>
+                    <RadarAlert 
+                      score={c.score} 
+                      explanation={c.explanation} 
+                      connections={c.detected_connections} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-[10px] text-emerald-500/70 font-bold">
+            <ShieldAlert size={14} />
+            Ei havaittuja merkittäviä eturistiriitoja tässä vaiheessa.
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

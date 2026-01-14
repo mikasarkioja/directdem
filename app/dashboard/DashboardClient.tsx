@@ -34,8 +34,8 @@ import MunicipalDetail from "@/components/municipal/MunicipalDetail";
 import TransactionFeed from "@/components/dashboard/TransactionFeed";
 import ResearcherWorkspace from "@/components/researcher/ResearcherWorkspace";
 import PricingTable from "@/components/billing/PricingTable";
-import { fetchMunicipalDecisions } from "@/app/actions/municipal";
-import toast, { Toaster } from "react-hot-toast";
+import { getCombinedNews, NewsItem } from "@/app/actions/news";
+import { Radar, AlertTriangle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { LensMode } from "@/lib/types";
 
@@ -75,11 +75,15 @@ export default function DashboardClient({
       setActiveView("committee");
     }
   }, [searchParams]);
-  const [news, setNews] = useState([
-    { id: 1, title: "Eduskunta aloitti keskustelun valtion budjetista", time: "10 min sitten" },
-    { id: 2, title: "Uusi ympäristölaki herättää vastustusta", time: "45 min sitten" },
-    { id: 3, title: "Valiokunnat kokoontuvat tänään kello 12:00", time: "2 tuntia sitten" }
-  ]);
+  const [news, setNews] = useState<NewsItem[]>([]);
+
+  useEffect(() => {
+    async function loadNews() {
+      const newsData = await getCombinedNews(lens);
+      setNews(newsData);
+    }
+    loadNews();
+  }, [lens]);
 
   useEffect(() => {
     async function loadData() {
@@ -564,15 +568,40 @@ export default function DashboardClient({
               </h4>
               
               <div className="space-y-6">
-                {(lens === "national" ? news : [
-                  { id: 101, title: `${lens.charAt(0).toUpperCase() + lens.slice(1)}n valtuusto keskusteli kaavoituksesta`, time: "2h sitten" },
-                  { id: 102, title: "Paikallinen kouluinvestointi etenee", time: "5h sitten" }
-                ]).map((item) => (
-                  <div key={item.id} className="space-y-2 relative pl-4 border-l border-purple-500/20">
-                    <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest leading-none">{item.time}</p>
-                    <p className="text-xs font-bold text-slate-300 tracking-tight leading-snug">{item.title}</p>
+                {news.length > 0 ? news.map((item) => (
+                  <div key={item.id} className={`space-y-2 relative pl-5 border-l-2 ${
+                    item.type === 'radar' ? 'border-orange-500' : 
+                    item.type === 'alert' ? 'border-rose-500' : 'border-purple-500/20'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {item.type === 'radar' && <Radar size={12} className="text-orange-500 animate-pulse" />}
+                      {item.type === 'alert' && <AlertTriangle size={12} className="text-rose-500" />}
+                      <p className={`text-[10px] font-black uppercase tracking-widest leading-none ${
+                        item.type === 'radar' ? 'text-orange-500' : 
+                        item.type === 'alert' ? 'text-rose-500' : 'text-purple-400'
+                      }`}>
+                        {item.time}
+                      </p>
+                    </div>
+                    <p className={`text-xs font-bold tracking-tight leading-snug ${
+                      item.type === 'radar' || item.type === 'alert' ? 'text-white' : 'text-slate-300'
+                    }`}>
+                      {item.title}
+                    </p>
+                    {(item.type === 'radar' || item.type === 'alert') && (
+                      <Link 
+                        href={item.type === 'radar' ? `/arena?billId=${item.meta?.bill_id}` : `/dashboard`}
+                        className="text-[8px] font-black uppercase text-slate-500 hover:text-white transition-colors flex items-center gap-1"
+                      >
+                        Tutki tapausta <ChevronRight size={8} />
+                      </Link>
+                    )}
                   </div>
-                ))}
+                )) : (
+                  <p className="text-[10px] font-bold text-slate-500 uppercase text-center py-10 italic">
+                    Ei uusia ilmoituksia
+                  </p>
+                )}
               </div>
 
               <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 transition-all">

@@ -52,7 +52,7 @@ export async function getCombinedNews(lens: string = "national"): Promise<NewsIt
           });
         }
       });
-    }
+    });
   }
 
   // 3. Fetch Integrity Alerts (Takinkääntö)

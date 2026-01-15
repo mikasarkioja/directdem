@@ -17,8 +17,9 @@ import {
   Bell,
   Home,
   LayoutGrid,
-  Terminal,
-  Activity
+  Terminal, 
+  Activity,
+  MapPin
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";

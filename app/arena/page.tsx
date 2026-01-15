@@ -12,6 +12,8 @@ import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import { fetchMunicipalCouncilors } from "@/app/actions/councilors";
 import { useRole } from "@/lib/context/RoleContext";
+import { getUser } from "@/app/actions/auth";
+import type { UserProfile } from "@/lib/types";
 
 import { RadarAlert } from "@/components/arena/RadarAlert";
 
@@ -37,6 +39,7 @@ interface IntegrityAlert {
 }
 
 export default function ArenaDuelPage() {
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [mps, setMps] = useState<MP[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [selectedChallenger, setSelectedChallenger] = useState<MP | null>(null);
@@ -59,15 +62,17 @@ export default function ArenaDuelPage() {
     async function load() {
       setLoading(true);
       try {
-        const [mpsRes, billsRes] = await Promise.all([
+        const [mpsRes, billsRes, userRes] = await Promise.all([
           lens === "national" 
             ? fetch("/api/mps").then(r => r.json())
             : fetchMunicipalCouncilors(lens),
-          fetch("/api/bills/ai-profiles").then(r => r.json())
+          fetch("/api/bills/ai-profiles").then(r => r.json()),
+          getUser()
         ]);
         
         const mpsData = mpsRes;
         const billsData = billsRes;
+        setUser(userRes);
         
         console.log(`Arena Load (${lens}) - MPs:`, mpsData);
         console.log("Arena Load - Bills:", billsData);
@@ -217,7 +222,7 @@ export default function ArenaDuelPage() {
 
   return (
     <div className="flex h-screen bg-slate-950 text-white overflow-hidden">
-      <Sidebar activeView="arena" setActiveView={() => {}} user={null} />
+      <Sidebar activeView="arena" setActiveView={() => {}} user={user} />
       
       <main className="flex-1 overflow-y-auto relative custom-scrollbar pb-32">
         <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-12">

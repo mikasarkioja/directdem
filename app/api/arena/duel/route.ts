@@ -20,18 +20,13 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: "Palvelimen konfiguraatiovirhe (API keys missing)." }), { status: 500 });
   }
 
-  // --- Credit Check ---
-  const userSupabase = await createClient();
-  const { data: { user } } = await userSupabase.auth.getUser();
-
-  // If not logged in via Supabase, check for Ghost user via cookie
-  let userId = user?.id;
-  if (!userId) {
-    const cookies = await import("next/headers").then(h => h.cookies());
-    userId = (await cookies).get("guest_user_id")?.value;
-  }
+  // --- Auth Check ---
+  const { getUser } = await import("@/app/actions/auth");
+  const userProfile = await getUser();
+  const userId = userProfile?.id;
 
   if (!userId) {
+    console.warn("[Arena Duel] No user ID found in session or cookies");
     return new Response(JSON.stringify({ error: "Kirjaudu sisään tai käytä pikakirjautumista." }), { status: 401 });
   }
 

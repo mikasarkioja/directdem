@@ -515,8 +515,19 @@ export default function DashboardClient({
                       <h2 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">Paikalliset Päätökset</h2>
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Kaupunki: {lens.charAt(0).toUpperCase() + lens.slice(1)}</p>
                     </div>
-                    <div className="bg-slate-900 px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase text-blue-400">
-                      {municipalTasks.length} Asiaa
+                    <div className="flex gap-2">
+                      {lens === "espoo" && (
+                        <Link 
+                          href="/dashboard/espoo"
+                          className="bg-blue-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase text-white hover:bg-blue-500 transition-all flex items-center gap-2"
+                        >
+                          <MapPin size={12} />
+                          Avaa Espoo-vahti
+                        </Link>
+                      )}
+                      <div className="bg-slate-900 px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase text-blue-400">
+                        {municipalTasks.length} Asiaa
+                      </div>
                     </div>
                   </div>
 

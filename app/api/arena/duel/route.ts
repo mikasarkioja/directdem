@@ -21,14 +21,35 @@ export async function POST(req: Request) {
   }
 
   // --- Auth Check ---
-  const { getUser } = await import("@/app/actions/auth");
-  const userProfile = await getUser();
-  const userId = userProfile?.id;
+  // API-reiteissä on välillä haasteita istunnon kanssa, joten tarkistetaan sekä Supabase että suora eväste
+  let userId: string | undefined;
+  
+  try {
+    const { createClient: createSupabaseClient } = await import("@/lib/supabase/server");
+    const supabaseAuth = await createSupabaseClient();
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+    userId = authUser?.id;
+  } catch (e) {
+    console.warn("[Arena Duel] Supabase auth check failed:", e);
+  }
+  
+  if (!userId) {
+    try {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      userId = cookieStore.get("guest_user_id")?.value;
+      console.log("[Arena Duel] Falling back to guest cookie:", userId ? "FOUND" : "NOT FOUND");
+    } catch (e) {
+      console.warn("[Arena Duel] Guest cookie check failed:", e);
+    }
+  }
 
   if (!userId) {
-    console.warn("[Arena Duel] No user ID found in session or cookies");
+    console.warn("[Arena Duel] Final Auth Failure: No user identity found");
     return new Response(JSON.stringify({ error: "Kirjaudu sisään tai käytä pikakirjautumista." }), { status: 401 });
   }
+  
+  console.log(`[Arena Duel] Request by user: ${userId}`);
 
   // --- Credit Check - TEMPORARILY DISABLED ---
   /*

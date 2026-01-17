@@ -361,7 +361,7 @@ export default function MunicipalDetail({ item, onClose, user }: MunicipalDetail
                   title: localItem.title,
                   municipality: localItem.municipality
                 });
-                if (res.success) {
+                if (res.success && 'xpEarned' in res) {
                   toast.success(`Lausunto annettu! +${res.xpEarned} XP`);
                 }
               }}

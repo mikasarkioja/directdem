@@ -172,7 +172,7 @@ export default function DashboardClient({
         political_vector: (currentTask as any).political_vector 
       });
       
-      if (res.success) {
+      if (res.success && 'totalXp' in res) {
         // Update local state for immediate feedback
         setProfile((prev: any) => ({
           ...prev,

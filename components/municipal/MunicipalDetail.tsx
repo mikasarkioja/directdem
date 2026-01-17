@@ -22,6 +22,7 @@ import { generateMunicipalAiSummary, startDeepAnalysis, fetchEnhancedMunicipalPr
 import toast from "react-hot-toast";
 import LocalWeather from "../dashboard/LocalWeather";
 import { UserProfile, LensMode } from "@/lib/types";
+import { logUserActivity } from "@/app/actions/logUserActivity";
 
 interface MunicipalDetailProps {
   item: any;
@@ -68,6 +69,13 @@ export default function MunicipalDetail({ item, onClose, user }: MunicipalDetail
     try {
       const res = await startDeepAnalysis(item.id);
       if (res.success) {
+        // Award XP for starting deep analysis
+        await logUserActivity('READ_LOCAL', { 
+          id: item.id, 
+          title: item.title,
+          type: 'DEEP_ANALYSIS'
+        });
+
         // Päivitetään tehostettu data visualisointeja varten
         setEnhancedData({ analysis_data: { analysis_depth: res.analysis } });
         
@@ -347,7 +355,16 @@ export default function MunicipalDetail({ item, onClose, user }: MunicipalDetail
                 politicalReality: [],
                 ...(localItem.ai_summary || localItem)
               } as any}
-              onGiveStatement={() => {}}
+              onGiveStatement={async () => {
+                const res = await logUserActivity('STATEMENT', { 
+                  id: localItem.id, 
+                  title: localItem.title,
+                  municipality: localItem.municipality
+                });
+                if (res.success) {
+                  toast.success(`Lausunto annettu! +${res.xpEarned} XP`);
+                }
+              }}
             />
           )}
 

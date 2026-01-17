@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath, unstable_cache } from "next/cache";
-import { cookies } from "next/headers";
 import { PulseQuestion } from "@/lib/types";
 import { getUser } from "./auth";
 import { saveGhostDNA } from "@/lib/auth/ghost-actions";
@@ -158,6 +157,7 @@ export async function submitPulseVote(question: PulseQuestion, stance: "YES" | "
   // Reward for participating in Pulse
   let finalUserId: string | undefined = user.id;
   if (!finalUserId && user.is_guest) {
+    const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
     finalUserId = cookieStore.get("guest_user_id")?.value;
   }

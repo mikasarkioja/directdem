@@ -6,6 +6,11 @@ import { Loader2 } from "lucide-react";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
 import { fetchMunicipalDecisions } from "@/app/actions/municipal";
 import { getResearcherStats } from "@/app/actions/researcher";
+import { getIntelligenceFeed } from "@/lib/feed/feed-service";
+import IntelligenceFeedWrapper from "@/components/feed/IntelligenceFeedWrapper";
+import { IntelligenceFeedSkeleton } from "@/components/feed/IntelligenceFeed";
+
+export const revalidate = 900; // Päivitä sivu 15 minuutin välein
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const user = await getUser();
@@ -14,10 +19,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const lens = (resolvedSearchParams.lens as string) || "national";
   
   // Esihaku: Ladataan kriittinen data jo palvelimella
-  const initialDataPromises = [];
-  
-  // Kansalliset lakiesitykset ladataan lähes aina
   const billsPromise = fetchBillsFromSupabase();
+  const feedPromise = getIntelligenceFeed(user);
   
   // Kunnalliset päätökset jos ollaan kuntanäkymässä tai linssi on asetettu
   let municipalPromise: Promise<any[]> = Promise.resolve([]);
@@ -32,10 +35,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     statsPromise = getResearcherStats();
   }
 
-  const [initialBills, initialMunicipalTasks, initialStats] = await Promise.all([
+  const [initialBills, initialMunicipalTasks, initialStats, feedItems] = await Promise.all([
     billsPromise,
     municipalPromise,
-    statsPromise
+    statsPromise,
+    feedPromise
   ]);
 
   const isResearcher = view === "researcher";
@@ -43,7 +47,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <div className="min-h-screen bg-nordic-white">
       <Navbar user={user} />
-      <main className={`${isResearcher ? 'max-w-[1600px]' : 'max-w-7xl'} mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-500`}>
+      <main className={`${isResearcher ? 'max-w-[1600px]' : 'max-w-7xl'} mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-500 space-y-12`}>
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
             <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
@@ -58,6 +62,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             prefetchedMunicipalTasks={initialMunicipalTasks}
             prefetchedStats={initialStats}
           />
+        </Suspense>
+
+        {/* Intelligence Feed Section */}
+        <Suspense fallback={<IntelligenceFeedSkeleton />}>
+          <IntelligenceFeedWrapper initialItems={feedItems} userDna={user} />
         </Suspense>
       </main>
     </div>

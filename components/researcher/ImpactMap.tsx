@@ -8,9 +8,11 @@ import {
   Users, 
   FileText, 
   Target,
-  Sparkles
+  Sparkles,
+  BarChart
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface ImpactAnalysis {
   id: string;
@@ -74,7 +76,60 @@ export default function ImpactMap({ billId }: ImpactMapProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
+      {/* Lobbari-jäljitys (Traceability Chart) */}
+      <div className="bg-white border border-slate-200 rounded-[2.5rem] p-10 space-y-8 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
+              <BarChart className="text-cyan-600" />
+              Lobbari-jäljitys (Tekstuaalinen alkuperä)
+            </h3>
+            <p className="text-xs text-slate-500 font-serif italic">Osuus lopullisen lakitekstin uusista muotoiluista, jotka korreloivat lausuntojen kanssa.</p>
+          </div>
+          <div className="text-right">
+            <p className="text-3xl font-black text-slate-900">{(analyses.reduce((acc, curr) => acc + curr.impact_score, 0)).toFixed(1)}%</p>
+            <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Kokonaismuutosvaste</p>
+          </div>
+        </div>
+
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsBarChart data={analyses} layout="vertical" margin={{ left: 120, right: 40 }}>
+              <XAxis type="number" domain={[0, 20]} hide />
+              <YAxis 
+                dataKey="organization_name" 
+                type="category" 
+                width={110} 
+                fontSize={9} 
+                fontWeight="bold" 
+                stroke="#64748b"
+                tick={{ fill: '#64748b' }}
+              />
+              <RechartsTooltip 
+                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-slate-900 text-white p-3 rounded-xl border border-white/10 shadow-2xl">
+                        <p className="text-[10px] font-black uppercase mb-1">{payload[0].payload.organization_name}</p>
+                        <p className="text-lg font-black text-cyan-400">{payload[0].value}% vaikutus</p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Bar dataKey="impact_score" radius={[0, 4, 4, 0]}>
+                {analyses.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={index === 0 ? "#0891b2" : "#94a3b8"} />
+                ))}
+              </Bar>
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Influence Ranking */}
         <div className="bg-slate-900/50 border border-white/5 rounded-[2.5rem] p-8 space-y-6">

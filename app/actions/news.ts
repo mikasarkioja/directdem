@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getLatestNews } from "@/lib/news/news-service";
 
 export interface NewsItem {
   id: string | number;
@@ -9,19 +10,31 @@ export interface NewsItem {
   type: "news" | "radar" | "alert";
   severity?: "low" | "medium" | "high";
   meta?: any;
+  link?: string;
+  description?: string;
 }
 
 /**
- * Fetches combined newsfeed: real news and transparency alerts.
+ * Fetches combined newsfeed: real news from Yle RSS and transparency alerts from Supabase.
  */
 export async function getCombinedNews(lens: string = "national"): Promise<NewsItem[]> {
   const supabase = await createClient();
 
-  // 1. Fetch real news (if we had a table, for now we mock some)
-  const news: NewsItem[] = [
-    { id: "n1", title: "Eduskunta aloitti keskustelun valtion budjetista", time: "10 min sitten", type: "news" },
-    { id: "n2", title: "Uusi ympäristölaki herättää vastustusta", time: "45 min sitten", type: "news" }
-  ];
+  // 1. Fetch real news from Yle RSS
+  const yleNews = await getLatestNews();
+  const news: NewsItem[] = yleNews.map((item, index) => ({
+    id: `yle-${index}`,
+    title: item.title,
+    time: new Date(item.pubDate).toLocaleString("fi-FI", { 
+      day: "numeric", 
+      month: "numeric", 
+      hour: "2-digit", 
+      minute: "2-digit" 
+    }),
+    type: "news",
+    link: item.link,
+    description: item.contentSnippet
+  }));
 
   // 2. Fetch Transparency Alerts (Sidonnaisuus-tutka)
   // We look into mp_ai_profiles where last_conflict_analysis has a high score

@@ -16,6 +16,9 @@ import { getUser } from "@/app/actions/auth";
 import type { UserProfile } from "@/lib/types";
 
 import { RadarAlert } from "@/components/arena/RadarAlert";
+import { startGhostSession } from "@/lib/auth/ghost-actions";
+import { logUserActivity } from "@/app/actions/logUserActivity";
+import toast from "react-hot-toast";
 
 interface MP {
   id: string;
@@ -137,6 +140,10 @@ export default function ArenaDuelPage() {
   }, [messages]);
 
   const startDuel = async () => {
+    if (!user) {
+      toast.error("Kirjaudu sisään aloittaaksesi väittelyn.");
+      return;
+    }
     if (!selectedChallenger || !selectedBill) return;
     
     // Hae mahdolliset hälytykset edustajille tästä aiheesta
@@ -156,6 +163,13 @@ export default function ArenaDuelPage() {
 
     setIsDuelActive(true);
     setMessages([]);
+    
+    // Log Activity and award XP
+    await logUserActivity('ARENA_DUEL', { 
+      billId: selectedBill.bill_id, 
+      challengerId: selectedChallenger.id 
+    });
+
     append({ 
       role: "user", 
       content: `Aloitetaan kaksintaistelu aiheesta: ${selectedBill.title}. Hjallis, ole hyvä ja aloita.` 

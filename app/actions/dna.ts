@@ -30,14 +30,14 @@ export async function saveDNATestResults(scores: {
 
   const supabase = await createClient();
   
-  // 2. Update the primary profile for regular users
+  // 2. Update the primary profile for regular users (use upsert to ensure record exists)
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({
+    .upsert({
+      id: user.id,
       ...scores,
       updated_at: new Date().toISOString()
-    })
-    .eq("id", user.id);
+    }, { onConflict: 'id' });
 
   if (profileError) {
     console.error("[saveDNATestResults] Profile Error:", profileError);

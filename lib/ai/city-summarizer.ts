@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { PoliticalVector } from "./tagger";
 
 export interface CityDecisionAnalysis {
   summary: string;
@@ -8,6 +9,7 @@ export interface CityDecisionAnalysis {
   whatDecided: string;
   impactOnResident: string;
   neighborhoods: string[];
+  political_vector?: PoliticalVector;
 }
 
 /**
@@ -39,7 +41,15 @@ export async function analyzeCityDecision(
         "whoDecided": "Kuka tai mikä taho teki päätöksen",
         "whatDecided": "Mitä päätettiin",
         "impactOnResident": "Miten tämä vaikuttaa tavalliseen asukkaaseen",
-        "neighborhoods": ["lista", "kaupunginosista"]
+        "neighborhoods": ["lista", "kaupunginosista"],
+        "political_vector": {
+          "economic": -1.0..1.0,
+          "values": -1.0..1.0,
+          "environment": -1.0..1.0,
+          "regions": -1.0..1.0,
+          "globalism": -1.0..1.0,
+          "security": -1.0..1.0
+        }
       }`,
     });
 

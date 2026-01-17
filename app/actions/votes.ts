@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { unstable_cache } from "next/cache";
-import { cookies } from "next/headers";
 import type { VoteStats, VotePosition } from "@/lib/types";
 import { addDNAPoints } from "./dna";
 import { updateUserPoliticalDNA } from "@/lib/actions/user-dna-engine";
@@ -12,6 +11,7 @@ import { processTransaction, awardImpactPoints } from "@/lib/logic/economy";
 import { trackFeatureUsage } from "@/lib/analytics/tracker";
 
 export async function submitVote(billId: string, position: VotePosition) {
+  const { cookies } = await import("next/headers");
   const supabase = await createClient();
   const {
     data: { user },

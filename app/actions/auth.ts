@@ -2,18 +2,30 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { cache } from "react";
 import type { UserProfile } from "@/lib/types";
 
-export const getUser = cache(async (): Promise<UserProfile | null> => {
+export async function getUser(): Promise<UserProfile | null> {
   try {
+    const { cookies } = await import("next/headers");
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (authError || !user) {
+    if (authError) {
+      console.warn("[getUser] Supabase auth error:", authError.message);
+      
+      // DEBUG: Yritetään hakea session jos user epäonnistui
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log("[getUser] Session found even though getUser failed. Access token length:", session.access_token.length);
+      } else {
+        console.warn("[getUser] Also session is missing.");
+      }
+    }
+
+    const cookieStore = await cookies();
+
+    if (!user) {
       // TARKISTETAAN GHOST-KÄYTTÄJÄ jos oikeaa istuntoa ei löydy
-      const cookieStore = await cookies();
       const guestId = cookieStore.get("guest_user_id")?.value;
       const guestName = cookieStore.get("guest_user_name")?.value;
 
@@ -81,27 +93,59 @@ export const getUser = cache(async (): Promise<UserProfile | null> => {
 
     console.log("[getUser] Regular user found:", user.id);
 
-    const cookieStore = await cookies();
+    // PUHDISTUS: Jos olemme kirjautuneet oikeasti, poistetaan ghost-evästeet häiritsemästä
+    // Tehdään tämä vain jos ollaan debug- tai profiilisivulla, jotta ei tehdä turhia delete-kutsuja joka välissä
+    const guestId = cookieStore.get("guest_user_id")?.value;
+    
+    if (guestId) {
+      console.log("[getUser] Authenticated user has ghost cookie, clearing...");
+      cookieStore.delete("guest_user_id");
+      cookieStore.delete("guest_user_name");
+      cookieStore.delete("guest_dna");
+    }
+
     const guestRole = cookieStore.get("guest_active_role")?.value as any;
 
-    const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    const { data: userProfile } = await supabase.from("user_profiles").select("active_role, credits, impact_points, subscription_status, plan_type, stripe_customer_id").eq("id", user.id).single();
+    let { data: profile, error: profileFetchError } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    
+    // Jos profiilia ei löydy, yritetään luoda se (varmistetaan että jokaisella auth-käyttäjällä on profiili)
+    if (!profile || profileFetchError) {
+      console.log("[getUser] Profile missing for auth user, creating default...");
+      const { data: newProfile, error: createError } = await supabase
+        .from("profiles")
+        .upsert({ 
+          id: user.id, 
+          full_name: user.email?.split('@')[0] || "Uusi käyttäjä",
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' })
+        .select()
+        .single();
+      
+      if (!createError && newProfile) {
+        profile = newProfile;
+      }
+    }
+
+    const { data: userProfile } = await supabase.from("user_profiles").select("active_role, credits, impact_points, subscription_status, plan_type, stripe_customer_id, xp, level").eq("id", user.id).single();
 
     return { 
       id: user.id, 
       email: user.email, 
+      full_name: profile?.full_name || user.email?.split('@')[0] || "Uusi käyttäjä",
       ...profile,
       active_role: userProfile?.active_role || guestRole || 'citizen',
       credits: userProfile?.credits ?? 100,
       impact_points: userProfile?.impact_points ?? (profile?.impact_points || 0),
       subscription_status: userProfile?.subscription_status || 'inactive',
       plan_type: userProfile?.plan_type || 'free',
-      stripe_customer_id: userProfile?.stripe_customer_id
+      stripe_customer_id: userProfile?.stripe_customer_id,
+      xp: userProfile?.xp ?? 0,
+      level: userProfile?.level ?? 1
     };
   } catch {
     return null;
   }
-});
+}
 
 // Huom: Käytämme nyt pääasiassa LoginPage.tsx:n client-puolen kirjautumista,
 // mutta pidetään nämä taustalla jos tarpeen.

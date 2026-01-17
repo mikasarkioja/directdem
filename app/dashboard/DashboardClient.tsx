@@ -35,9 +35,11 @@ import MunicipalDetail from "@/components/municipal/MunicipalDetail";
 import TransactionFeed from "@/components/dashboard/TransactionFeed";
 import ResearcherWorkspace from "@/components/researcher/ResearcherWorkspace";
 import PricingTable from "@/components/billing/PricingTable";
+import InfluenceStats from "@/components/dashboard/InfluenceStats";
 import { fetchMunicipalDecisions } from "@/app/actions/municipal";
 import toast, { Toaster } from "react-hot-toast";
 import { getCombinedNews, NewsItem } from "@/app/actions/news";
+import { logUserActivity } from "@/app/actions/logUserActivity";
 import { Radar, AlertTriangle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { LensMode } from "@/lib/types";
@@ -162,34 +164,44 @@ export default function DashboardClient({
     const currentTask = lens === "national" ? selectedBill : selectedMunicipalTask;
     if (!currentTask) return;
     
-    // Add points gamification
+    // Add points gamification via XP system
     try {
-      await addImpactPoints(25);
+      const res = await logUserActivity('STATEMENT', { 
+        billId: selectedBill?.id,
+        title: currentTask.title,
+        political_vector: (currentTask as any).political_vector 
+      });
       
-      // Update local state for immediate feedback
-      setProfile((prev: any) => ({
-        ...prev,
-        impact_points: (prev.impact_points || 0) + 25
-      }));
+      if (res.success) {
+        // Update local state for immediate feedback
+        setProfile((prev: any) => ({
+          ...prev,
+          xp: res.totalXp,
+          level: res.level
+        }));
 
-      toast.custom((t) => (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5, y: 50 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="bg-slate-900 border-2 border-purple-500 p-6 rounded-[2rem] shadow-2xl flex items-center gap-4"
-        >
-          <div className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center">
-            <Sparkles className="text-white" />
-          </div>
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-purple-400 leading-none mb-1">Pisteitä kerätty!</p>
-            <p className="text-xl font-black text-white">+25 Vaikuttavuuspistettä</p>
-          </div>
-        </motion.div>
-      ), { duration: 3000 });
+        toast.custom((t) => (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-slate-900 border-2 border-purple-500 p-6 rounded-[2rem] shadow-2xl flex items-center gap-4"
+          >
+            <div className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center">
+              <Sparkles className="text-white" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-purple-400 leading-none mb-1">
+                {res.leveledUp ? 'Level Up!' : 'Vaikutusvaltaa ansaittu!'}
+              </p>
+              <p className="text-xl font-black text-white">+{res.xpEarned} XP</p>
+              {res.leveledUp && <p className="text-[10px] font-bold text-slate-400 uppercase">Uusi taso: {res.level}</p>}
+            </div>
+          </motion.div>
+        ), { duration: 4000 });
+      }
 
     } catch (err) {
-      toast.error("Pisteiden päivitys epäonnistui.");
+      toast.error("Vaikutusvallan päivitys epäonnistui.");
     }
   };
 
@@ -268,14 +280,14 @@ export default function DashboardClient({
 
   const mergedUser: UserProfile = {
     ...initialUser,
-    shadow_id_number: profile?.shadow_id_number,
-    committee_assignment: profile?.committee_assignment,
-    impact_points: profile?.impact_points ?? initialUser.impact_points,
-    rank_title: profile?.rank_title ?? initialUser.rank_title,
+    ...profile,
+    // Varmistetaan että tietyt kentät otetaan profiilista jos ne on siellä
+    id: initialUser.id, // ID pysyy aina samana
+    email: initialUser.email,
   };
 
-  const hasDna = (initialUser?.economic_score !== undefined && initialUser?.economic_score !== 0) || 
-                 (initialUser?.liberal_conservative_score !== undefined && initialUser?.liberal_conservative_score !== 0);
+  const hasDna = (profile?.economic_score !== undefined && profile?.economic_score !== 0) || 
+                 (profile?.liberal_conservative_score !== undefined && profile?.liberal_conservative_score !== 0);
 
   return (
     <div className="space-y-8">
@@ -342,6 +354,7 @@ export default function DashboardClient({
           {activeView !== "researcher" ? (
             <>
               <ShadowIDCard user={mergedUser} lens={lens} />
+              <InfluenceStats xp={mergedUser.xp || 0} level={mergedUser.level || 1} />
               <LocalWeather lens={lens} user={mergedUser} />
               <div className="bg-slate-900/50 border border-white/5 rounded-[2rem] p-6 space-y-6">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">

@@ -45,6 +45,7 @@ export async function getEspooDecisions() {
             decision_date: new Date().toISOString(), // Dynasty-sivulta pitäisi kaivaa tarkka pvm
             category: analysis.category,
             neighborhoods: analysis.neighborhoods,
+            political_vector: analysis.political_vector,
             analysis_data: analysis,
             url: item.url,
             pdf_url: item.pdfUrl

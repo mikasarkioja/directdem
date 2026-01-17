@@ -1,0 +1,32 @@
+# DirectDem Project Rules & Standards
+
+## Tech Stack
+- Next.js 15 (App Router)
+- TypeScript (Strict Mode)
+- Supabase SSR (@supabase/ssr)
+- Tailwind CSS
+- Lucide React (Icons)
+
+## Critical Next.js 15 Rules
+- ALWAYS treat `cookies()`, `headers()`, and `params` from `page.tsx` or `layout.tsx` as Promises. Use `await` before accessing their properties.
+- Use Server Components by default. Use 'use client' only when hooks (useState, useEffect) or browser APIs are required.
+- Use the standard `async/await` pattern for data fetching in Server Components.
+
+## TypeScript Standards
+- NO `any` type allowed. If a type is unknown, use `unknown` and type guards.
+- Prefer `interface` over `type` for public APIs and component props.
+- Ensure all API responses have defined interfaces.
+
+## Supabase & Auth
+- Use the `createClient` utility from `@/utils/supabase/server` for Server Components/Actions.
+- Always use `supabase.auth.getUser()` instead of `getSession()` to ensure the token is validated with the server.
+
+## Vercel & Deployment Readiness
+- Do not use `process.env` directly in components. Use a centralized environment config (e.g., `@/lib/env`).
+- Always include a `loading.tsx` file for dynamic routes to improve perceived performance.
+- Use `next/image` for all images to ensure Vercel optimization.
+
+## UI & Styling
+- Use Tailwind CSS for all styling.
+- Follow a mobile-first responsive design approach.
+- Use Lucide React for icons consistently.

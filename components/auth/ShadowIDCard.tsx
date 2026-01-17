@@ -143,7 +143,7 @@ export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardPr
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
               <p className="text-[7px] font-black uppercase text-slate-600 tracking-widest mb-1">Vaikutus</p>
-              <p className="text-sm font-black text-white">{user.impact_points || 0}</p>
+              <p className="text-sm font-black text-white">{user.xp || 0} XP</p>
             </div>
             <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
               <p className="text-[7px] font-black uppercase text-slate-600 tracking-widest mb-1">Taso</p>

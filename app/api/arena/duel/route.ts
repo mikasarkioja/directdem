@@ -45,8 +45,10 @@ export async function POST(req: Request) {
   }
 
   if (!userId) {
-    console.warn("[Arena Duel] Final Auth Failure: No user identity found");
-    return new Response(JSON.stringify({ error: "Kirjaudu sisään tai käytä pikakirjautumista." }), { status: 401 });
+    // Jos tunnistautuminen epäonnistuu (esim. mobile/IE evästeongelmat), 
+    // luodaan anonyymi istunto jotta ominaisuus toimii silti.
+    userId = "anonymous-" + Math.random().toString(36).substring(7);
+    console.warn("[Arena Duel] No user identity found, using anonymous session:", userId);
   }
   
   console.log(`[Arena Duel] Request by user: ${userId}`);
@@ -364,7 +366,9 @@ export async function POST(req: Request) {
   const data = new StreamData();
 
   // Track feature usage start
-  await trackFeatureUsage("Arena Duel", "GENERATE", userId);
+  // Varmistetaan että trackeri saa kelvollisen ID:n tai ei mitään (välttääkseen UUID-virheet DB:ssä)
+  const isRealUser = userId && !userId.startsWith("anonymous-");
+  await trackFeatureUsage("Arena Duel", "GENERATE", isRealUser ? userId : undefined);
 
   const result = await streamText({
     model: openai("gpt-4o") as any,
@@ -377,7 +381,7 @@ export async function POST(req: Request) {
         "gpt-4o", 
         completion.usage.promptTokens, 
         completion.usage.completionTokens, 
-        userId
+        isRealUser ? userId : undefined
       );
       data.close();
     },

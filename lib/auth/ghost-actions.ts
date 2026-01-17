@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
@@ -12,6 +11,7 @@ import { randomUUID } from "crypto";
  */
 
 export async function startGhostSession(name: string) {
+  const { cookies } = await import("next/headers");
   const guestId = randomUUID();
   const cookieStore = await cookies();
   
@@ -35,6 +35,7 @@ export async function startGhostSession(name: string) {
 }
 
 export async function saveGhostDNA(scores: any) {
+  const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
   cookieStore.set("guest_dna", JSON.stringify(scores), {
     maxAge: 60 * 60 * 24 * 30,
@@ -47,6 +48,7 @@ export async function saveGhostDNA(scores: any) {
 }
 
 export async function clearGhostSession() {
+  const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
   cookieStore.delete("guest_user_id");
   cookieStore.delete("guest_user_name");

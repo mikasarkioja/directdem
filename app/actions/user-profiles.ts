@@ -2,7 +2,6 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { assignToCommittee } from "@/lib/logic/committee-assigner";
 import { getUser } from "./auth";
 
@@ -14,7 +13,7 @@ export async function getUserProfile() {
 
   const { data, error } = await supabase
     .from("user_profiles")
-    .select("*")
+    .select("*, profiles!inner(economic_score, liberal_conservative_score, environmental_score, urban_rural_score, international_national_score, security_score, full_name)")
     .eq("id", user.id)
     .single();
 
@@ -33,17 +32,53 @@ export async function getUserProfile() {
         committee_assignment: committee,
         rank_title: rankTitle,
         impact_points: user.impact_points || 0,
+        xp: user.xp || 0,
+        level: user.level || 1,
         active_role: user.active_role || 'citizen',
         researcher_initialized: (user as any).researcher_initialized || false,
         researcher_type: (user as any).researcher_type,
         researcher_focus: (user as any).researcher_focus,
-        is_guest: true
+        is_guest: true,
+        economic_score: user.economic_score,
+        liberal_conservative_score: user.liberal_conservative_score,
+        environmental_score: user.environmental_score,
+        urban_rural_score: user.urban_rural_score,
+        international_national_score: user.international_national_score,
+        security_score: user.security_score
       };
     }
-    return data; // voi olla null jos ei guest eikä löytynyt
+    
+    // Jos oikea käyttäjä mutta ei vielä profiilia, palautetaan tyhjä mutta tunnistettu tila
+    return {
+      id: user.id,
+      is_new_user: true,
+      active_role: user.active_role || 'citizen',
+      xp: 0,
+      level: 1,
+      economic_score: user.economic_score,
+      liberal_conservative_score: user.liberal_conservative_score,
+      environmental_score: user.environmental_score,
+      urban_rural_score: user.urban_rural_score,
+      international_national_score: user.international_national_score,
+      security_score: user.security_score
+    };
   }
 
-  return data;
+  // Litistetään profiles-tiedot samaan tasoon
+  const profiles = data.profiles as any;
+  const flattenedData = {
+    ...data,
+    economic_score: profiles?.economic_score,
+    liberal_conservative_score: profiles?.liberal_conservative_score,
+    environmental_score: profiles?.environmental_score,
+    urban_rural_score: profiles?.urban_rural_score,
+    international_national_score: profiles?.international_national_score,
+    security_score: profiles?.security_score,
+    full_name: profiles?.full_name
+  };
+  delete flattenedData.profiles;
+
+  return flattenedData;
 }
 
 export async function createUserProfile() {
@@ -114,6 +149,7 @@ export async function switchUserRole(role: 'citizen' | 'shadow_mp' | 'researcher
     const user = await getUser();
     
     // 1. Tallennetaan rooli AINA evästeeseen (toimii heti ja on luotettava)
+    const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
     cookieStore.set("guest_active_role", role, {
       maxAge: 60 * 60 * 24 * 30,
@@ -169,6 +205,7 @@ export async function initializeResearcherProfile(data: { type: string; focus: s
     const user = await getUser();
     if (!user) throw new Error("Ei käyttäjää");
 
+    const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
     cookieStore.set("researcher_initialized", "true", { maxAge: 60 * 60 * 24 * 30, path: "/" });
     cookieStore.set("researcher_type", data.type, { maxAge: 60 * 60 * 24 * 30, path: "/" });

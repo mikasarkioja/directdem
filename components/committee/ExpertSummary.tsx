@@ -2,16 +2,25 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, XCircle, Info, ChevronRight, MessageSquareText, Radio, ShieldAlert, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Info, ChevronRight, MessageSquareText, Radio, ShieldAlert, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import type { Bill } from "@/lib/types";
 import { RadarAlert } from "@/components/arena/RadarAlert";
 
 interface ExpertSummaryProps {
   bill: Bill;
   onGiveStatement: () => void;
+  onRegenerate?: () => void;
+  isRegenerating?: boolean;
+  regenerateLabel?: string;
 }
 
-export default function ExpertSummary({ bill, onGiveStatement }: ExpertSummaryProps) {
+export default function ExpertSummary({ 
+  bill, 
+  onGiveStatement, 
+  onRegenerate, 
+  isRegenerating,
+  regenerateLabel = "Käynnistä Syväanalyysi (AI + Talous)"
+}: ExpertSummaryProps) {
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [loadingRadar, setLoadingRadar] = useState(false);
 
@@ -111,6 +120,20 @@ export default function ExpertSummary({ bill, onGiveStatement }: ExpertSummaryPr
           </div>
         </div>
       </div>
+
+      {/* Syväanalyysi-nappi siirretty tänne parempaa löydettävyyttä varten */}
+      {onRegenerate && (
+        <div className="flex justify-center -mt-4 -mb-2">
+          <button 
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+            className="flex items-center gap-3 px-10 py-5 bg-purple-600 hover:bg-purple-500 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-2xl shadow-purple-600/40 active:scale-95 disabled:opacity-50 z-10 border border-white/20"
+          >
+            {isRegenerating ? <RefreshCw size={18} className="animate-spin" /> : <Sparkles size={18} />}
+            {isRegenerating ? "Analysoidaan..." : regenerateLabel}
+          </button>
+        </div>
+      )}
 
       {/* Avoimuus-analyysi (Sidonnaisuus-tutka) */}
       <div className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-8 md:p-10 space-y-6">

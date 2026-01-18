@@ -365,6 +365,9 @@ export default function MunicipalDetail({ item, onClose, user }: MunicipalDetail
                   toast.success(`Lausunto annettu! +${res.xpEarned} XP`);
                 }
               }}
+              onRegenerate={handleDeepAnalysis}
+              isRegenerating={deepLoading}
+              regenerateLabel="Käynnistä Syväanalyysi (Liitteet + Talous)"
             />
           )}
 
@@ -381,20 +384,11 @@ export default function MunicipalDetail({ item, onClose, user }: MunicipalDetail
 
           {/* External Link */}
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-4">
-            <button 
-              onClick={handleDeepAnalysis}
-              disabled={deepLoading}
-              className="flex items-center gap-3 px-8 py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-purple-600/20 active:scale-95 disabled:opacity-50"
-            >
-              {deepLoading ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} />}
-              {deepLoading ? "Analysoidaan syvältä..." : "Käynnistä Syväanalyysi (Liitteet + Talous)"}
-            </button>
-
             <a 
               href={localItem.external_url || localItem.url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center gap-3 px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-white transition-all group"
+              className="flex items-center gap-3 px-10 py-5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-white transition-all group"
             >
               Lue koko asiakirja
               <ExternalLink size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />

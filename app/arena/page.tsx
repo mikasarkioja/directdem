@@ -140,10 +140,6 @@ export default function ArenaDuelPage() {
   }, [messages]);
 
   const startDuel = async () => {
-    if (!user) {
-      toast.error("Kirjaudu sisään aloittaaksesi väittelyn.");
-      return;
-    }
     if (!selectedChallenger || !selectedBill) return;
     
     // Hae mahdolliset hälytykset edustajille tästä aiheesta
@@ -164,11 +160,17 @@ export default function ArenaDuelPage() {
     setIsDuelActive(true);
     setMessages([]);
     
-    // Log Activity and award XP
-    await logUserActivity('ARENA_DUEL', { 
-      billId: selectedBill.bill_id, 
-      challengerId: selectedChallenger.id 
-    });
+    // Log Activity and award XP (Only for logged-in or ghost users)
+    if (user) {
+      try {
+        await logUserActivity('ARENA_DUEL', { 
+          billId: selectedBill.bill_id, 
+          challengerId: selectedChallenger.id 
+        });
+      } catch (err) {
+        console.warn("Activity logging failed (might be anonymous session)");
+      }
+    }
 
     append({ 
       role: "user", 

@@ -23,7 +23,7 @@ export default function BottomNav({ activeView, onViewChange }: BottomNavProps) 
 
   const getNavItems = (): NavItem[] => {
     const common: NavItem[] = [
-      { label: "Keskus", view: "overview" as const, icon: LayoutGrid },
+      { label: "Keskus", view: "overview" as const, icon: LayoutGrid, href: "/" },
     ];
 
     if (role === 'shadow_mp') {
@@ -36,13 +36,13 @@ export default function BottomNav({ activeView, onViewChange }: BottomNavProps) 
       return [
         ...common,
         { label: "Data", view: "ranking" as const, icon: Search, href: "/ranking" },
-        { label: "Kartta", view: "consensus" as const, icon: MapIcon },
+        { label: "Kartta", view: "consensus" as const, icon: MapIcon, href: "/?view=consensus" },
       ];
     } else {
       return [
         ...common,
         { label: "Areena", view: "arena" as const, icon: Radio, href: "/arena" },
-        { label: "DNA", view: "profile" as const, icon: User },
+        { label: "DNA", view: "profile" as const, icon: User, href: "/profiili" },
       ];
     }
   };

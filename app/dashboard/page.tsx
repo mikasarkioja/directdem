@@ -9,6 +9,7 @@ import { getResearcherStats } from "@/app/actions/researcher";
 import { getIntelligenceFeed } from "@/lib/feed/feed-service";
 import IntelligenceFeedWrapper from "@/components/feed/IntelligenceFeedWrapper";
 import { IntelligenceFeedSkeleton } from "@/components/feed/IntelligenceFeed";
+import { isFeatureEnabled } from "@/lib/config/features";
 
 export const revalidate = 900; // Päivitä sivu 15 minuutin välein
 
@@ -65,9 +66,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </Suspense>
 
         {/* Intelligence Feed Section */}
-        <Suspense fallback={<IntelligenceFeedSkeleton />}>
-          <IntelligenceFeedWrapper initialItems={feedItems} userDna={user} />
-        </Suspense>
+        {isFeatureEnabled("INTELLIGENCE_FEED_ENABLED") && (
+          <Suspense fallback={<IntelligenceFeedSkeleton />}>
+            <IntelligenceFeedWrapper initialItems={feedItems} userDna={user} />
+          </Suspense>
+        )}
       </main>
     </div>
   );

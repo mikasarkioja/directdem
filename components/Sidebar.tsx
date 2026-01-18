@@ -10,6 +10,8 @@ import PartyPin from "./PartyPin";
 import PulseButton from "./nav/PulseButton";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import { isFeatureEnabled } from "@/lib/config/features";
+import toast from "react-hot-toast";
 
 interface SidebarProps {
   activeView: DashboardView;
@@ -50,30 +52,41 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
     }
   };
 
-  const citizenItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
+  const handleRoleSwitch = (newRole: string) => {
+    if (newRole === 'shadow_mp' || newRole === 'researcher') {
+      if (!user) {
+        toast.error("Tämä rooli vaatii kirjautumisen.");
+        router.push("/login?callback=" + pathname);
+        return;
+      }
+    }
+    switchRole(newRole as any);
+  };
+
+  const citizenItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string; feature?: string }> = [
     { id: "overview", label: "Uutisvirta", icon: Newspaper, href: "/?view=overview" },
-    { id: "arena", label: "Hjallis-haaste", icon: BarChart3, href: "/arena" },
+    { id: "arena", label: "Hjallis-haaste", icon: BarChart3, href: "/arena", feature: "ARENA_ENABLED" },
     { id: "profile", label: "Oma DNA", icon: User, href: "/profiili" },
     { id: "profile", label: "DNA-Testi", icon: Sparkles, href: "/testi" },
   ];
 
-  const shadowItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
+  const shadowItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string; feature?: string }> = [
     { id: "workspace", label: "Työhuone", icon: Briefcase, href: "/dashboard" },
     { id: "bills", label: "Äänestysareena", icon: FileText, href: "/?view=bills" },
-    { id: "municipal", label: "Valiokunta", icon: Shield, href: "/?view=municipal" },
-    { id: "kuntavahti", label: "Kuntavahti", icon: Building2, href: "/dashboard?view=kuntavahti" },
+    { id: "municipal", label: "Valiokunta", icon: Shield, href: "/?view=municipal", feature: "MUNICIPAL_WATCH_ENABLED" },
+    { id: "kuntavahti", label: "Kuntavahti", icon: Building2, href: "/dashboard?view=kuntavahti", feature: "MUNICIPAL_WATCH_ENABLED" },
   ];
 
-  const researcherItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string }> = [
-    { id: "researcher", label: "Tutkimus-terminaali", icon: Terminal, href: "/dashboard?view=researcher" },
+  const researcherItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string; feature?: string }> = [
+    { id: "researcher", label: "Tutkimus-terminaali", icon: Terminal, href: "/dashboard?view=researcher", feature: "RESEARCHER_ENABLED" },
     { id: "consensus", label: "Konsensuskartta", icon: Map, href: "/?view=consensus" },
     { id: "analysis", label: "Takinkääntö-vahti", icon: Activity, href: "/puolueet/analyysi" },
     { id: "ranking", label: "Massadata", icon: Database, href: "/ranking" },
   ];
 
-  const menuItems = role === 'shadow_mp' 
+  const menuItems = (role === 'shadow_mp' 
     ? shadowItems 
-    : (role === 'researcher' ? researcherItems : citizenItems);
+    : (role === 'researcher' ? researcherItems : citizenItems)).filter(item => !item.feature || isFeatureEnabled(item.feature as any));
 
   // const isAdmin = user?.email === 'nika.sarkioja@gmail.com' || user?.email?.includes('admin');
   const isAdmin = true; // TEMPORARY: Show for all users
@@ -111,7 +124,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
           ].map((r) => (
             <button
               key={r.id}
-              onClick={() => switchRole(r.id as any)}
+              onClick={() => handleRoleSwitch(r.id as any)}
               className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${
                 role === r.id 
                   ? "bg-white dark:bg-white/10 shadow-sm text-command-neon" 
@@ -191,7 +204,9 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-black uppercase text-command-dark dark:text-white truncate">{user?.full_name || "Vieras"}</p>
-            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase truncate">Henkilöllisyys vahvistettu</p>
+            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase truncate">
+              {user ? "Henkilöllisyys vahvistettu" : "Kirjaudu sisään"}
+            </p>
           </div>
         </div>
       </div>

@@ -40,9 +40,10 @@ import { fetchMunicipalDecisions } from "@/app/actions/municipal";
 import toast, { Toaster } from "react-hot-toast";
 import { getCombinedNews, NewsItem } from "@/app/actions/news";
 import { logUserActivity } from "@/app/actions/logUserActivity";
-import { Radar, AlertTriangle } from "lucide-react";
+import { Radar, AlertTriangle, LogIn } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { LensMode } from "@/lib/types";
+import { FEATURES, isFeatureEnabled } from "@/lib/config/features";
 
 interface DashboardClientProps {
   initialUser: UserProfile | null;
@@ -58,7 +59,14 @@ export default function DashboardClient({
   prefetchedStats = null
 }: DashboardClientProps) {
   const searchParams = useSearchParams();
-  const [profile, setProfile] = useState<any>(initialUser);
+  const [profile, setProfile] = useState<any>(initialUser || { 
+    active_role: 'citizen',
+    is_guest: true,
+    full_name: "Vieraileva Kansalainen",
+    xp: 0,
+    level: 1,
+    impact_points: 0
+  });
   const [bills, setBills] = useState<Bill[]>(prefetchedBills);
   const [municipalTasks, setMunicipalTasks] = useState<any[]>(prefetchedMunicipalTasks);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(prefetchedBills[0] || null);
@@ -92,29 +100,21 @@ export default function DashboardClient({
 
   useEffect(() => {
     async function loadData() {
+      // Allow unauthenticated users to see the citizen view
+      const currentUser = initialUser || profile;
+      
       // Skit initial load if we already have prefetched data for the current lens
       const isInitialLoad = bills.length === prefetchedBills.length && 
                            municipalTasks.length === prefetchedMunicipalTasks.length &&
                            loading === false;
 
-      if (isInitialLoad && profile?.id === initialUser?.id) {
-        // Just ensure selected items are set if not already
-        if (bills.length > 0 && !selectedBill) setSelectedBill(bills[0]);
-        if (municipalTasks.length > 0 && !selectedMunicipalTask) setSelectedMunicipalTask(municipalTasks[0]);
-        
-        // If it's researcher view and initialized, we are good
-        if (activeView === "researcher" && profile?.researcher_initialized) {
-          return;
-        }
-        
-        // If we are in committee/kuntavahti and have data, we might still want to refresh
-        // but for now let's trust the prefetch for the very first render.
-        // We only return early if this is the TRUE initial mount.
+      if (isInitialLoad && profile?.id === initialUser?.id && initialUser !== null) {
+        // ...
       }
 
       setLoading(true);
       try {
-        const profileData = await getUserProfile();
+        const profileData = initialUser ? await getUserProfile() : profile;
         setProfile(profileData);
 
         if (lens === "national" && activeView !== "researcher") {
@@ -227,6 +227,17 @@ export default function DashboardClient({
     }
   };
 
+  const handleRoleSwitch = (newView: typeof activeView) => {
+    if (newView === "researcher" || newView === "committee") {
+      if (!initialUser) {
+        toast.error("Tämä toiminto vaatii kirjautumisen.");
+        window.location.href = "/login?callback=/dashboard?view=" + newView;
+        return;
+      }
+    }
+    setActiveView(newView);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
@@ -238,20 +249,8 @@ export default function DashboardClient({
     );
   }
 
-  if (!initialUser) {
-    return (
-      <div className="max-w-md mx-auto mt-20 p-8 bg-slate-900 rounded-3xl border border-white/5 text-center space-y-6 shadow-2xl">
-        <ShieldAlert className="w-16 h-16 text-rose-500 mx-auto" />
-        <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Pääsy evätty</h2>
-        <p className="text-slate-400 text-sm">Kirjaudu sisään astuaksesi eduskunnan digitaaliseen kaksoseen.</p>
-        <a href="/login" className="block w-full py-4 bg-purple-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-purple-500 transition-all">
-          Kirjaudu sisään
-        </a>
-      </div>
-    );
-  }
-
-  if (!profile && activeView !== "researcher") {
+  // Jos ollaan committee-näkymässä (Shadow MP) mutta profiilia ei ole alustettu
+  if (!profile?.shadow_id_number && activeView === "committee" && initialUser) {
     return (
       <div className="max-w-2xl mx-auto mt-20 p-12 bg-slate-900 rounded-[3rem] border border-white/10 text-center space-y-8 shadow-2xl relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-transparent pointer-events-none" />
@@ -279,11 +278,10 @@ export default function DashboardClient({
   }
 
   const mergedUser: UserProfile = {
-    ...initialUser,
+    ...(initialUser || { id: "guest", email: "guest@directdem.fi", full_name: "Vieras" }),
     ...profile,
-    // Varmistetaan että tietyt kentät otetaan profiilista jos ne on siellä
-    id: initialUser.id, // ID pysyy aina samana
-    email: initialUser.email,
+    id: initialUser?.id || "guest",
+    email: initialUser?.email || "guest@directdem.fi",
   };
 
   const hasDna = (profile?.economic_score !== undefined && profile?.economic_score !== 0) || 
@@ -309,35 +307,52 @@ export default function DashboardClient({
         <div className="flex items-center bg-white/5 rounded-xl p-1 gap-1">
           {activeView !== "researcher" && (
             <>
-              <button 
-                onClick={() => setActiveView("committee")}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "committee" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
-              >
-                Eduskunta
-              </button>
-              <button 
-                onClick={() => setActiveView("kuntavahti")}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "kuntavahti" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
-              >
-                Kuntavahti
-              </button>
-              <button 
-                onClick={() => setActiveView("economy")}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "economy" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
-              >
-                Talous
-              </button>
+              {isFeatureEnabled("XP_SYSTEM_ENABLED") && (
+                <button 
+                  onClick={() => handleRoleSwitch("committee")}
+                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "committee" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+                >
+                  Edustaja
+                </button>
+              )}
+              {isFeatureEnabled("MUNICIPAL_WATCH_ENABLED") && (
+                <button 
+                  onClick={() => handleRoleSwitch("kuntavahti")}
+                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "kuntavahti" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+                >
+                  Kuntavahti
+                </button>
+              )}
+              {isFeatureEnabled("ECONOMY_ENABLED") && (
+                <button 
+                  onClick={() => handleRoleSwitch("economy")}
+                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "economy" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+                >
+                  Talous
+                </button>
+              )}
             </>
           )}
-          <button 
-            onClick={() => setActiveView("researcher")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "researcher" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"}`}
-          >
-            Tutkija
-          </button>
+          {isFeatureEnabled("RESEARCHER_ENABLED") && (
+            <button 
+              onClick={() => handleRoleSwitch("researcher")}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "researcher" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"}`}
+            >
+              Tutkija
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-4">
+          {!initialUser && (
+            <Link 
+              href="/login"
+              className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-purple-400 flex items-center gap-2 transition-all"
+            >
+              <LogIn size={14} />
+              Kirjaudu
+            </Link>
+          )}
           <LensSwitcher currentLens={lens} onLensChange={setLens} />
           <div className="flex items-center gap-2 pr-4">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -354,7 +369,9 @@ export default function DashboardClient({
           {activeView !== "researcher" ? (
             <>
               <ShadowIDCard user={mergedUser} lens={lens} />
-              <InfluenceStats xp={mergedUser.xp || 0} level={mergedUser.level || 1} />
+              {initialUser && isFeatureEnabled("XP_SYSTEM_ENABLED") && (
+                <InfluenceStats xp={mergedUser.xp || 0} level={mergedUser.level || 1} />
+              )}
               <LocalWeather lens={lens} user={mergedUser} />
               <div className="bg-slate-900/50 border border-white/5 rounded-[2rem] p-6 space-y-6">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
@@ -455,7 +472,9 @@ export default function DashboardClient({
           ) : (
             <>
               {/* Päivän Pulse - Only visible for non-researchers */}
-              {activeView !== "researcher" && <QuickPulse lens={lens} />}
+              {activeView !== "researcher" && isFeatureEnabled("PULSE_ENABLED") && (
+                <QuickPulse lens={lens} />
+              )}
 
               {activeView === "researcher" ? (
                 <ResearcherWorkspace userPlan={mergedUser.plan_type || 'free'} researcherProfile={profile} />

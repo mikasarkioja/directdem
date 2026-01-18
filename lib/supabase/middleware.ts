@@ -49,7 +49,8 @@ export async function updateSession(request: NextRequest) {
   const isGhost = !!guestId;
 
   const path = request.nextUrl.pathname;
-  const isProtectedPath = path.startsWith("/dashboard") || path.startsWith("/testi/tulokset") || path.startsWith("/profiili");
+  // Dashboard on nyt avoin kaikille (kansalaisnäkymä), vain tietyt polut vaativat kirjautumisen
+  const isProtectedPath = path.startsWith("/profiili") || path.startsWith("/admin") || path.startsWith("/settings");
 
   // Jos olet suojatulla polulla ja user on null (eikä ole ghost), ohjaa kirjautumiseen
   if (isProtectedPath && !user && !isGhost) {

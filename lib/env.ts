@@ -42,9 +42,20 @@ export const validateEnv = () => {
       if (!parsed.success) {
         if (isBuild) {
           console.warn(
-            "⚠️ Build-time environment validation failed. Using partial process.env.",
+            "⚠️ Build-time environment validation failed. Providing empty strings for missing keys.",
           );
-          return process.env as any;
+          // Return a safe object with empty strings for missing required keys
+          return {
+            NEXT_PUBLIC_SUPABASE_URL:
+              process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:3000",
+            NEXT_PUBLIC_SUPABASE_ANON_KEY:
+              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "missing",
+            SUPABASE_SERVICE_ROLE_KEY:
+              process.env.SUPABASE_SERVICE_ROLE_KEY || "missing",
+            OPENAI_API_KEY: process.env.OPENAI_API_KEY || "missing",
+            NODE_ENV: process.env.NODE_ENV || "production",
+            ...process.env,
+          } as any;
         }
         throw parsed.error;
       }

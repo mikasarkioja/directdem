@@ -2,12 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export async function profileBill(billId: string) {
+  const supabase = getSupabase();
   console.log(`--- Profiloidaan lakiesitys: ${billId} ---`);
 
   // 1. Hae lakiesityksen tiedot
@@ -25,7 +28,8 @@ export async function profileBill(billId: string) {
 
   const { text: analysisText } = await generateText({
     model: openai("gpt-4o-mini"),
-    system: "Olet poliittinen strategisti. Tehtäväsi on analysoida lakiesitystekstiä ja löytää siitä poliittiset kiistakapulat (hotspots).",
+    system:
+      "Olet poliittinen strategisti. Tehtäväsi on analysoida lakiesitystekstiä ja löytää siitä poliittiset kiistakapulat (hotspots).",
     prompt: `
       Lakiesitys: ${bill.title}
       Teksti: ${sourceText}
@@ -61,7 +65,7 @@ export async function profileBill(billId: string) {
       audience_hook: analysis.audience_hook,
       dna_impact: analysis.dna_impact,
       controversy_score: analysis.controversy_score,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     });
 
   if (upsertError) {
@@ -70,4 +74,3 @@ export async function profileBill(billId: string) {
 
   return analysis;
 }
-

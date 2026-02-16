@@ -13,10 +13,12 @@ dotenv.config({ path: ".env.local" });
  * Analyzes MP speeches to create a rhetoric profile and update system prompts.
  */
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export interface RhetoricProfile {
   linguistic_style: string;
@@ -28,8 +30,16 @@ export interface RhetoricProfile {
 /**
  * Analyzes speeches for a specific MP and updates their AI profile.
  */
-export async function analyzeMPRhetoric(mpId: string | number, firstName: string, lastName: string, party: string) {
-  console.log(`🧠 Analyzing rhetoric for: ${firstName} ${lastName} (${mpId})...`);
+export async function analyzeMPRhetoric(
+  mpId: string | number,
+  firstName: string,
+  lastName: string,
+  party: string,
+) {
+  const supabase = getSupabase();
+  console.log(
+    `🧠 Analyzing rhetoric for: ${firstName} ${lastName} (${mpId})...`,
+  );
 
   // 1. Fetch MP metadata (constituency, hometown)
   const { data: mpData } = await supabase
@@ -53,12 +63,12 @@ export async function analyzeMPRhetoric(mpId: string | number, firstName: string
   // 3. Fetch speeches from Eduskunta API
   const API_URL = `https://avoindata.eduskunta.fi/api/v1/data/SaliPuheenvuoro`;
   let speeches = [];
-  
+
   try {
     const response = await axios.get(API_URL, {
       params: {
         filter: `PuhujaHenkiloId eq ${mpId}`,
-      }
+      },
     });
 
     if (response.data && response.data.rowData) {
@@ -71,16 +81,19 @@ export async function analyzeMPRhetoric(mpId: string | number, firstName: string
       speeches = rowData.slice(0, 20).map((row: any) => ({
         date: row[dateIndex],
         subject: row[subjectIndex] || "Ei aihetta",
-        content: row[contentIndex] || ""
+        content: row[contentIndex] || "",
       }));
     }
   } catch (err: any) {
     console.warn(`⚠️ Could not fetch speeches for ${mpId}:`, err.message);
   }
 
-  const speechesContext = speeches.length > 0 
-    ? speeches.map((s: any) => `Aihe: ${s.subject}\nSisältö: ${s.content}`).join("\n\n---\n\n")
-    : "Ei puhedataa saatavilla.";
+  const speechesContext =
+    speeches.length > 0
+      ? speeches
+          .map((s: any) => `Aihe: ${s.subject}\nSisältö: ${s.content}`)
+          .join("\n\n---\n\n")
+      : "Ei puhedataa saatavilla.";
 
   const motivationsContext = `
     PIILOMOTIIVIT JA SIDONNAISUUDET:
@@ -111,10 +124,15 @@ export async function analyzeMPRhetoric(mpId: string | number, firstName: string
         "openings_closings": "string",
         "motivation_influence": "string"
       }`,
-      prompt: `EDUSTAJAN ${firstName.toUpperCase()} ${lastName.toUpperCase()} DATA:\n\nPUHEET:\n${speechesContext}\n\nMOTIVAATIOT:\n${motivationsContext}`
+      prompt: `EDUSTAJAN ${firstName.toUpperCase()} ${lastName.toUpperCase()} DATA:\n\nPUHEET:\n${speechesContext}\n\nMOTIVAATIOT:\n${motivationsContext}`,
     });
 
-    const rhetoricProfile = JSON.parse(profileJson.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
+    const rhetoricProfile = JSON.parse(
+      profileJson
+        .replace(/```json\n?/, "")
+        .replace(/\n?```/, "")
+        .trim(),
+    );
 
     const systemPrompt = `
       Olet kansanedustaja ${firstName} ${lastName}, puolueesi on ${party}.
@@ -130,25 +148,25 @@ export async function analyzeMPRhetoric(mpId: string | number, firstName: string
       OHJEET VÄITTELYYN:
       1. Noudata omaa kielellistä tyyliäsi.
       2. Suosi argumentteja, jotka hyödyttävät vaalipiiriäsi tai kotikuntaasi.
-      3. Jos väittely koskee aihetta, joka liittyy sidonnaisuuksiisi tai lobbaustapaamisiisi (esim. ${affiliations.map((a:any) => a.org).join(", ")}), käytä itsepuolustus-retoriikkaa: selitä ne asiantuntijuutena, ei korruptiona.
+      3. Jos väittely koskee aihetta, joka liittyy sidonnaisuuksiisi tai lobbaustapaamisiisi (esim. ${affiliations.map((a: any) => a.org).join(", ")}), käytä itsepuolustus-retoriikkaa: selitä ne asiantuntijuutena, ei korruptiona.
       4. ÄLÄ puhuttele vastustajaa 'puhemiehenä'. Jos väittelet toisen edustajan kanssa, käytä hänen nimeään tai sano 'kuule', 'kansanedustaja [Nimi]'.
       5. Hyödynnä nykyistä mielentilaasi: ${currentSentiment}.
     `;
 
-    const { error } = await supabase
-      .from("mp_ai_profiles")
-      .upsert({
+    const { error } = await supabase.from("mp_ai_profiles").upsert(
+      {
         mp_id: mpId.toString(),
         rhetoric_style: rhetoricProfile,
         system_prompt: systemPrompt,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'mp_id' });
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "mp_id" },
+    );
 
     if (error) throw error;
 
     console.log(`✅ Rhetoric Profile updated for ${lastName}.`);
     return rhetoricProfile;
-
   } catch (error: any) {
     console.error(`❌ Rhetoric Analysis failed for ${mpId}:`, error.message);
     return null;
@@ -166,6 +184,7 @@ export async function analyzeHarkimoRhetoric() {
  * Generates example responses based on the profile.
  */
 export async function generateExampleHarkimoResponses(question: string) {
+  const supabase = getSupabase();
   // Fetch the latest system prompt
   const { data: profile } = await supabase
     .from("mp_ai_profiles")
@@ -181,9 +200,13 @@ export async function generateExampleHarkimoResponses(question: string) {
     prompt: `Kansalainen kysyy sinulta: "${question}"
     
     Anna 3 erilaista, lyhyttä vastausta, jotka heijastavat retoriikkaasi. 
-    Vastaa VAIN JSON-listana merkkijonoja.`
+    Vastaa VAIN JSON-listana merkkijonoja.`,
   });
 
-  return JSON.parse(responsesJson.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
+  return JSON.parse(
+    responsesJson
+      .replace(/```json\n?/, "")
+      .replace(/\n?```/, "")
+      .trim(),
+  );
 }
-

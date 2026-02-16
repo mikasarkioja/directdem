@@ -8,10 +8,12 @@ import { openai } from "@ai-sdk/openai";
  * Fetches written questions from Eduskunta and maps them geographically.
  */
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export interface WrittenQuestion {
   id: string;
@@ -24,11 +26,13 @@ export interface WrittenQuestion {
 /**
  * Fetches latest written questions.
  */
-export async function fetchWrittenQuestions(limit: number = 20): Promise<WrittenQuestion[]> {
+export async function fetchWrittenQuestions(
+  limit: number = 20,
+): Promise<WrittenQuestion[]> {
   try {
     const url = `https://avoindata.eduskunta.fi/api/v1/tables/KirjallinenKysymys/rows?perPage=${limit}&page=0`;
     const response = await axios.get(url, { timeout: 15000 });
-    
+
     if (!response.data || !response.data.rowData) return [];
 
     const columnNames = response.data.columnNames || [];
@@ -45,7 +49,7 @@ export async function fetchWrittenQuestions(limit: number = 20): Promise<Written
       mpId: row[mpIdIndex],
       title: row[titleIndex] || "Nimetön kysymys",
       date: row[dateIndex],
-      parliamentId: row[tunnusIndex]
+      parliamentId: row[tunnusIndex],
     }));
   } catch (error: any) {
     console.error("❌ Error fetching questions:", error.message);
@@ -57,6 +61,7 @@ export async function fetchWrittenQuestions(limit: number = 20): Promise<Written
  * Analyzes question for local interest and tags it.
  */
 export async function processQuestion(question: WrittenQuestion) {
+  const supabase = getSupabase();
   console.log(`🔍 Processing question: ${question.title}`);
 
   try {
@@ -70,25 +75,33 @@ export async function processQuestion(question: WrittenQuestion) {
         "location": "Kunnan tai alueen nimi tai null",
         "tags": ["tag1", "tag2"]
       }`,
-      prompt: `Kysymyksen otsikko: ${question.title}`
+      prompt: `Kysymyksen otsikko: ${question.title}`,
     });
 
-    const geoData = JSON.parse(geoJson.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
+    const geoData = JSON.parse(
+      geoJson
+        .replace(/```json\n?/, "")
+        .replace(/\n?```/, "")
+        .trim(),
+    );
 
     // Store in activity stream
-    await supabase.from("mp_activity_stream").upsert({
-      mp_id: question.mpId,
-      activity_type: "question",
-      external_id: question.id,
-      date: question.date,
-      content_summary: question.title,
-      metadata: {
-        parliament_id: question.parliamentId,
-        is_local_interest: geoData.is_local_interest,
-        location: geoData.location,
-        tags: geoData.tags
-      }
-    }, { onConflict: "external_id" });
+    await supabase.from("mp_activity_stream").upsert(
+      {
+        mp_id: question.mpId,
+        activity_type: "question",
+        external_id: question.id,
+        date: question.date,
+        content_summary: question.title,
+        metadata: {
+          parliament_id: question.parliamentId,
+          is_local_interest: geoData.is_local_interest,
+          location: geoData.location,
+          tags: geoData.tags,
+        },
+      },
+      { onConflict: "external_id" },
+    );
 
     return geoData;
   } catch (error: any) {
@@ -96,4 +109,3 @@ export async function processQuestion(question: WrittenQuestion) {
     return null;
   }
 }
-

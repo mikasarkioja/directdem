@@ -2,12 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export async function analyzeAndEnhanceBill(billId: string) {
+  const supabase = getSupabase();
   console.log(`--- Syväanalysoidaan lakiesitys: ${billId} ---`);
 
   // 1. Hae lakiesityksen perustiedot
@@ -69,7 +72,10 @@ export async function analyzeAndEnhanceBill(billId: string) {
     `,
   } as any);
 
-  const analysisRaw = analysisText.replace(/```json\n?/, '').replace(/\n?```/, '').trim();
+  const analysisRaw = analysisText
+    .replace(/```json\n?/, "")
+    .replace(/\n?```/, "")
+    .trim();
   const analysis = JSON.parse(analysisRaw);
 
   // 3. Tallenna laajennettu profiili
@@ -86,16 +92,18 @@ export async function analyzeAndEnhanceBill(billId: string) {
         friction_index: 0, // Lasketaan myöhemmin forecast-enginellä
         party_alignment_prediction: {},
         voter_sensitivity: analysis.voter_sensitivity,
-        precedent_bill_id: ""
+        precedent_bill_id: "",
       },
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     });
 
   if (upsertError) {
-    console.error("Virhe tallennettaessa laajennettua lakiprofiilia:", upsertError.message);
+    console.error(
+      "Virhe tallennettaessa laajennettua lakiprofiilia:",
+      upsertError.message,
+    );
     throw upsertError;
   }
 
   return analysis;
 }
-

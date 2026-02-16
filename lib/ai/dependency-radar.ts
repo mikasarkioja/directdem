@@ -5,10 +5,12 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export interface ConflictAnalysis {
   score: number;
@@ -23,8 +25,14 @@ export interface ConflictAnalysis {
 /**
  * Analyzes potential conflicts of interest between a bill and an MP.
  */
-export async function analyzeConflicts(billId: string, mpId: string | number): Promise<ConflictAnalysis> {
-  console.log(`📡 Dependency Radar: Analyzing conflicts for MP ${mpId} and Bill ${billId}...`);
+export async function analyzeConflicts(
+  billId: string,
+  mpId: string | number,
+): Promise<ConflictAnalysis> {
+  const supabase = getSupabase();
+  console.log(
+    `📡 Dependency Radar: Analyzing conflicts for MP ${mpId} and Bill ${billId}...`,
+  );
 
   // 1. Fetch Bill Content
   const { data: bill } = await supabase
@@ -47,8 +55,15 @@ export async function analyzeConflicts(billId: string, mpId: string | number): P
   const affiliations = profile?.affiliations || [];
   const meetings = profile?.lobbyist_meetings || [];
 
-  const depsContext = (affiliations as any[]).map(d => `- ${d.org || d.organization}: ${d.role || d.description}`).join("\n");
-  const meetingsContext = (meetings as any[]).map(m => `- ${m.date || m.meeting_date}: ${m.org || m.organization} - Aihe: ${m.topic}`).join("\n");
+  const depsContext = (affiliations as any[])
+    .map((d) => `- ${d.org || d.organization}: ${d.role || d.description}`)
+    .join("\n");
+  const meetingsContext = (meetings as any[])
+    .map(
+      (m) =>
+        `- ${m.date || m.meeting_date}: ${m.org || m.organization} - Aihe: ${m.topic}`,
+    )
+    .join("\n");
 
   const prompt = `
     POLIITTINEN SIDONNAISUUS-TUTKA (Dependency Radar)
@@ -88,10 +103,15 @@ export async function analyzeConflicts(billId: string, mpId: string | number): P
     const { text } = await generateText({
       model: openai("gpt-4o") as any,
       system: "Olet korruption ja poliittisen vaikuttamisen asiantuntija.",
-      prompt: prompt
+      prompt: prompt,
     });
 
-    const result: ConflictAnalysis = JSON.parse(text.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
+    const result: ConflictAnalysis = JSON.parse(
+      text
+        .replace(/```json\n?/, "")
+        .replace(/\n?```/, "")
+        .trim(),
+    );
 
     // Cache the result in mp_ai_profiles
     await supabase
@@ -99,8 +119,8 @@ export async function analyzeConflicts(billId: string, mpId: string | number): P
       .update({
         last_conflict_analysis: {
           [billId]: result,
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       })
       .eq("mp_id", mpId.toString());
 
@@ -110,8 +130,7 @@ export async function analyzeConflicts(billId: string, mpId: string | number): P
     return {
       score: 0,
       explanation: "Analyysi epäonnistui.",
-      detected_connections: []
+      detected_connections: [],
     };
   }
 }
-

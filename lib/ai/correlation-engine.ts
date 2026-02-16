@@ -5,15 +5,18 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 /**
  * AI Engine to find correlations between MP interests and political speeches.
  */
 export async function analyzeInterestCorrelations(mpId: string | number) {
+  const supabase = getSupabase();
   console.log(`🧠 Correlation Engine: Analyzing MP ${mpId}...`);
 
   // 1. Fetch Dependency History
@@ -34,17 +37,30 @@ export async function analyzeInterestCorrelations(mpId: string | number) {
 
   // Simulate speech data (In production, this would be a join with a speeches table)
   const sampleSpeeches = [
-    { id: "S1", date: "2025-11-25", topic: "Energiapolitiikka", content: "Meidän on tuettava kotimaista energiantuotantoa..." },
-    { id: "S2", date: "2025-12-10", topic: "Yritysverotus", content: "Pienten yritysten verotaakkaa on kevennettävä välittömästi..." }
+    {
+      id: "S1",
+      date: "2025-11-25",
+      topic: "Energiapolitiikka",
+      content: "Meidän on tuettava kotimaista energiantuotantoa...",
+    },
+    {
+      id: "S2",
+      date: "2025-12-10",
+      topic: "Yritysverotus",
+      content: "Pienten yritysten verotaakkaa on kevennettävä välittömästi...",
+    },
   ];
 
-  const historyContext = (history || []).map(h => 
-    `[${h.detected_at}] ${h.change_type}: ${h.organization} (${h.description})`
-  ).join("\n");
+  const historyContext = (history || [])
+    .map(
+      (h) =>
+        `[${h.detected_at}] ${h.change_type}: ${h.organization} (${h.description})`,
+    )
+    .join("\n");
 
-  const speechContext = sampleSpeeches.map(s => 
-    `[${s.date}] Aihe: ${s.topic}\nSisältö: ${s.content}`
-  ).join("\n\n");
+  const speechContext = sampleSpeeches
+    .map((s) => `[${s.date}] Aihe: ${s.topic}\nSisältö: ${s.content}`)
+    .join("\n\n");
 
   const prompt = `
     KORRELAATIO-ANALYYSI (Interest vs. Action)
@@ -78,11 +94,17 @@ export async function analyzeInterestCorrelations(mpId: string | number) {
   try {
     const { text } = await generateText({
       model: openai("gpt-4o") as any,
-      system: "Olet poliittisen analytiikan ja korruptiontutkimuksen AI-moottori.",
-      prompt: prompt
+      system:
+        "Olet poliittisen analytiikan ja korruptiontutkimuksen AI-moottori.",
+      prompt: prompt,
     });
 
-    const correlations = JSON.parse(text.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
+    const correlations = JSON.parse(
+      text
+        .replace(/```json\n?/, "")
+        .replace(/\n?```/, "")
+        .trim(),
+    );
 
     // 4. Save correlations to DB
     for (const corr of correlations) {
@@ -91,7 +113,7 @@ export async function analyzeInterestCorrelations(mpId: string | number) {
         speech_id: corr.speech_id,
         significance_score: corr.score,
         correlation_reasoning: corr.reasoning,
-        theme: corr.theme
+        theme: corr.theme,
       });
     }
 
@@ -101,4 +123,3 @@ export async function analyzeInterestCorrelations(mpId: string | number) {
     return [];
   }
 }
-

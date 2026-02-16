@@ -9,7 +9,7 @@ export interface FeedItem {
   description: string;
   date: string;
   source: string;
-  type: 'news' | 'local' | 'bill';
+  type: "news" | "local" | "bill";
   link: string;
   tags: string[];
   category?: string; // e.g., 'INVESTOINTI', 'SÄÄSTÖ'
@@ -23,42 +23,43 @@ export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
 
     // 1. Fetch News
     const newsItems = await getLatestNews();
-    const formattedNews: FeedItem[] = await Promise.all(newsItems.map(async (item, idx) => {
-      // For demo purposes, we tag them on the fly if they don't have vectors
-      // In production, this would be a background job.
-      return {
-        id: `news-${idx}`,
-        title: item.title,
-        description: item.contentSnippet,
-        date: item.pubDate,
-        source: item.source,
-        type: 'news',
-        link: item.link,
-        tags: ['Politiikka'],
-        // Simple heuristic for demo: tag the first few news items
-        political_vector: idx < 3 ? await tagPoliticalAlignment(item.title, item.contentSnippet) : undefined
-      };
-    }));
+    const formattedNews: FeedItem[] = await Promise.all(
+      newsItems.map(async (item, idx) => {
+        // For demo purposes, we tag them on the fly if they don't have vectors
+        // In production, this would be a background job.
+        return {
+          id: `news-${idx}`,
+          title: item.title,
+          description: item.contentSnippet,
+          date: item.pubDate,
+          source: item.source,
+          type: "news",
+          link: item.link,
+          tags: ["Politiikka"],
+          // Simple heuristic for demo: tag the first few news items
+          political_vector:
+            idx < 3
+              ? await tagPoliticalAlignment(item.title, item.contentSnippet)
+              : undefined,
+        };
+      }),
+    );
 
     // 2. Fetch Local Decisions (Espoo)
-    const { data: decisions } = await supabase
-      .from("municipal_decisions")
-      .select("*")
-      .eq("municipality", "Espoo")
-      .order("decision_date", { ascending: false })
-      .limit(30);
+    const { getEspooDecisions } = await import("@/app/actions/espoo-actions");
+    const decisions = await getEspooDecisions();
 
     const formattedLocal: FeedItem[] = (decisions || []).map((item: any) => ({
-      id: `local-${item.id}`,
+      id: `local-${item.id || item.external_id}`,
       title: item.title,
       description: item.summary || item.description || "",
       date: item.decision_date,
       source: "Espoon kaupunki",
-      type: 'local',
+      type: "local",
       link: item.url || `/dashboard/espoo?id=${item.id}`,
       tags: item.neighborhoods || [],
       category: item.category,
-      political_vector: item.political_vector
+      political_vector: item.political_vector,
     }));
 
     // 3. Fetch National Bills
@@ -69,11 +70,11 @@ export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
       description: item.summary || "",
       date: item.publishedDate || new Date().toISOString(),
       source: "Eduskunta",
-      type: 'bill',
+      type: "bill",
       link: `/dashboard?view=committee&billId=${item.id}`,
       tags: [item.category || "Lainsäädäntö"],
       category: item.category,
-      political_vector: undefined // Bills might not have vectors yet in this table
+      political_vector: undefined, // Bills might not have vectors yet in this table
     }));
 
     // 4. Combine and Sort
@@ -81,7 +82,7 @@ export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
 
     if (userDna) {
       const { calculateFeedRelevance } = await import("./relevance");
-      combined = combined.map(item => {
+      combined = combined.map((item) => {
         if (item.political_vector) {
           const rel = calculateFeedRelevance(userDna, item.political_vector);
           return { ...item, relevanceScore: rel.score };
@@ -102,4 +103,3 @@ export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
     return [];
   }
 }
-

@@ -99,6 +99,24 @@ export default function DashboardClient({
   }, [lens]);
 
   useEffect(() => {
+    // Check if DNA was just completed (fallback for slow DB sync)
+    if (!hasDna) {
+      const saved = localStorage.getItem("dna_test_results");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setProfile((prev: any) => ({
+            ...prev,
+            ...parsed
+          }));
+        } catch (e) {
+          console.error("Failed to parse local DNA results", e);
+        }
+      }
+    }
+  }, [hasDna]);
+
+  useEffect(() => {
     async function loadData() {
       // Allow unauthenticated users to see the citizen view
       const currentUser = initialUser || profile;
@@ -284,8 +302,14 @@ export default function DashboardClient({
     email: initialUser?.email || "guest@directdem.fi",
   };
 
-  const hasDna = (profile?.economic_score !== undefined && profile?.economic_score !== 0) || 
-                 (profile?.liberal_conservative_score !== undefined && profile?.liberal_conservative_score !== 0);
+  const hasDna = profile?.economic_score !== undefined && profile?.economic_score !== null && (
+    profile.economic_score !== 0 || 
+    profile.liberal_conservative_score !== 0 || 
+    profile.environmental_score !== 0 ||
+    profile.urban_rural_score !== 0 ||
+    profile.international_national_score !== 0 ||
+    profile.security_score !== 0
+  );
 
   return (
     <div className="space-y-8">

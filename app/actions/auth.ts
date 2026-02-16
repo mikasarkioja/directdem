@@ -108,6 +108,12 @@ export async function getUser(): Promise<UserProfile | null> {
 
     let { data: profile, error: profileFetchError } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     
+    console.log(`[getUser] Profile fetch for ${user.id}:`, { 
+      found: !!profile, 
+      error: profileFetchError?.message,
+      hasScores: profile ? (profile.economic_score !== 0 || profile.liberal_conservative_score !== 0) : false 
+    });
+    
     // Jos profiilia ei löydy, yritetään luoda se (varmistetaan että jokaisella auth-käyttäjällä on profiili)
     if (!profile || profileFetchError) {
       console.log("[getUser] Profile missing for auth user, creating default...");

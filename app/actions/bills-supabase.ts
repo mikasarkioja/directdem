@@ -102,7 +102,7 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
       return [];
     },
     ["bills-feed-50"],
-    { revalidate: 3600, tags: ["bills"] }
+    { revalidate: 900, tags: ["bills"] }
   );
 
   return fetcher();

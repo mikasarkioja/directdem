@@ -32,7 +32,7 @@ export interface MunicipalWatchItem {
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-export async function fetchMunicipalWatchFeed(limit = 20) {
+export async function fetchMunicipalWatchFeed(limit = 30) {
   const fetcher = unstable_cache(
     async () => {
       const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();

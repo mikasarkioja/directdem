@@ -1,6 +1,7 @@
 import { getLatestNews } from "@/lib/news/news-service";
 import { createClient } from "@/lib/supabase/server";
 import { PoliticalVector, tagPoliticalAlignment } from "../ai/tagger";
+import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
 
 export interface FeedItem {
   id: string;
@@ -8,7 +9,7 @@ export interface FeedItem {
   description: string;
   date: string;
   source: string;
-  type: 'news' | 'local';
+  type: 'news' | 'local' | 'bill';
   link: string;
   tags: string[];
   category?: string; // e.g., 'INVESTOINTI', 'SÄÄSTÖ'
@@ -45,7 +46,7 @@ export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
       .select("*")
       .eq("municipality", "Espoo")
       .order("decision_date", { ascending: false })
-      .limit(20);
+      .limit(30);
 
     const formattedLocal: FeedItem[] = (decisions || []).map((item: any) => ({
       id: `local-${item.id}`,
@@ -60,8 +61,23 @@ export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
       political_vector: item.political_vector
     }));
 
-    // 3. Combine and Sort
-    let combined = [...formattedNews, ...formattedLocal];
+    // 3. Fetch National Bills
+    const bills = await fetchBillsFromSupabase();
+    const formattedBills: FeedItem[] = bills.slice(0, 30).map((item: any) => ({
+      id: `bill-${item.id}`,
+      title: item.title,
+      description: item.summary || "",
+      date: item.publishedDate || new Date().toISOString(),
+      source: "Eduskunta",
+      type: 'bill',
+      link: `/dashboard?view=committee&billId=${item.id}`,
+      tags: [item.category || "Lainsäädäntö"],
+      category: item.category,
+      political_vector: undefined // Bills might not have vectors yet in this table
+    }));
+
+    // 4. Combine and Sort
+    let combined = [...formattedNews, ...formattedLocal, ...formattedBills];
 
     if (userDna) {
       const { calculateFeedRelevance } = await import("./relevance");

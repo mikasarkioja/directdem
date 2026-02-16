@@ -120,7 +120,7 @@ export async function fetchMunicipalDecisions(municipality: string = "Espoo"): P
         .select("*")
         .eq("municipality", municipality)
         .order("decision_date", { ascending: false })
-        .limit(20);
+        .limit(30);
 
       if (error) {
         console.error("Error fetching decisions:", error);

@@ -42,20 +42,19 @@ export const validateEnv = () => {
       if (!parsed.success) {
         if (isBuild) {
           console.warn(
-            "⚠️ Build-time environment validation failed. Providing empty strings for missing keys.",
+            "⚠️ Build-time environment validation failed. Providing safe fallbacks for missing keys.",
           );
-          // Return a safe object with empty strings for missing required keys
-          return {
-            NEXT_PUBLIC_SUPABASE_URL:
-              process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:3000",
-            NEXT_PUBLIC_SUPABASE_ANON_KEY:
-              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "missing",
-            SUPABASE_SERVICE_ROLE_KEY:
-              process.env.SUPABASE_SERVICE_ROLE_KEY || "missing",
-            OPENAI_API_KEY: process.env.OPENAI_API_KEY || "missing",
-            NODE_ENV: process.env.NODE_ENV || "production",
-            ...process.env,
-          } as any;
+          // Create result object safely to avoid duplicate key errors in literal
+          const buildEnv = { ...process.env } as any;
+          buildEnv.NEXT_PUBLIC_SUPABASE_URL =
+            buildEnv.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:3000";
+          buildEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY =
+            buildEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY || "missing";
+          buildEnv.SUPABASE_SERVICE_ROLE_KEY =
+            buildEnv.SUPABASE_SERVICE_ROLE_KEY || "missing";
+          buildEnv.OPENAI_API_KEY = buildEnv.OPENAI_API_KEY || "missing";
+          buildEnv.NODE_ENV = buildEnv.NODE_ENV || "production";
+          return buildEnv;
         }
         throw parsed.error;
       }

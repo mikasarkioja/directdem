@@ -29,15 +29,16 @@ export async function saveDNATestResults(scores: {
   }
 
   const supabase = await createClient();
-  
+
   // 2. Update the primary profile for regular users (use upsert to ensure record exists)
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .upsert({
+  const { error: profileError } = await supabase.from("profiles").upsert(
+    {
       id: user.id,
       ...scores,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'id' });
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
 
   if (profileError) {
     console.error("[saveDNATestResults] Profile Error:", profileError);
@@ -60,36 +61,38 @@ export async function saveDNATestResults(scores: {
       .single();
 
     if (fullProfile) {
-        // Map to UserProfile type for assignToCommittee
-        const mappedUser: UserProfile = {
-            id: user.id,
-            ...fullProfile,
-            impact_points: userProfile.impact_points || 0
-        };
+      // Map to UserProfile type for assignToCommittee
+      const mappedUser: UserProfile = {
+        id: user.id,
+        ...fullProfile,
+        impact_points: userProfile.impact_points || 0,
+      };
 
-        const { committee, rankTitle } = assignToCommittee(mappedUser);
+      const { committee, rankTitle } = assignToCommittee(mappedUser);
 
-        await supabase
-            .from("user_profiles")
-            .update({
-                committee_assignment: committee,
-                rank_title: rankTitle,
-                updated_at: new Date().toISOString()
-            })
-            .eq("id", user.id);
+      await supabase
+        .from("user_profiles")
+        .update({
+          committee_assignment: committee,
+          rank_title: rankTitle,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
     }
   }
 
   // 3. Clear cache and revalidate
   revalidatePath("/dashboard");
   revalidatePath("/");
-  
+
   return { success: true };
 }
 
 export async function getDNAPoints() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) return null;
 
@@ -119,15 +122,20 @@ export async function getDNAPoints() {
   };
 }
 
-export async function addDNAPoints(type: keyof ArchetypePoints, points: number) {
+export async function addDNAPoints(
+  type: keyof ArchetypePoints,
+  points: number,
+) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) return;
 
   const column = `${type}_points`;
 
-  // Use raw SQL or a dedicated RPC for safer incrementing, 
+  // Use raw SQL or a dedicated RPC for safer incrementing,
   // but for simplicity we'll do a read-and-update or upsert with increments
   const { data: existing } = await supabase
     .from("user_archetypes")
@@ -144,16 +152,14 @@ export async function addDNAPoints(type: keyof ArchetypePoints, points: number) 
     updateData[column] = (existing[column] || 0) + points;
   } else {
     // Initialize all to 0 except the one we're adding
-    updateData.active_points = type === 'active' ? points : 0;
-    updateData.fact_checker_points = type === 'fact_checker' ? points : 0;
-    updateData.mediator_points = type === 'mediator' ? points : 0;
-    updateData.reformer_points = type === 'reformer' ? points : 0;
-    updateData.local_hero_points = type === 'local_hero' ? points : 0;
+    updateData.active_points = type === "active" ? points : 0;
+    updateData.fact_checker_points = type === "fact_checker" ? points : 0;
+    updateData.mediator_points = type === "mediator" ? points : 0;
+    updateData.reformer_points = type === "reformer" ? points : 0;
+    updateData.local_hero_points = type === "local_hero" ? points : 0;
   }
 
-  const { error } = await supabase
-    .from("user_archetypes")
-    .upsert(updateData);
+  const { error } = await supabase.from("user_archetypes").upsert(updateData);
 
   if (error) console.error("[addDNAPoints] Error:", error);
 
@@ -162,7 +168,7 @@ export async function addDNAPoints(type: keyof ArchetypePoints, points: number) 
     .from("party_members")
     .select("party_id")
     .eq("user_id", user.id);
-  
+
   if (membership && membership.length > 0) {
     for (const m of membership) {
       await addPartyXP(m.party_id, points);
@@ -175,7 +181,7 @@ export async function addDNAPoints(type: keyof ArchetypePoints, points: number) 
 
 async function checkBadgeUnlocks(userId: string) {
   const supabase = await createClient();
-  
+
   const { data: points } = await supabase
     .from("user_archetypes")
     .select("*")
@@ -189,7 +195,7 @@ async function checkBadgeUnlocks(userId: string) {
   if (points.fact_checker_points >= 10 && points.mediator_points >= 10) {
     badgesToUnlock.push("Sivistynyt kriitikko");
   }
-  
+
   if (points.active_points >= 50) {
     badgesToUnlock.push("Demokratian moottori");
   }
@@ -201,11 +207,17 @@ async function checkBadgeUnlocks(userId: string) {
   for (const badge of badgesToUnlock) {
     await supabase
       .from("user_badges")
-      .upsert({ user_id: userId, badge_type: badge }, { onConflict: "user_id,badge_type" });
+      .upsert(
+        { user_id: userId, badge_type: badge },
+        { onConflict: "user_id,badge_type" },
+      );
   }
 }
 
-export async function trackEngagement(billId: string, durationSeconds: number): Promise<{ success: boolean; message?: string }> {
+export async function trackEngagement(
+  billId: string,
+  durationSeconds: number,
+): Promise<{ success: boolean; message?: string }> {
   if (durationSeconds > 30) {
     await addDNAPoints("fact_checker", 2);
     return { success: true, message: "Faktantarkistaja-pisteitä lisätty!" };
@@ -213,14 +225,21 @@ export async function trackEngagement(billId: string, durationSeconds: number): 
   return { success: false };
 }
 
-export async function confirmAlert(alertId: string): Promise<{ success: boolean; message?: string }> {
+export async function confirmAlert(
+  alertId: string,
+): Promise<{ success: boolean; message?: string }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Kirjaudu sisään vahvistaaksesi." };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return { success: false, message: "Kirjaudu sisään vahvistaaksesi." };
 
   // Add Vigilante (Fact Checker) points
   await addDNAPoints("fact_checker", 5);
-  
-  return { success: true, message: "Kiitos vahvistuksesta! Sait 5 Faktantarkistaja-pistettä." };
-}
 
+  return {
+    success: true,
+    message: "Kiitos vahvistuksesta! Sait 5 Faktantarkistaja-pistettä.",
+  };
+}

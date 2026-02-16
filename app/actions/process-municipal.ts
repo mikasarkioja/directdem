@@ -8,7 +8,9 @@ import { parseSummary } from "@/lib/summary-parser";
 /**
  * Processes a municipal case to generate a citizen-friendly summary (selkokieli)
  */
-export async function processMunicipalCaseToSelkokieli(caseId: string): Promise<{
+export async function processMunicipalCaseToSelkokieli(
+  caseId: string,
+): Promise<{
   success: boolean;
   summary?: string;
   error?: string;
@@ -26,7 +28,11 @@ export async function processMunicipalCaseToSelkokieli(caseId: string): Promise<
       return { success: false, error: "Case not found" };
     }
 
-    if (municipalCase.summary && municipalCase.summary.length > 500 && municipalCase.summary.includes("###")) {
+    if (
+      municipalCase.summary &&
+      municipalCase.summary.length > 500 &&
+      municipalCase.summary.includes("###")
+    ) {
       return { success: true, summary: municipalCase.summary };
     }
 
@@ -40,11 +46,11 @@ export async function processMunicipalCaseToSelkokieli(caseId: string): Promise<
     }
 
     // Clean and save
-    const cleanedSummary = summary.replace(/\u0000/g, '').trim();
-    
+    const cleanedSummary = summary.replace(/\u0000/g, "").trim();
+
     // AI Extraction for neighborhood and cost (mock for now, could be improved)
     let neighborhood = municipalCase.neighborhood;
-    let costEstimate = municipalCase.cost_estimate;
+    const costEstimate = municipalCase.cost_estimate;
 
     // Simple extraction logic from AI response
     const neighborhoodMatch = cleanedSummary.match(/kaupunginosaan ([^.\n]+)/i);
@@ -70,5 +76,3 @@ export async function processMunicipalCaseToSelkokieli(caseId: string): Promise<
     return { success: false, error: error.message };
   }
 }
-
-

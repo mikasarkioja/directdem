@@ -16,13 +16,14 @@ function getSupabase() {
 
   if (!url || !key) {
     // Jos ollaan script-ympäristössä, yritetään ladata .env.local
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const dotenv = require("dotenv");
     dotenv.config({ path: ".env.local" });
   }
 
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 }
 
@@ -52,11 +53,11 @@ export async function extractTextFromAttachment(url: string): Promise<string> {
 /**
  * 2. Syväanalyysi (GPT-4o)
  */
-export async function performDeepAnalysis(item: { 
-  id: string; 
-  title: string; 
-  municipality: string; 
-  raw_content?: string; 
+export async function performDeepAnalysis(item: {
+  id: string;
+  title: string;
+  municipality: string;
+  raw_content?: string;
   external_url?: string;
   attachment_urls?: string[];
 }) {
@@ -124,10 +125,15 @@ export async function performDeepAnalysis(item: {
         Liitteiden sisältö: ${additionalContext.substring(0, 20000)}
       `,
       maxTokens: 6000,
-      temperature: 0.7
+      temperature: 0.7,
     });
 
-    const analysis = JSON.parse(analysisJson.replace(/```json\n?/, "").replace(/\n?```/, "").trim());
+    const analysis = JSON.parse(
+      analysisJson
+        .replace(/```json\n?/, "")
+        .replace(/\n?```/, "")
+        .trim(),
+    );
 
     // 3. Kuntavaali-linkitys (Takinkääntö-vahti)
     const { detectFlipsWithAI } = await import("@/lib/actions/flip-watch");
@@ -136,7 +142,7 @@ export async function performDeepAnalysis(item: {
       billTitle: item.title,
       deepAnalysis: analysis,
       context: "municipal",
-      municipality: item.municipality
+      municipality: item.municipality,
     });
 
     // 4. Tallennus bill_enhanced_profiles -tauluun
@@ -144,27 +150,30 @@ export async function performDeepAnalysis(item: {
     const supabase = getSupabase();
     const { error: upsertError } = await supabase
       .from("bill_enhanced_profiles")
-      .upsert({
-        bill_id: enhancedId,
-        title: item.title,
-        category: "Municipal",
-        dna_impact_vector: analysis.dna_impact || {}, 
-        analysis_data: {
+      .upsert(
+        {
           bill_id: enhancedId,
           title: item.title,
-          analysis_depth: analysis // Tässä on se pyydetty syvärakenteinen JSON
+          category: "Municipal",
+          dna_impact_vector: analysis.dna_impact || {},
+          analysis_data: {
+            bill_id: enhancedId,
+            title: item.title,
+            analysis_depth: analysis, // Tässä on se pyydetty syvärakenteinen JSON
+          },
+          forecast_metrics: {
+            friction_index:
+              analysis.controversy_hotspots?.[0]?.tension_level * 10 || 0,
+            economic_impact: analysis.economic_impact,
+            social_equity: analysis.social_equity,
+          },
         },
-        forecast_metrics: {
-          friction_index: analysis.controversy_hotspots?.[0]?.tension_level * 10 || 0,
-          economic_impact: analysis.economic_impact,
-          social_equity: analysis.social_equity
-        }
-      }, { onConflict: "bill_id" });
+        { onConflict: "bill_id" },
+      );
 
     if (upsertError) throw upsertError;
 
     return { success: true, analysis };
-
   } catch (error: any) {
     console.error("❌ Syväanalyysi epäonnistui:", error);
     return { success: false, error: error.message };
@@ -174,7 +183,11 @@ export async function performDeepAnalysis(item: {
 /**
  * Takinkääntö-vahti syväanalyysille
  */
-async function detectDeepFlips(itemId: string, municipality: string, analysis: any) {
+async function detectDeepFlips(
+  itemId: string,
+  municipality: string,
+  analysis: any,
+) {
   // Haetaan valtuutetut
   const supabase = getSupabase();
   const { data: councilors } = await supabase
@@ -186,11 +199,14 @@ async function detectDeepFlips(itemId: string, municipality: string, analysis: a
 
   // Esimerkkilogiikka: Jos taloudellinen vaikutus on suuri kulu ja valtuutettu lupasi säästöjä tietyllä alueella
   const cost = analysis.economic_impact?.total_cost_estimate || 0;
-  
-  if (cost > 1000000) { // Yli miljoonan investointi
+
+  if (cost > 1000000) {
+    // Yli miljoonan investointi
     for (const councilor of councilors) {
       // Tarkistetaan vaalilupaukset avainsanoilla (yksinkertaistettu esimerkki)
-      const promises = JSON.stringify(councilor.election_promises).toLowerCase();
+      const promises = JSON.stringify(
+        councilor.election_promises,
+      ).toLowerCase();
       if (promises.includes("säästö") || promises.includes("leikkaus")) {
         // Luodaan automaattinen hälytys jos valtuutettu on kytketty tähän asiaan
         // Tässä kohtaa tarvittaisiin tarkempi kytkentä kuka on tehnyt esityksen
@@ -198,4 +214,3 @@ async function detectDeepFlips(itemId: string, municipality: string, analysis: a
     }
   }
 }
-

@@ -64,7 +64,7 @@ export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
 
     // 3. Fetch National Bills
     const bills = await fetchBillsFromSupabase();
-    const formattedBills: FeedItem[] = bills.slice(0, 30).map((item: any) => ({
+    const formattedBills: FeedItem[] = bills.slice(0, 50).map((item: any) => ({
       id: `bill-${item.id}`,
       title: item.title,
       description: item.summary || "",

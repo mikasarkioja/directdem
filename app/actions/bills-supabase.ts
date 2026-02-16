@@ -2,7 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getLatestBills } from "@/lib/eduskunta-api";
-import { generateMockCitizenPulse, generateMockPoliticalReality } from "@/lib/bill-helpers";
+import { performSyncWithClient } from "./sync-bills";
+import {
+  generateMockCitizenPulse,
+  generateMockPoliticalReality,
+} from "@/lib/bill-helpers";
 import type { Bill, SupabaseBill } from "@/lib/types";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
@@ -18,9 +22,9 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
     async () => {
       // Use a direct Supabase client for public data fetching within cache
       // to avoid 'cookies() called within unstable_cache' error.
-      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
-      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
-      
+      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+
       if (!url || !key) {
         console.error("Missing Supabase credentials for bill fetcher");
         return [];
@@ -28,10 +32,20 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
 
       const supabase = createSupabaseClient(url, key);
 
+      // Proactively sync from Eduskunta to ensure fresh data in Supabase
+      // This is triggered whenever the unstable_cache revalidates (900s)
+      try {
+        await performSyncWithClient(supabase);
+      } catch (e) {
+        console.warn("[fetchBillsFromSupabase] Proactive sync failed:", e);
+      }
+
       // Try to fetch from Supabase first
       const { data: billsData, error } = await supabase
         .from("bills")
-        .select("id, title, summary, parliament_id, status, category, published_date, url")
+        .select(
+          "id, title, summary, parliament_id, status, category, published_date, url",
+        )
         .order("published_date", { ascending: false })
         .limit(50);
 
@@ -44,7 +58,10 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
           rawText: bill.raw_text || undefined,
           parliamentId: bill.parliament_id || undefined,
           status: bill.status as Bill["status"],
-          citizenPulse: generateMockCitizenPulse({ title: bill.title, abstract: bill.summary || "" }),
+          citizenPulse: generateMockCitizenPulse({
+            title: bill.title,
+            abstract: bill.summary || "",
+          }),
           politicalReality: generateMockPoliticalReality({ title: bill.title }),
           category: bill.category || undefined,
           publishedDate: bill.published_date || undefined,
@@ -56,14 +73,19 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
       // If no bills in Supabase, try to fetch from Eduskunta API and sync
       try {
         const eduskuntaIssues = await getLatestBills(50);
-        
+
         if (eduskuntaIssues.length > 0) {
           const billsToInsert = eduskuntaIssues.map((issue) => ({
             parliament_id: issue.parliamentId,
             title: issue.title,
             summary: issue.abstract,
             raw_text: issue.abstract,
-            status: issue.status === "active" ? "voting" : issue.status === "pending" ? "draft" : "in_progress",
+            status:
+              issue.status === "active"
+                ? "voting"
+                : issue.status === "pending"
+                  ? "draft"
+                  : "in_progress",
             category: issue.category,
             published_date: issue.publishedDate || new Date().toISOString(),
             url: issue.url,
@@ -85,8 +107,13 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
               rawText: bill.raw_text || undefined,
               parliamentId: bill.parliament_id || undefined,
               status: bill.status as Bill["status"],
-              citizenPulse: generateMockCitizenPulse({ title: bill.title, abstract: bill.summary || "" }),
-              politicalReality: generateMockPoliticalReality({ title: bill.title }),
+              citizenPulse: generateMockCitizenPulse({
+                title: bill.title,
+                abstract: bill.summary || "",
+              }),
+              politicalReality: generateMockPoliticalReality({
+                title: bill.title,
+              }),
               category: bill.category || undefined,
               publishedDate: bill.published_date || undefined,
               processingDate: (bill as any).processing_date || undefined,
@@ -102,9 +129,8 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
       return [];
     },
     ["bills-feed-50"],
-    { revalidate: 900, tags: ["bills"] }
+    { revalidate: 900, tags: ["bills"] },
   );
 
   return fetcher();
 }
-

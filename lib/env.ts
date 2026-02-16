@@ -7,7 +7,7 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 
   // OpenAI
-  OPENAI_API_KEY: z.string().min(1),
+  OPENAI_API_KEY: z.string().min(1).optional().default("missing"),
 
   // Feature Flags
   NEXT_PUBLIC_XP_SYSTEM_ENABLED: z.string().optional().default("true"),
@@ -30,9 +30,25 @@ const isServer = typeof window === "undefined";
  * On the client, it only validates variables prefixed with NEXT_PUBLIC_.
  */
 export const validateEnv = () => {
+  // During build time on Vercel, some variables might be missing.
+  // We want to avoid crashing the build.
+  const isBuild =
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    process.env.CI === "true";
+
   try {
     if (isServer) {
-      return envSchema.parse(process.env);
+      const parsed = envSchema.safeParse(process.env);
+      if (!parsed.success) {
+        if (isBuild) {
+          console.warn(
+            "⚠️ Build-time environment validation failed. Using partial process.env.",
+          );
+          return process.env as any;
+        }
+        throw parsed.error;
+      }
+      return parsed.data;
     } else {
       // Client-side validation for NEXT_PUBLIC_ variables only
       const clientSchema = envSchema.pick({
@@ -45,7 +61,7 @@ export const validateEnv = () => {
         NEXT_PUBLIC_ECONOMY_ENABLED: true,
       });
 
-      return clientSchema.parse({
+      const parsed = clientSchema.safeParse({
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
         NEXT_PUBLIC_SUPABASE_ANON_KEY:
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -58,6 +74,12 @@ export const validateEnv = () => {
         NEXT_PUBLIC_PULSE_ENABLED: process.env.NEXT_PUBLIC_PULSE_ENABLED,
         NEXT_PUBLIC_ECONOMY_ENABLED: process.env.NEXT_PUBLIC_ECONOMY_ENABLED,
       });
+
+      if (!parsed.success) {
+        console.warn("⚠️ Client-side environment validation failed.");
+        return process.env as any;
+      }
+      return parsed.data;
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -66,9 +88,7 @@ export const validateEnv = () => {
         .join(", ");
       console.error(`❌ Invalid environment variables: ${missingKeys}`);
 
-      // In production, we don't want to crash the whole app if a non-critical key is missing,
-      // but in development, we want to know immediately.
-      if (process.env.NODE_ENV === "development") {
+      if (process.env.NODE_ENV === "development" && !isBuild) {
         throw new Error(
           `Missing or invalid environment variables: ${missingKeys}`,
         );

@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { revalidatePath } from "next/cache";
+import { env } from "@/lib/env";
 
 /**
  * lib/municipal/deep-analyzer.ts
@@ -11,19 +12,18 @@ import { revalidatePath } from "next/cache";
  */
 
 function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !key) {
-    // Jos ollaan script-ympäristössä, yritetään ladata .env.local
+  if (!url || !key || key === "missing") {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const dotenv = require("dotenv");
     dotenv.config({ path: ".env.local" });
   }
 
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   );
 }
 

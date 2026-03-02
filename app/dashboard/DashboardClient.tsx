@@ -6,7 +6,9 @@ import {
   createUserProfile,
   addImpactPoints,
   initializeResearcherProfile,
+  switchUserRole,
 } from "@/app/actions/user-profiles";
+import { upsertUserProfile } from "@/app/actions/auth";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
 import { UserProfile, Bill } from "@/lib/types";
 import {
@@ -25,6 +27,10 @@ import {
   Terminal,
   Activity,
   MapPin,
+  User,
+  Radar,
+  AlertTriangle,
+  LogIn,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -45,7 +51,6 @@ import { fetchMunicipalDecisions } from "@/app/actions/municipal";
 import toast, { Toaster } from "react-hot-toast";
 import { getCombinedNews, NewsItem } from "@/app/actions/news";
 import { logUserActivity } from "@/app/actions/logUserActivity";
-import { Radar, AlertTriangle, LogIn } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { LensMode } from "@/lib/types";
 import { FEATURES, isFeatureEnabled } from "@/lib/config/features";
@@ -90,16 +95,27 @@ export default function DashboardClient({
     "committee" | "kuntavahti" | "economy" | "researcher"
   >("committee");
   const [lens, setLens] = useState<LensMode>("national");
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const hasDna =
-    profile?.economic_score !== undefined &&
-    profile?.economic_score !== null &&
-    (profile.economic_score !== 0 ||
-      profile.liberal_conservative_score !== 0 ||
-      profile.environmental_score !== 0 ||
-      profile.urban_rural_score !== 0 ||
-      profile.international_national_score !== 0 ||
-      profile.security_score !== 0);
+    profile?.economic_score !== undefined && profile?.economic_score !== null;
+
+  useEffect(() => {
+    // Show name prompt if user is logged in but name is just email or default
+    if (initialUser && !initialUser.is_guest) {
+      const currentName = profile?.full_name || initialUser.full_name;
+      const isDefaultName =
+        !currentName ||
+        currentName.includes("@") ||
+        currentName === "Uusi käyttäjä";
+
+      if (isDefaultName && !localStorage.getItem("name_prompt_dismissed")) {
+        setShowNamePrompt(true);
+        setNewName(initialUser.email?.split("@")[0] || "");
+      }
+    }
+  }, [initialUser, profile]);
 
   useEffect(() => {
     const view = searchParams.get("view");
@@ -125,21 +141,33 @@ export default function DashboardClient({
 
   useEffect(() => {
     // Check if DNA was just completed (fallback for slow DB sync)
-    if (!hasDna) {
-      const saved = localStorage.getItem("dna_test_results");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          setProfile((prev: any) => ({
-            ...prev,
-            ...parsed,
-          }));
-        } catch (e) {
-          console.error("Failed to parse local DNA results", e);
+    async function syncLocalDna() {
+      if (!hasDna) {
+        const saved = localStorage.getItem("dna_test_results");
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            console.log("[Dashboard] Found local DNA results, updating UI...");
+            setProfile((prev: any) => ({
+              ...prev,
+              ...parsed,
+            }));
+
+            // Jos ollaan kirjautuneita, yritetään tallentaa DB:hen jos sieltä puuttui
+            if (initialUser && !initialUser.is_guest) {
+              console.log("[Dashboard] Syncing local DNA to database...");
+              const { saveDNATestResults } = await import("@/app/actions/dna");
+              await saveDNATestResults(parsed);
+              toast.success("DNA-profiili synkronoitu tilillesi!");
+            }
+          } catch (e) {
+            console.error("Failed to parse local DNA results", e);
+          }
         }
       }
     }
-  }, [hasDna]);
+    syncLocalDna();
+  }, [hasDna, initialUser]);
 
   useEffect(() => {
     async function loadData() {
@@ -293,6 +321,24 @@ export default function DashboardClient({
     }
   };
 
+  const handleUpdateName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !initialUser) return;
+
+    setLoading(true);
+    try {
+      await upsertUserProfile(initialUser.id, { full_name: newName.trim() });
+      setProfile((prev: any) => ({ ...prev, full_name: newName.trim() }));
+      setShowNamePrompt(false);
+      localStorage.setItem("name_prompt_dismissed", "true");
+      toast.success("Nimesi on päivitetty!");
+    } catch (err) {
+      toast.error("Nimen päivitys epäonnistui.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRoleSwitch = (newView: typeof activeView) => {
     if (newView === "researcher" || newView === "committee") {
       if (!initialUser) {
@@ -354,16 +400,86 @@ export default function DashboardClient({
     ...(initialUser || {
       id: "guest",
       email: "guest@directdem.fi",
-      full_name: "Vieras",
+      full_name: "Vieraileva Käyttäjä",
     }),
     ...profile,
-    id: initialUser?.id || "guest",
-    email: initialUser?.email || "guest@directdem.fi",
+    id: initialUser?.id || profile?.id || "guest",
+    email: initialUser?.email || profile?.email || "guest@directdem.fi",
+    full_name:
+      profile?.full_name ||
+      initialUser?.full_name ||
+      initialUser?.email?.split("@")[0] ||
+      "Vieraileva Käyttäjä",
   };
 
   return (
     <div className="space-y-8">
       <Toaster position="bottom-center" />
+
+      {/* Name Prompt Modal */}
+      <AnimatePresence>
+        {showNamePrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="w-full max-w-md bg-slate-900 border border-white/10 p-10 rounded-[3rem] shadow-2xl space-y-8"
+            >
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
+                  <User size={32} className="text-blue-400" />
+                </div>
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
+                  Tervetuloa DirectDemiin!
+                </h2>
+                <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">
+                  Millä nimellä haluat esiintyä?
+                </p>
+              </div>
+
+              <form onSubmit={handleUpdateName} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-500 ml-1">
+                    Käyttäjänimi / Oikea nimi
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Esim. Matti Meikäläinen"
+                    className="w-full bg-slate-800 border border-slate-700 text-white rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNamePrompt(false);
+                      localStorage.setItem("name_prompt_dismissed", "true");
+                    }}
+                    className="flex-1 py-4 rounded-2xl border border-white/10 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:bg-white/5 transition-all"
+                  >
+                    Ohita
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                  >
+                    Tallenna
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Työhuoneen Navigointipalkki */}
       <div className="flex items-center justify-between bg-slate-900/50 border border-white/5 p-2 rounded-2xl backdrop-blur-sm">
@@ -448,6 +564,14 @@ export default function DashboardClient({
         <aside className="lg:col-span-3 space-y-8">
           {activeView !== "researcher" ? (
             <>
+              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-1">
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">
+                  Kirjautunut sisään
+                </p>
+                <p className="text-[10px] font-bold text-white truncate">
+                  {mergedUser.email || "Vieraana"}
+                </p>
+              </div>
               <ShadowIDCard user={mergedUser} lens={lens} />
               {initialUser && isFeatureEnabled("XP_SYSTEM_ENABLED") && (
                 <InfluenceStats

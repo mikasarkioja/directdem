@@ -22,9 +22,7 @@ export async function syncBillsFromEduskunta(): Promise<{
  * The core sync logic that can be used with any Supabase client
  * (Useful for calling from unstable_cache where cookies() are forbidden)
  */
-export async function performSyncWithClient(
-  supabase: any,
-): Promise<{
+export async function performSyncWithClient(supabase: any): Promise<{
   success: boolean;
   count: number;
   error?: string;
@@ -101,7 +99,7 @@ export async function performSyncWithClient(
           data.summary.length > 800 &&
           data.summary.includes("###");
         if (!isRealSummary) {
-          processBillToSelkokieli(data.id).catch((e) =>
+          processBillToSelkokieli(data.id, supabase).catch((e) =>
             console.error(`Auto-analysis failed for ${data.id}:`, e),
           );
         }

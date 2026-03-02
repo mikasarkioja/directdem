@@ -2,7 +2,16 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Shield, User, Briefcase, Award, Zap, Radio, Lock, MapPin } from "lucide-react";
+import {
+  Shield,
+  User,
+  Briefcase,
+  Award,
+  Zap,
+  Radio,
+  Lock,
+  MapPin,
+} from "lucide-react";
 import type { UserProfile, LensMode } from "@/lib/types";
 
 interface ShadowIDCardProps {
@@ -10,40 +19,47 @@ interface ShadowIDCardProps {
   lens?: LensMode;
 }
 
-export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardProps) {
-  const hasDna = user.economic_score !== undefined && user.economic_score !== 0;
+export default function ShadowIDCard({
+  user,
+  lens = "national",
+}: ShadowIDCardProps) {
+  const hasDna =
+    typeof user.economic_score === "number" && !isNaN(user.economic_score);
   const isLocked = !hasDna;
 
-  const displayRank = lens === "national" 
-    ? (user.rank_title || "Varjokansanedustaja")
-    : `Varjovaltuutettu (${lens.charAt(0).toUpperCase() + lens.slice(1)})`;
+  const displayRank =
+    lens === "national"
+      ? user.rank_title || "Varjokansanedustaja"
+      : `Varjovaltuutettu (${lens.charAt(0).toUpperCase() + lens.slice(1)})`;
 
-  const displayCommittee = lens === "national"
-    ? (user.committee_assignment || "Suuri valiokunta")
-    : `${lens.charAt(0).toUpperCase() + lens.slice(1)}n kaupunginvaltuusto`;
+  const displayCommittee =
+    lens === "national"
+      ? user.committee_assignment || "Suuri valiokunta"
+      : `${lens.charAt(0).toUpperCase() + lens.slice(1)}n kaupunginvaltuusto`;
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: isLocked ? 0 : -5, transition: { duration: 0.2 } }}
-      className={`relative w-full max-w-[280px] aspect-[0.7/1] bg-slate-900 border border-white/10 rounded-[2.5rem] p-6 overflow-hidden shadow-2xl group transition-all duration-500 ${isLocked ? 'grayscale opacity-70' : ''}`}
+      className={`relative w-full max-w-[280px] aspect-[0.7/1] bg-slate-900 border border-white/10 rounded-[2.5rem] p-6 overflow-hidden shadow-2xl group transition-all duration-500 ${isLocked ? "grayscale opacity-70" : ""}`}
     >
       {/* Holographic Foil Overlay */}
       {!isLocked && (
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
-            opacity: [0.3, 0.5, 0.3]
+            opacity: [0.3, 0.5, 0.3],
           }}
-          transition={{ 
-            duration: 10, 
-            repeat: Infinity, 
-            ease: "linear" 
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "linear",
           }}
           className="absolute inset-0 z-0 pointer-events-none opacity-30 mix-blend-overlay"
           style={{
-            background: "linear-gradient(135deg, rgba(255,0,255,0.4) 0%, rgba(0,255,255,0.4) 25%, rgba(255,255,0,0.4) 50%, rgba(0,255,255,0.4) 75%, rgba(255,0,255,0.4) 100%)",
+            background:
+              "linear-gradient(135deg, rgba(255,0,255,0.4) 0%, rgba(0,255,255,0.4) 25%, rgba(255,255,0,0.4) 50%, rgba(0,255,255,0.4) 75%, rgba(255,0,255,0.4) 100%)",
             backgroundSize: "400% 400%",
           }}
         />
@@ -51,19 +67,20 @@ export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardPr
 
       {/* Secondary Iridescent Layer */}
       {!isLocked && (
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             rotate: [0, 360],
-            opacity: [0.1, 0.2, 0.1]
+            opacity: [0.1, 0.2, 0.1],
           }}
-          transition={{ 
-            duration: 20, 
-            repeat: Infinity, 
-            ease: "linear" 
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear",
           }}
           className="absolute -inset-1/2 z-0 pointer-events-none mix-blend-color-dodge"
           style={{
-            background: "conic-gradient(from 0deg, transparent, rgba(168,85,247,0.3), transparent, rgba(56,189,248,0.3), transparent)",
+            background:
+              "conic-gradient(from 0deg, transparent, rgba(168,85,247,0.3), transparent, rgba(56,189,248,0.3), transparent)",
           }}
         />
       )}
@@ -74,7 +91,9 @@ export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardPr
           <div className="bg-slate-800 p-4 rounded-3xl border border-white/10 shadow-xl">
             <Lock className="text-slate-500 w-8 h-8" />
           </div>
-          <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Profiili Lukittu</p>
+          <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+            Profiili Lukittu
+          </p>
         </div>
       )}
 
@@ -93,7 +112,9 @@ export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardPr
         <div className="w-full flex justify-between items-center mb-6">
           <div className="flex items-center gap-1.5">
             <Shield size={12} className="text-purple-500" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Official ID</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">
+              Official ID
+            </span>
           </div>
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
         </div>
@@ -103,9 +124,9 @@ export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardPr
           <div className="w-32 h-32 rounded-3xl bg-slate-800 border-2 border-white/5 overflow-hidden flex items-center justify-center relative">
             <User size={60} className="text-slate-700" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
-            
+
             {/* Holographic Overlays */}
-            <motion.div 
+            <motion.div
               animate={{ x: [-100, 200] }}
               transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
@@ -118,8 +139,8 @@ export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardPr
 
         {/* User Info */}
         <div className="space-y-1 mb-6">
-          <h3 className="text-lg font-black uppercase tracking-tighter text-white leading-none">
-            {user.full_name || "Nimetön"}
+          <h3 className="text-lg font-black uppercase tracking-tighter text-white leading-none truncate max-w-[200px]">
+            {user.full_name || user.email?.split("@")[0] || "Nimetön"}
           </h3>
           <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">
             {isLocked ? "Jonossa (Odottaa profiilia)" : displayRank}
@@ -133,7 +154,11 @@ export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardPr
               {lens === "national" ? "Valiokunta" : "Toimielin"}
             </p>
             <div className="flex items-center gap-2">
-              {lens === "national" ? <Briefcase size={12} className="text-slate-400" /> : <MapPin size={12} className="text-slate-400" />}
+              {lens === "national" ? (
+                <Briefcase size={12} className="text-slate-400" />
+              ) : (
+                <MapPin size={12} className="text-slate-400" />
+              )}
               <p className="text-[10px] font-bold text-slate-300 uppercase truncate">
                 {displayCommittee}
               </p>
@@ -142,12 +167,18 @@ export default function ShadowIDCard({ user, lens = "national" }: ShadowIDCardPr
 
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-              <p className="text-[7px] font-black uppercase text-slate-600 tracking-widest mb-1">Vaikutus</p>
+              <p className="text-[7px] font-black uppercase text-slate-600 tracking-widest mb-1">
+                Vaikutus
+              </p>
               <p className="text-sm font-black text-white">{user.xp || 0} XP</p>
             </div>
             <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-              <p className="text-[7px] font-black uppercase text-slate-600 tracking-widest mb-1">Taso</p>
-              <p className="text-sm font-black text-white">LVL {user.level || 1}</p>
+              <p className="text-[7px] font-black uppercase text-slate-600 tracking-widest mb-1">
+                Taso
+              </p>
+              <p className="text-sm font-black text-white">
+                LVL {user.level || 1}
+              </p>
             </div>
           </div>
         </div>

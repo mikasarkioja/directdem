@@ -36,16 +36,25 @@ export const validateEnv = () => {
     process.env.NEXT_PHASE === "phase-production-build" ||
     process.env.CI === "true";
 
+  // SANITIZE process.env to remove hidden characters like \r or \n
+  const rawEnv = process.env;
+  const sanitizedEnv: Record<string, string | undefined> = {};
+  Object.keys(rawEnv).forEach((key) => {
+    const val = rawEnv[key];
+    sanitizedEnv[key] =
+      typeof val === "string" ? val.trim().replace(/[\r\n]/g, "") : val;
+  });
+
   try {
     if (isServer) {
-      const parsed = envSchema.safeParse(process.env);
+      const parsed = envSchema.safeParse(sanitizedEnv);
       if (!parsed.success) {
         if (isBuild) {
           console.warn(
             "⚠️ Build-time environment validation failed. Providing safe fallbacks for missing keys.",
           );
           // Create result object safely to avoid duplicate key errors in literal
-          const buildEnv = { ...process.env } as any;
+          const buildEnv = { ...sanitizedEnv } as any;
           buildEnv.NEXT_PUBLIC_SUPABASE_URL =
             buildEnv.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:3000";
           buildEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY =
@@ -72,22 +81,22 @@ export const validateEnv = () => {
       });
 
       const parsed = clientSchema.safeParse({
-        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        NEXT_PUBLIC_SUPABASE_URL: sanitizedEnv.NEXT_PUBLIC_SUPABASE_URL,
         NEXT_PUBLIC_SUPABASE_ANON_KEY:
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+          sanitizedEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
         NEXT_PUBLIC_XP_SYSTEM_ENABLED:
-          process.env.NEXT_PUBLIC_XP_SYSTEM_ENABLED,
+          sanitizedEnv.NEXT_PUBLIC_XP_SYSTEM_ENABLED,
         NEXT_PUBLIC_MUNICIPAL_WATCH_ENABLED:
-          process.env.NEXT_PUBLIC_MUNICIPAL_WATCH_ENABLED,
+          sanitizedEnv.NEXT_PUBLIC_MUNICIPAL_WATCH_ENABLED,
         NEXT_PUBLIC_RESEARCHER_ENABLED:
-          process.env.NEXT_PUBLIC_RESEARCHER_ENABLED,
-        NEXT_PUBLIC_PULSE_ENABLED: process.env.NEXT_PUBLIC_PULSE_ENABLED,
-        NEXT_PUBLIC_ECONOMY_ENABLED: process.env.NEXT_PUBLIC_ECONOMY_ENABLED,
+          sanitizedEnv.NEXT_PUBLIC_RESEARCHER_ENABLED,
+        NEXT_PUBLIC_PULSE_ENABLED: sanitizedEnv.NEXT_PUBLIC_PULSE_ENABLED,
+        NEXT_PUBLIC_ECONOMY_ENABLED: sanitizedEnv.NEXT_PUBLIC_ECONOMY_ENABLED,
       });
 
       if (!parsed.success) {
         console.warn("⚠️ Client-side environment validation failed.");
-        return process.env as any;
+        return sanitizedEnv as any;
       }
       return parsed.data;
     }
@@ -104,7 +113,7 @@ export const validateEnv = () => {
         );
       }
     }
-    return process.env as any;
+    return sanitizedEnv as any;
   }
 };
 

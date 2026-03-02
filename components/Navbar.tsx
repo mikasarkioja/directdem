@@ -35,7 +35,10 @@ export default function Navbar({ user }: NavbarProps) {
           <div className="flex justify-between items-center h-16">
             {/* Logo/Brand - Always visible */}
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-nordic-darker dark:text-nordic-white cursor-pointer" onClick={() => router.push('/')}>
+              <h1
+                className="text-xl font-bold text-nordic-darker dark:text-nordic-white cursor-pointer"
+                onClick={() => router.push("/")}
+              >
                 Eduskuntavahti
               </h1>
             </div>
@@ -44,16 +47,25 @@ export default function Navbar({ user }: NavbarProps) {
             <div className="hidden md:flex items-center gap-6">
               {user ? (
                 <div className="flex items-center gap-6">
-                  <CreditDisplay 
-                    credits={user.credits || 0} 
-                    impactPoints={user.impact_points || 0} 
+                  <CreditDisplay
+                    credits={user.credits || 0}
+                    impactPoints={user.impact_points || 0}
                   />
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-nordic-light dark:bg-nordic-darker rounded-lg">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-nordic-light dark:bg-nordic-darker rounded-lg border border-nordic-blue/20">
                       <User size={18} className="text-nordic-blue" />
-                      <span className="text-sm font-medium text-nordic-darker dark:text-nordic-white">
-                        {user.full_name || user.email}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black uppercase tracking-tight text-nordic-darker dark:text-nordic-white leading-none">
+                          {user.full_name ||
+                            user.email?.split("@")[0] ||
+                            "Käyttäjä"}
+                        </span>
+                        {user.email && (
+                          <span className="text-[9px] font-bold text-slate-500 lowercase leading-tight">
+                            {user.email}
+                          </span>
+                        )}
+                      </div>
                       {user.is_verified && <VerifiedBadge />}
                     </div>
                     <button
@@ -68,7 +80,7 @@ export default function Navbar({ user }: NavbarProps) {
                 </div>
               ) : (
                 <button
-                  onClick={() => router.push('/login')}
+                  onClick={() => router.push("/login")}
                   className="px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium touch-manipulation select-none"
                   style={{ minWidth: "44px", minHeight: "44px" }}
                 >
@@ -90,7 +102,7 @@ export default function Navbar({ user }: NavbarProps) {
                 </button>
               ) : (
                 <button
-                  onClick={() => router.push('/login')}
+                  onClick={() => router.push("/login")}
                   className="px-3 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium touch-manipulation select-none"
                   style={{ minWidth: "44px", minHeight: "44px" }}
                 >
@@ -106,17 +118,26 @@ export default function Navbar({ user }: NavbarProps) {
               {user ? (
                 <div className="flex flex-col gap-4">
                   <div className="px-3">
-                    <CreditDisplay 
-                      credits={user.credits || 0} 
-                      impactPoints={user.impact_points || 0} 
+                    <CreditDisplay
+                      credits={user.credits || 0}
+                      impactPoints={user.impact_points || 0}
                     />
                   </div>
                   <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-nordic-light dark:bg-nordic-darker rounded-lg">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-nordic-light dark:bg-nordic-darker rounded-lg border border-nordic-blue/20">
                       <User size={18} className="text-nordic-blue" />
-                      <span className="text-sm font-medium text-nordic-darker dark:text-nordic-white">
-                        {user.full_name || user.email}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black uppercase tracking-tight text-nordic-darker dark:text-nordic-white leading-none">
+                          {user.full_name ||
+                            user.email?.split("@")[0] ||
+                            "Käyttäjä"}
+                        </span>
+                        {user.email && (
+                          <span className="text-[9px] font-bold text-slate-500 lowercase leading-tight">
+                            {user.email}
+                          </span>
+                        )}
+                      </div>
                       {user.is_verified && <VerifiedBadge />}
                     </div>
                     <button
@@ -132,7 +153,7 @@ export default function Navbar({ user }: NavbarProps) {
               ) : (
                 <button
                   onClick={() => {
-                    router.push('/login');
+                    router.push("/login");
                     setShowMobileMenu(false);
                   }}
                   className="w-full px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium"

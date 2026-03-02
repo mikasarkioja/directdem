@@ -89,13 +89,11 @@ export async function saveDNATestResults(scores: {
 }
 
 export async function getDNAPoints() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) return null;
 
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_archetypes")
     .select("*")
@@ -126,17 +124,20 @@ export async function addDNAPoints(
   type: keyof ArchetypePoints,
   points: number,
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) return;
 
   const column = `${type}_points`;
 
-  // Use raw SQL or a dedicated RPC for safer incrementing,
-  // but for simplicity we'll do a read-and-update or upsert with increments
+  // Jos on Ghost-käyttäjä, emme voi vielä tallentaa arkeotyyppipisteitä DB:hen helposti
+  // (koska taulussa on FK profiles-tauluun). Ohitetaan tai tallennetaan evästeeseen myöhemmin.
+  if (user.is_guest) {
+    console.log("[addDNAPoints] Skipping DB save for Ghost user");
+    return;
+  }
+
+  const supabase = await createClient();
   const { data: existing } = await supabase
     .from("user_archetypes")
     .select("*")
@@ -228,10 +229,7 @@ export async function trackEngagement(
 export async function confirmAlert(
   alertId: string,
 ): Promise<{ success: boolean; message?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user)
     return { success: false, message: "Kirjaudu sisään vahvistaaksesi." };
 

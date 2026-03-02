@@ -11,19 +11,39 @@ export async function getUserProfile() {
 
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from("user_profiles")
-    .select("*, profiles!inner(economic_score, liberal_conservative_score, environmental_score, urban_rural_score, international_national_score, security_score, full_name)")
+  // Haetaan ensin perustiedot profiles-taulusta
+  const { data: profileBase, error: profileError } = await supabase
+    .from("profiles")
+    .select("*")
     .eq("id", user.id)
     .single();
 
-  if (error && error.code !== "PGRST116") {
-    console.error("Error fetching user profile:", error);
-    return null;
+  if (profileError && profileError.code !== "PGRST116") {
+    console.error("Error fetching base profile:", profileError);
   }
 
-  // Jos profiilia ei löydy TAI kyseessä on Ghost-käyttäjä, varmistetaan palautus
-  if (!data || user.is_guest) {
+  // Haetaan sitten laajennetut tiedot user_profiles-taulusta
+  const { data: userProfileData, error: userProfileError } = await supabase
+    .from("user_profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  if (userProfileError && userProfileError.code !== "PGRST116") {
+    console.error("Error fetching user profile:", userProfileError);
+  }
+
+  // Yhdistetään tiedot
+  const combinedData = {
+    ...(profileBase || {}),
+    ...(userProfileData || {}),
+    id: user.id, // Varmistetaan että ID säilyy
+    email: profileBase?.email || user.email,
+    full_name: profileBase?.full_name || user.full_name,
+  };
+
+  // Jos kumpaakaan ei löydy TAI kyseessä on Ghost-käyttäjä, varmistetaan palautus
+  if ((!profileBase && !userProfileData) || user.is_guest) {
     if (user.is_guest) {
       const { committee, rankTitle } = assignToCommittee(user);
       return {
@@ -34,7 +54,7 @@ export async function getUserProfile() {
         impact_points: user.impact_points || 0,
         xp: user.xp || 0,
         level: user.level || 1,
-        active_role: user.active_role || 'citizen',
+        active_role: user.active_role || "citizen",
         researcher_initialized: (user as any).researcher_initialized || false,
         researcher_type: (user as any).researcher_type,
         researcher_focus: (user as any).researcher_focus,
@@ -44,15 +64,15 @@ export async function getUserProfile() {
         environmental_score: user.environmental_score,
         urban_rural_score: user.urban_rural_score,
         international_national_score: user.international_national_score,
-        security_score: user.security_score
+        security_score: user.security_score,
       };
     }
-    
+
     // Jos oikea käyttäjä mutta ei vielä profiilia, palautetaan tyhjä mutta tunnistettu tila
     return {
       id: user.id,
       is_new_user: true,
-      active_role: user.active_role || 'citizen',
+      active_role: user.active_role || "citizen",
       xp: 0,
       level: 1,
       economic_score: user.economic_score,
@@ -60,25 +80,11 @@ export async function getUserProfile() {
       environmental_score: user.environmental_score,
       urban_rural_score: user.urban_rural_score,
       international_national_score: user.international_national_score,
-      security_score: user.security_score
+      security_score: user.security_score,
     };
   }
 
-  // Litistetään profiles-tiedot samaan tasoon
-  const profiles = data.profiles as any;
-  const flattenedData = {
-    ...data,
-    economic_score: profiles?.economic_score,
-    liberal_conservative_score: profiles?.liberal_conservative_score,
-    environmental_score: profiles?.environmental_score,
-    urban_rural_score: profiles?.urban_rural_score,
-    international_national_score: profiles?.international_national_score,
-    security_score: profiles?.security_score,
-    full_name: profiles?.full_name
-  };
-  delete flattenedData.profiles;
-
-  return flattenedData;
+  return combinedData;
 }
 
 export async function createUserProfile() {
@@ -91,7 +97,7 @@ export async function createUserProfile() {
   const { committee, rankTitle } = assignToCommittee(user);
 
   // Generate random Shadow ID
-  const shadowId = `${user.is_guest ? 'GS' : 'SH'}-${Math.floor(1000 + Math.random() * 9000)}-${user.id.substring(0, 4).toUpperCase()}`;
+  const shadowId = `${user.is_guest ? "GS" : "SH"}-${Math.floor(1000 + Math.random() * 9000)}-${user.id.substring(0, 4).toUpperCase()}`;
 
   const profileData = {
     id: user.id,
@@ -99,8 +105,8 @@ export async function createUserProfile() {
     committee_assignment: committee,
     rank_title: rankTitle,
     impact_points: 10,
-    active_role: 'shadow_mp',
-    updated_at: new Date().toISOString()
+    active_role: "shadow_mp",
+    updated_at: new Date().toISOString(),
   };
 
   const { data, error } = await supabase
@@ -111,7 +117,9 @@ export async function createUserProfile() {
 
   if (error) {
     if (user.is_guest) {
-      console.log("[Ghost] Profile creation skipped due to FK, returning mock data");
+      console.log(
+        "[Ghost] Profile creation skipped due to FK, returning mock data",
+      );
       return { ...profileData, is_guest: true };
     }
     console.error("Error creating user profile:", error);
@@ -123,10 +131,10 @@ export async function createUserProfile() {
 }
 
 export async function addImpactPoints(points: number) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  const user = await getUser();
+  if (!user || user.is_guest) return;
 
+  const supabase = await createClient();
   // Use a simple RPC or direct update
   const { data: profile } = await supabase
     .from("user_profiles")
@@ -144,10 +152,12 @@ export async function addImpactPoints(points: number) {
   revalidatePath("/dashboard");
 }
 
-export async function switchUserRole(role: 'citizen' | 'shadow_mp' | 'researcher'): Promise<{ success: boolean; error?: string }> {
+export async function switchUserRole(
+  role: "citizen" | "shadow_mp" | "researcher",
+): Promise<{ success: boolean; error?: string }> {
   try {
     const user = await getUser();
-    
+
     // 1. Tallennetaan rooli AINA evästeeseen (toimii heti ja on luotettava)
     const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
@@ -166,7 +176,7 @@ export async function switchUserRole(role: 'citizen' | 'shadow_mp' | 'researcher
     // 2. Yritetään tallentaa tietokantaan taustalla (jos kirjautunut)
     try {
       const adminClient = await createAdminClient();
-      
+
       // Tarkistetaan onko käyttäjällä jo profiili
       const { data: existingProfile } = await adminClient
         .from("user_profiles")
@@ -175,11 +185,11 @@ export async function switchUserRole(role: 'citizen' | 'shadow_mp' | 'researcher
         .single();
 
       if (!existingProfile) {
-        await adminClient.from("user_profiles").upsert({ 
-          id: user.id, 
+        await adminClient.from("user_profiles").upsert({
+          id: user.id,
           active_role: role,
-          rank_title: 'Kansalainen',
-          impact_points: 0
+          rank_title: "Kansalainen",
+          impact_points: 0,
         });
       } else {
         await adminClient
@@ -188,7 +198,10 @@ export async function switchUserRole(role: 'citizen' | 'shadow_mp' | 'researcher
           .eq("id", user.id);
       }
     } catch (dbError) {
-      console.warn("Tietokantapäivitys epäonnistui, mutta rooli vaihdettiin evästeellä:", dbError);
+      console.warn(
+        "Tietokantapäivitys epäonnistui, mutta rooli vaihdettiin evästeellä:",
+        dbError,
+      );
     }
 
     revalidatePath("/");
@@ -200,29 +213,39 @@ export async function switchUserRole(role: 'citizen' | 'shadow_mp' | 'researcher
   }
 }
 
-export async function initializeResearcherProfile(data: { type: string; focus: string[] }) {
+export async function initializeResearcherProfile(data: {
+  type: string;
+  focus: string[];
+}) {
   try {
     const user = await getUser();
     if (!user) throw new Error("Ei käyttäjää");
 
     const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
-    cookieStore.set("researcher_initialized", "true", { maxAge: 60 * 60 * 24 * 30, path: "/" });
-    cookieStore.set("researcher_type", data.type, { maxAge: 60 * 60 * 24 * 30, path: "/" });
-    cookieStore.set("researcher_focus", JSON.stringify(data.focus), { maxAge: 60 * 60 * 24 * 30, path: "/" });
+    cookieStore.set("researcher_initialized", "true", {
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+    });
+    cookieStore.set("researcher_type", data.type, {
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+    });
+    cookieStore.set("researcher_focus", JSON.stringify(data.focus), {
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+    });
 
     if (!user.is_guest) {
       const adminClient = await createAdminClient();
-      await adminClient
-        .from("user_profiles")
-        .upsert({ 
-          id: user.id,
-          researcher_initialized: true,
-          researcher_type: data.type,
-          researcher_focus: data.focus,
-          active_role: 'researcher',
-          updated_at: new Date().toISOString()
-        });
+      await adminClient.from("user_profiles").upsert({
+        id: user.id,
+        researcher_initialized: true,
+        researcher_type: data.type,
+        researcher_focus: data.focus,
+        active_role: "researcher",
+        updated_at: new Date().toISOString(),
+      });
     }
 
     revalidatePath("/dashboard");

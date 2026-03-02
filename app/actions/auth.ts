@@ -14,7 +14,10 @@ export async function getUser(): Promise<UserProfile | null> {
     } = await supabase.auth.getUser();
 
     if (authError) {
-      console.warn("[getUser] Supabase auth error:", authError.message);
+      console.log(
+        "[getUser] Supabase auth session not found:",
+        authError.message,
+      );
 
       // DEBUG: Yritetään hakea session jos user epäonnistui
       const {
@@ -26,7 +29,7 @@ export async function getUser(): Promise<UserProfile | null> {
           session.access_token.length,
         );
       } else {
-        console.warn("[getUser] Also session is missing.");
+        console.log("[getUser] No active session found.");
       }
     }
 
@@ -115,7 +118,7 @@ export async function getUser(): Promise<UserProfile | null> {
       return null;
     }
 
-    console.log("[getUser] Regular user found:", user.id);
+    console.log("[getUser] Regular user found:", user.id, user.email);
 
     // PUHDISTUS: Jos olemme kirjautuneet oikeasti, poistetaan ghost-evästeet häiritsemästä
     // Tehdään tämä vain jos ollaan debug- tai profiilisivulla, jotta ei tehdä turhia delete-kutsuja joka välissä

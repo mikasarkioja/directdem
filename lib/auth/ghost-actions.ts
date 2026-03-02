@@ -14,13 +14,16 @@ export async function startGhostSession(name: string) {
   const { cookies } = await import("next/headers");
   const guestId = randomUUID();
   const cookieStore = await cookies();
-  
+
+  const isProd = process.env.NODE_ENV === "production";
+
   // Tallenna evästeeseen (30 päivää)
   cookieStore.set("guest_user_id", guestId, {
     maxAge: 60 * 60 * 24 * 30,
     path: "/",
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isProd,
+    httpOnly: true, // Turvallisempi API-kutsuille
   });
 
   // Tallenna nimitieto evästeeseen
@@ -28,6 +31,7 @@ export async function startGhostSession(name: string) {
     maxAge: 60 * 60 * 24 * 30,
     path: "/",
     sameSite: "lax",
+    secure: isProd,
   });
 
   revalidatePath("/");
@@ -37,12 +41,15 @@ export async function startGhostSession(name: string) {
 export async function saveGhostDNA(scores: any) {
   const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
+  const isProd = process.env.NODE_ENV === "production";
+
   cookieStore.set("guest_dna", JSON.stringify(scores), {
     maxAge: 60 * 60 * 24 * 30,
     path: "/",
     sameSite: "lax",
+    secure: isProd,
   });
-  
+
   // Re-run revalidation
   revalidatePath("/dashboard");
 }

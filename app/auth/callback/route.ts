@@ -31,7 +31,8 @@ async function redirectWithCookies(
   const cookieStore = await getCookies();
   const res = NextResponse.redirect(destination);
   cookieStore.getAll().forEach((cookie) => {
-    res.cookies.set(cookie.name, cookie.value, cookie.options);
+    // RequestCookie has only name/value; preserve the value on redirect response.
+    res.cookies.set(cookie.name, cookie.value);
   });
   return res;
 }

@@ -9,6 +9,11 @@ import {
 import { analyzeCityDecision } from "@/lib/ai/city-summarizer";
 import { getMunicipalAPI } from "@/lib/municipal-api";
 
+type ExistingMunicipalDecision = {
+  external_id: string;
+  decision_date?: string;
+};
+
 /**
  * Fetches and analyzes latest municipal decisions for a specific city.
  * Supports Dynasty (Espoo, Vantaa) and custom APIs (Helsinki).
@@ -26,6 +31,8 @@ export async function getMunicipalDecisions(
     .eq("municipality", municipality)
     .order("decision_date", { ascending: false })
     .limit(30);
+  const typedExistingDecisions =
+    (existingDecisions as ExistingMunicipalDecision[] | null) ?? [];
 
   try {
     console.log(`🔗 Käynnistetään ${municipality}-skanneri...`);
@@ -43,7 +50,9 @@ export async function getMunicipalDecisions(
 
         // Etsitään vain sellaisia asioita joita meillä ei vielä ole
         const existingUrls = new Set(
-          existingDecisions?.map((d) => d.external_id) || [],
+          typedExistingDecisions.map(
+            (d: ExistingMunicipalDecision) => d.external_id,
+          ) || [],
         );
         const newItems = items
           .filter((l) => !existingUrls.has(l.url))
@@ -132,7 +141,9 @@ export async function getMunicipalDecisions(
       const items = await api.fetchLatestItems(5);
 
       const existingIds = new Set(
-        existingDecisions?.map((d) => d.external_id) || [],
+        typedExistingDecisions.map(
+          (d: ExistingMunicipalDecision) => d.external_id,
+        ) || [],
       );
       const newItems = items.filter((item) => !existingIds.has(item.id));
 

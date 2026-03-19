@@ -29,9 +29,7 @@ export async function updateSession(request: NextRequest) {
           });
 
           // Palautetaan aiemmat evästeet uuteen vastaukseen
-          oldCookies.forEach((c) =>
-            supabaseResponse.cookies.set(c.name, c.value, c.options),
-          );
+          oldCookies.forEach((c) => supabaseResponse.cookies.set(c));
 
           // Päivitetään vastauksen evästeet uusilla arvoilla
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -65,7 +63,7 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/dashboard";
     const redirectResponse = NextResponse.redirect(url);
     supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value, cookie.options);
+      redirectResponse.cookies.set(cookie);
     });
     return redirectResponse;
   }
@@ -86,7 +84,7 @@ export async function updateSession(request: NextRequest) {
     // Tärkeää: Jos redirectataan, täytyy mahdolliset uudistetun session evästeet siirtää redirect-vastaukseen
     const redirectResponse = NextResponse.redirect(url);
     supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value, cookie.options);
+      redirectResponse.cookies.set(cookie);
     });
     return redirectResponse;
   }

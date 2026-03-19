@@ -65,12 +65,33 @@ function parseDynastyUrl(url: string, text: string): DynastyDocType {
 }
 
 /**
- * 1. Hakulogiikka: Etsi linkit Espoon Dynasty-etusivulta.
+ * Configuration for different municipality Dynasty instances
  */
-export async function fetchEspooDynastyLinks(
-  baseUrl: string = "https://espoo.oncloudos.com/cgi/DREQUEST.PHP?page=meetings&id=1",
+export const DYNASTY_CONFIG: Record<
+  string,
+  { baseUrl: string; origin: string }
+> = {
+  Espoo: {
+    baseUrl: "https://espoo.oncloudos.com/cgi/DREQUEST.PHP?page=meetings&id=1",
+    origin: "https://espoo.oncloudos.com/cgi/",
+  },
+  Vantaa: {
+    baseUrl: "https://vantaa.oncloudos.com/cgi/DREQUEST.PHP?page=meetings&id=1",
+    origin: "https://vantaa.oncloudos.com/cgi/",
+  },
+};
+
+/**
+ * 1. Hakulogiikka: Etsi linkit Dynasty-etusivulta.
+ */
+export async function fetchDynastyLinks(
+  municipality: "Espoo" | "Vantaa",
 ): Promise<DynastyLink[]> {
-  console.log(`🔗 Haetaan linkit Dynasty-sivulta: ${baseUrl}`);
+  const config = DYNASTY_CONFIG[municipality];
+  const baseUrl = config.baseUrl;
+  console.log(
+    `🔗 Haetaan linkit Dynasty-sivulta (${municipality}): ${baseUrl}`,
+  );
 
   try {
     const response = await axios.get(baseUrl, {
@@ -98,12 +119,12 @@ export async function fetchEspooDynastyLinks(
 
       const fullUrl = href.startsWith("http")
         ? href
-        : new URL(href, "https://espoo.oncloudos.com/cgi/").toString();
+        : new URL(href, config.origin).toString();
       const type = parseDynastyUrl(fullUrl, text);
 
       if (type === DynastyDocType.MEETING_MINUTES) {
         links.push({
-          title: `Valtuuston kokous ${text}`,
+          title: `${municipality}n valtuuston kokous ${text}`,
           url: fullUrl,
           type,
           dateHint: text.match(/\d{1,2}\.\d{1,2}\.\d{4}/)?.[0] || "",
@@ -182,6 +203,7 @@ export async function fetchMeetingItems(
  */
 export async function fetchDynastyContent(
   link: DynastyLink,
+  municipality: string,
 ): Promise<DynastyContent | null> {
   try {
     const { data } = await axios.get(link.url, {
@@ -221,7 +243,7 @@ export async function fetchDynastyContent(
       proposal,
       url: link.url,
       pdfUrl: link.pdfUrl,
-      municipality: "Espoo",
+      municipality,
     };
   } catch (err: any) {
     console.error(`⚠️ Virhe noudettaessa sisältöä: ${err.message}`);

@@ -204,17 +204,35 @@ export async function getUser(): Promise<UserProfile | null> {
 
 // Huom: Käytämme nyt pääasiassa LoginPage.tsx:n client-puolen kirjautumista,
 // mutta pidetään nämä taustalla jos tarpeen.
-export async function syncProfile(userId: string) {
+/** Server-only: ensures profile row exists for the current user. Do not pass userId from client. */
+export async function syncProfile() {
   const supabase = await createClient();
-  await supabase.from("profiles").upsert({ id: userId }, { onConflict: "id" });
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    console.error("[syncProfile] Not authenticated:", authError?.message);
+    return;
+  }
+  await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id" });
   revalidatePath("/", "layout");
 }
 
-export async function upsertUserProfile(userId: string, data: any) {
+/** Server-only: updates profile for the current user. Do not pass userId from client. */
+export async function upsertUserProfile(data: Record<string, unknown>) {
   const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    console.error("[upsertUserProfile] Not authenticated:", authError?.message);
+    throw new Error("Unauthorized");
+  }
   const { error } = await supabase
     .from("profiles")
-    .upsert({ id: userId, ...data }, { onConflict: "id" });
+    .upsert({ id: user.id, ...data }, { onConflict: "id" });
 
   if (error) {
     console.error("Error upserting user profile:", error);

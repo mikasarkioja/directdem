@@ -34,7 +34,7 @@ export default function FirstTimeGDPR({ userId }: FirstTimeGDPRProps) {
 
   const handleAccept = async () => {
     try {
-      await upsertUserProfile(userId, {
+      await upsertUserProfile({
         accepted_terms: true,
         terms_accepted_at: new Date().toISOString(),
       });
@@ -57,6 +57,3 @@ export default function FirstTimeGDPR({ userId }: FirstTimeGDPRProps) {
 
   return <GDPRRegistration onAccept={handleAccept} onDecline={handleDecline} />;
 }
-
-
-

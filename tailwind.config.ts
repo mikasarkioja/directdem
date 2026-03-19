@@ -44,10 +44,17 @@ const config: Config = {
         "nordic-deep": "#3B4252",
         "nordic-darker": "#2E3440",
       },
+      keyframes: {
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(300%)" },
+        },
+      },
+      animation: {
+        shimmer: "shimmer 2s infinite linear",
+      },
     },
   },
   plugins: [],
 };
 export default config;
-
-

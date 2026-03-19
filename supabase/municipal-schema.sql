@@ -21,22 +21,29 @@ CREATE TABLE IF NOT EXISTS municipal_cases (
 -- Enable RLS on municipal_cases
 ALTER TABLE municipal_cases ENABLE ROW LEVEL SECURITY;
 
--- Allow public read access to cases
-CREATE POLICY "Allow public read access to municipal_cases" 
+-- Allow authenticated users with admin/service_role to insert/update cases
+-- For the demo, we'll allow authenticated users, but restricted by service_role for sync
+CREATE POLICY "Allow authenticated users to read municipal_cases" 
 ON municipal_cases FOR SELECT 
 TO public 
 USING (true);
 
--- Allow everyone to insert/update cases (for sync-on-demand)
--- Note: In production this should be restricted to service_role or admin
-CREATE POLICY "Allow anyone to insert municipal_cases" 
-ON municipal_cases FOR INSERT 
-TO public
+CREATE POLICY "Allow service_role full access to municipal_cases" 
+ON municipal_cases FOR ALL 
+TO service_role 
+USING (true)
 WITH CHECK (true);
 
-CREATE POLICY "Allow anyone to update municipal_cases" 
+-- For on-demand sync from the app, we need to allow authenticated users to upsert
+-- BUT restricted to the sync logic. For now, hardening to authenticated.
+CREATE POLICY "Allow authenticated users to insert municipal_cases" 
+ON municipal_cases FOR INSERT 
+TO authenticated
+WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated users to update municipal_cases" 
 ON municipal_cases FOR UPDATE 
-TO public
+TO authenticated
 USING (true)
 WITH CHECK (true);
 

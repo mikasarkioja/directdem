@@ -93,12 +93,19 @@ export async function performSyncWithClient(supabase: any): Promise<{
       } else if (data) {
         successCount++;
 
-        // Triggeri automaattiselle esianalyysille taustalla
+        // Triggeri automaattiselle esianalyysille taustalla (vain tuotannossa)
         const isRealSummary =
           data.summary &&
           data.summary.length > 800 &&
           data.summary.includes("###");
-        if (!isRealSummary) {
+
+        // Älä suorita automaattista analyysia localhostissa säästääksesi tokeneita,
+        // paitsi jos se on erikseen sallittu tai ollaan tuotannossa.
+        const shouldAutoAnalyze =
+          process.env.NODE_ENV === "production" ||
+          process.env.ENABLE_AUTO_AI === "true";
+
+        if (!isRealSummary && shouldAutoAnalyze) {
           processBillToSelkokieli(data.id, supabase).catch((e) =>
             console.error(`Auto-analysis failed for ${data.id}:`, e),
           );

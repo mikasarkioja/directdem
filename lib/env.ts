@@ -15,6 +15,15 @@ const envSchema = z.object({
   NEXT_PUBLIC_RESEARCHER_ENABLED: z.string().optional().default("true"),
   NEXT_PUBLIC_PULSE_ENABLED: z.string().optional().default("true"),
   NEXT_PUBLIC_ECONOMY_ENABLED: z.string().optional().default("true"),
+  NEXT_PUBLIC_ARENA_ENABLED: z.string().optional().default("true"),
+  NEXT_PUBLIC_INTELLIGENCE_FEED_ENABLED: z.string().optional().default("true"),
+  NEXT_PUBLIC_WEEKLY_BULLETIN_ENABLED: z.string().optional().default("true"),
+  NEXT_PUBLIC_ESPOO_DYNASTY_ENABLED: z.string().optional().default("true"),
+  NEXT_PUBLIC_PREDICTIVE_MODELS_ENABLED: z.string().optional().default("false"),
+  NEXT_PUBLIC_MP_DNA_ANALYTICS_ENABLED: z.string().optional().default("false"),
+
+  // AI Configuration
+  ENABLE_AUTO_AI: z.string().optional().default("false"),
 
   // Environment
   NODE_ENV: z
@@ -78,6 +87,12 @@ export const validateEnv = () => {
         NEXT_PUBLIC_RESEARCHER_ENABLED: true,
         NEXT_PUBLIC_PULSE_ENABLED: true,
         NEXT_PUBLIC_ECONOMY_ENABLED: true,
+        NEXT_PUBLIC_ARENA_ENABLED: true,
+        NEXT_PUBLIC_INTELLIGENCE_FEED_ENABLED: true,
+        NEXT_PUBLIC_WEEKLY_BULLETIN_ENABLED: true,
+        NEXT_PUBLIC_ESPOO_DYNASTY_ENABLED: true,
+        NEXT_PUBLIC_PREDICTIVE_MODELS_ENABLED: true,
+        NEXT_PUBLIC_MP_DNA_ANALYTICS_ENABLED: true,
       });
 
       const parsed = clientSchema.safeParse({
@@ -92,6 +107,17 @@ export const validateEnv = () => {
           sanitizedEnv.NEXT_PUBLIC_RESEARCHER_ENABLED,
         NEXT_PUBLIC_PULSE_ENABLED: sanitizedEnv.NEXT_PUBLIC_PULSE_ENABLED,
         NEXT_PUBLIC_ECONOMY_ENABLED: sanitizedEnv.NEXT_PUBLIC_ECONOMY_ENABLED,
+        NEXT_PUBLIC_ARENA_ENABLED: sanitizedEnv.NEXT_PUBLIC_ARENA_ENABLED,
+        NEXT_PUBLIC_INTELLIGENCE_FEED_ENABLED:
+          sanitizedEnv.NEXT_PUBLIC_INTELLIGENCE_FEED_ENABLED,
+        NEXT_PUBLIC_WEEKLY_BULLETIN_ENABLED:
+          sanitizedEnv.NEXT_PUBLIC_WEEKLY_BULLETIN_ENABLED,
+        NEXT_PUBLIC_ESPOO_DYNASTY_ENABLED:
+          sanitizedEnv.NEXT_PUBLIC_ESPOO_DYNASTY_ENABLED,
+        NEXT_PUBLIC_PREDICTIVE_MODELS_ENABLED:
+          sanitizedEnv.NEXT_PUBLIC_PREDICTIVE_MODELS_ENABLED,
+        NEXT_PUBLIC_MP_DNA_ANALYTICS_ENABLED:
+          sanitizedEnv.NEXT_PUBLIC_MP_DNA_ANALYTICS_ENABLED,
       });
 
       if (!parsed.success) {

@@ -327,7 +327,7 @@ export default function DashboardClient({
 
     setLoading(true);
     try {
-      await upsertUserProfile(initialUser.id, { full_name: newName.trim() });
+      await upsertUserProfile({ full_name: newName.trim() });
       setProfile((prev: any) => ({ ...prev, full_name: newName.trim() }));
       setShowNamePrompt(false);
       localStorage.setItem("name_prompt_dismissed", "true");

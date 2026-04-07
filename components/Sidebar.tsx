@@ -1,6 +1,18 @@
 "use client";
 
-import { FileText, Map, User, LayoutGrid, Users, Radio, BarChart3, TrendingUp, Activity, Sparkles, Briefcase, Shield, RefreshCw, Search, Database, Newspaper, Building2, Terminal, Settings } from "lucide-react";
+import {
+  FileText,
+  Map,
+  User,
+  Activity,
+  Briefcase,
+  Shield,
+  Search,
+  Database,
+  Newspaper,
+  Building2,
+  Terminal,
+} from "lucide-react";
 import type { DashboardView, UserProfile } from "@/lib/types";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -19,7 +31,11 @@ interface SidebarProps {
   user: UserProfile | null;
 }
 
-export default function Sidebar({ activeView, setActiveView, user }: SidebarProps) {
+export default function Sidebar({
+  activeView,
+  setActiveView,
+  user,
+}: SidebarProps) {
   const [userParty, setUserParty] = useState<any>(null);
   const { role, switchRole, isSwitching } = useRole();
   const router = useRouter();
@@ -34,7 +50,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
         .select("virtual_parties(*)")
         .eq("user_id", user.id)
         .single();
-      
+
       if (data && data.virtual_parties) {
         setUserParty(data.virtual_parties);
       }
@@ -53,7 +69,7 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
   };
 
   const handleRoleSwitch = (newRole: string) => {
-    if (newRole === 'shadow_mp' || newRole === 'researcher') {
+    if (newRole === "shadow_mp" || newRole === "researcher") {
       if (!user) {
         toast.error("Tämä rooli vaatii kirjautumisen.");
         router.push("/login?callback=" + pathname);
@@ -63,33 +79,89 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
     switchRole(newRole as any);
   };
 
-  const citizenItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string; feature?: string }> = [
-    { id: "overview", label: "Uutisvirta", icon: Newspaper, href: "/?view=overview" },
-    { id: "arena", label: "Hjallis-haaste", icon: BarChart3, href: "/arena", feature: "ARENA_ENABLED" },
-    { id: "profile", label: "Oma DNA", icon: User, href: "/profiili" },
-    { id: "profile", label: "DNA-Testi", icon: Sparkles, href: "/testi" },
+  const citizenItems: Array<{
+    id: DashboardView;
+    label: string;
+    icon: typeof FileText;
+    href?: string;
+    feature?: string;
+  }> = [
+    {
+      id: "overview",
+      label: "Uutisvirta",
+      icon: Newspaper,
+      href: "/?view=overview",
+    },
   ];
 
-  const shadowItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string; feature?: string }> = [
+  const shadowItems: Array<{
+    id: DashboardView;
+    label: string;
+    icon: typeof FileText;
+    href?: string;
+    feature?: string;
+  }> = [
     { id: "workspace", label: "Työhuone", icon: Briefcase, href: "/dashboard" },
-    { id: "bills", label: "Äänestysareena", icon: FileText, href: "/?view=bills" },
-    { id: "municipal", label: "Valiokunta", icon: Shield, href: "/?view=municipal", feature: "MUNICIPAL_WATCH_ENABLED" },
-    { id: "kuntavahti", label: "Kuntavahti", icon: Building2, href: "/dashboard?view=kuntavahti", feature: "MUNICIPAL_WATCH_ENABLED" },
+    {
+      id: "bills",
+      label: "Äänestysareena",
+      icon: FileText,
+      href: "/?view=bills",
+    },
+    {
+      id: "municipal",
+      label: "Valiokunta",
+      icon: Shield,
+      href: "/?view=municipal",
+      feature: "MUNICIPAL_WATCH_ENABLED",
+    },
+    {
+      id: "kuntavahti",
+      label: "Kuntavahti",
+      icon: Building2,
+      href: "/dashboard?view=kuntavahti",
+      feature: "MUNICIPAL_WATCH_ENABLED",
+    },
   ];
 
-  const researcherItems: Array<{ id: DashboardView; label: string; icon: typeof FileText; href?: string; feature?: string }> = [
-    { id: "researcher", label: "Tutkimus-terminaali", icon: Terminal, href: "/dashboard?view=researcher", feature: "RESEARCHER_ENABLED" },
-    { id: "consensus", label: "Konsensuskartta", icon: Map, href: "/?view=consensus" },
-    { id: "analysis", label: "Takinkääntö-vahti", icon: Activity, href: "/puolueet/analyysi" },
+  const researcherItems: Array<{
+    id: DashboardView;
+    label: string;
+    icon: typeof FileText;
+    href?: string;
+    feature?: string;
+  }> = [
+    {
+      id: "researcher",
+      label: "Tutkimus-terminaali",
+      icon: Terminal,
+      href: "/dashboard?view=researcher",
+      feature: "RESEARCHER_ENABLED",
+    },
+    {
+      id: "consensus",
+      label: "Konsensuskartta",
+      icon: Map,
+      href: "/?view=consensus",
+    },
+    {
+      id: "analysis",
+      label: "Takinkääntö-vahti",
+      icon: Activity,
+      href: "/puolueet/analyysi",
+    },
     { id: "ranking", label: "Massadata", icon: Database, href: "/ranking" },
   ];
 
-  const menuItems = (role === 'shadow_mp' 
-    ? shadowItems 
-    : (role === 'researcher' ? researcherItems : citizenItems)).filter(item => !item.feature || isFeatureEnabled(item.feature as any));
+  const menuItems = (
+    role === "shadow_mp"
+      ? shadowItems
+      : role === "researcher"
+        ? researcherItems
+        : citizenItems
+  ).filter((item) => !item.feature || isFeatureEnabled(item.feature as any));
 
-  // const isAdmin = user?.email === 'nika.sarkioja@gmail.com' || user?.email?.includes('admin');
-  const isAdmin = true; // TEMPORARY: Show for all users
+  const isAdmin = user?.is_admin === true;
 
   return (
     <aside className="hidden md:flex w-72 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-r border-slate-200 dark:border-white/10 flex-col h-full shadow-2xl relative overflow-hidden transition-colors duration-500">
@@ -98,15 +170,22 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
           <div className="w-8 h-8 bg-command-neon rounded-lg flex items-center justify-center shadow-[0_0_15px_var(--accent-glow)]">
             <span className="text-white font-black text-xs italic">DD</span>
           </div>
-          <Link href="/" className="text-xl font-black uppercase tracking-tighter text-command-dark dark:text-white hover:text-command-neon transition-colors">DirectDem</Link>
+          <Link
+            href="/"
+            className="text-xl font-black uppercase tracking-tighter text-command-dark dark:text-white hover:text-command-neon transition-colors"
+          >
+            DirectDem
+          </Link>
         </div>
-        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Democracy OS v1.0</p>
+        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+          Democracy OS v1.0
+        </p>
       </div>
 
       {isAdmin && (
         <div className="px-6 mb-4 relative z-10">
           <Link
-            href="/admin/analytics"
+            href="/admin"
             className="flex items-center gap-3 px-4 py-2 text-[10px] font-black text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl hover:bg-rose-500/20 transition-all uppercase tracking-widest"
           >
             <Shield size={12} />
@@ -118,21 +197,26 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
       <div className="px-6 mb-6 relative z-10">
         <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10">
           {[
-            { id: 'citizen', label: 'Kansalainen', icon: User },
-            { id: 'shadow_mp', label: 'Edustaja', icon: Shield },
-            { id: 'researcher', label: 'Tutkija', icon: Search }
+            { id: "citizen", label: "Kansalainen", icon: User },
+            { id: "shadow_mp", label: "Edustaja", icon: Shield },
+            { id: "researcher", label: "Tutkija", icon: Search },
           ].map((r) => (
             <button
               key={r.id}
               onClick={() => handleRoleSwitch(r.id as any)}
               className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${
-                role === r.id 
-                  ? "bg-white dark:bg-white/10 shadow-sm text-command-neon" 
+                role === r.id
+                  ? "bg-white dark:bg-white/10 shadow-sm text-command-neon"
                   : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
               }`}
             >
-              <r.icon size={14} className={role === r.id ? "text-[var(--accent-primary)]" : ""} />
-              <span className="text-[7px] font-black uppercase mt-1 tracking-tighter">{r.label}</span>
+              <r.icon
+                size={14}
+                className={role === r.id ? "text-[var(--accent-primary)]" : ""}
+              />
+              <span className="text-[7px] font-black uppercase mt-1 tracking-tighter">
+                {r.label}
+              </span>
             </button>
           ))}
         </div>
@@ -141,20 +225,25 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
       <nav className="flex-1 px-6 space-y-1 overflow-y-auto custom-scrollbar relative z-10">
         <div className="mb-4 pt-4">
           <p className="px-4 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-2">
-            Näkymä: {role.replace('_', ' ').toUpperCase()}
+            Näkymä: {role.replace("_", " ").toUpperCase()}
           </p>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
-            
+
             const content = (
               <>
-                <Icon size={18} className={`${isActive ? "text-[var(--accent-primary)]" : "text-slate-400 group-hover:text-command-dark dark:group-hover:text-white"} transition-colors`} />
-                <span className={`text-sm font-black uppercase tracking-tight ${isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100 text-slate-500 dark:text-slate-400"}`}>
+                <Icon
+                  size={18}
+                  className={`${isActive ? "text-[var(--accent-primary)]" : "text-slate-400 group-hover:text-command-dark dark:group-hover:text-white"} transition-colors`}
+                />
+                <span
+                  className={`text-sm font-black uppercase tracking-tight ${isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100 text-slate-500 dark:text-slate-400"}`}
+                >
                   {item.label}
                 </span>
                 {isActive && (
-                  <motion.div 
+                  <motion.div
                     layoutId="sidebar-indicator"
                     className="absolute left-0 w-1.5 h-6 bg-[var(--accent-primary)] rounded-r-full shadow-[4px_0_15px_var(--accent-glow)]"
                   />
@@ -197,13 +286,15 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
 
       <div className="p-8 border-t border-slate-100 dark:border-white/5 relative z-10 flex flex-col items-center gap-6">
         <PulseButton />
-        
+
         <div className="w-full bg-slate-50 dark:bg-white/5 rounded-3xl p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 flex items-center justify-center text-command-dark dark:text-white">
             <User size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase text-command-dark dark:text-white truncate">{user?.full_name || "Vieras"}</p>
+            <p className="text-[10px] font-black uppercase text-command-dark dark:text-white truncate">
+              {user?.full_name || "Vieras"}
+            </p>
             <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase truncate">
               {user ? "Henkilöllisyys vahvistettu" : "Kirjaudu sisään"}
             </p>
@@ -212,7 +303,9 @@ export default function Sidebar({ activeView, setActiveView, user }: SidebarProp
       </div>
 
       {/* Decorative background pulse */}
-      <div className={`absolute bottom-[-10%] -right-10 w-64 h-64 rounded-full blur-[100px] opacity-10 pointer-events-none transition-colors duration-1000 bg-[var(--accent-primary)]`} />
+      <div
+        className={`absolute bottom-[-10%] -right-10 w-64 h-64 rounded-full blur-[100px] opacity-10 pointer-events-none transition-colors duration-1000 bg-[var(--accent-primary)]`}
+      />
     </aside>
   );
 }

@@ -1,6 +1,12 @@
 "use client";
 
-import { LayoutGrid, FileText, Map as MapIcon, User, Users, Radio, Search } from "lucide-react";
+import {
+  LayoutGrid,
+  FileText,
+  Map as MapIcon,
+  Radio,
+  Search,
+} from "lucide-react";
 import type { DashboardView } from "@/lib/types";
 import Link from "next/link";
 import PulseButton from "./nav/PulseButton";
@@ -18,32 +24,56 @@ interface NavItem {
   href?: string;
 }
 
-export default function BottomNav({ activeView, onViewChange }: BottomNavProps) {
+export default function BottomNav({
+  activeView,
+  onViewChange,
+}: BottomNavProps) {
   const { role } = useRole();
 
   const getNavItems = (): NavItem[] => {
     const common: NavItem[] = [
-      { label: "Keskus", view: "overview" as const, icon: LayoutGrid, href: "/" },
+      {
+        label: "Keskus",
+        view: "overview" as const,
+        icon: LayoutGrid,
+        href: "/",
+      },
     ];
 
-    if (role === 'shadow_mp') {
+    if (role === "shadow_mp") {
       return [
         ...common,
-        { label: "Areena", view: "arena" as const, icon: FileText, href: "/arena" },
-        { label: "Väittely", view: "debate" as const, icon: Radio, href: "/vaittely/demo" },
+        {
+          label: "Areena",
+          view: "arena" as const,
+          icon: FileText,
+          href: "/arena",
+        },
+        {
+          label: "Väittely",
+          view: "debate" as const,
+          icon: Radio,
+          href: "/vaittely/demo",
+        },
       ];
-    } else if (role === 'researcher') {
+    } else if (role === "researcher") {
       return [
         ...common,
-        { label: "Data", view: "ranking" as const, icon: Search, href: "/ranking" },
-        { label: "Kartta", view: "consensus" as const, icon: MapIcon, href: "/?view=consensus" },
+        {
+          label: "Data",
+          view: "ranking" as const,
+          icon: Search,
+          href: "/ranking",
+        },
+        {
+          label: "Kartta",
+          view: "consensus" as const,
+          icon: MapIcon,
+          href: "/?view=consensus",
+        },
       ];
     } else {
-      return [
-        ...common,
-        { label: "Areena", view: "arena" as const, icon: Radio, href: "/arena" },
-        { label: "DNA", view: "profile" as const, icon: User, href: "/profiili" },
-      ];
+      return [...common];
     }
   };
 
@@ -58,8 +88,17 @@ export default function BottomNav({ activeView, onViewChange }: BottomNavProps) 
 
           const content = (
             <>
-              <Icon size={20} className={isActive ? "scale-110 text-command-neon" : "scale-100"} />
-              <span className={`text-[8px] font-black uppercase tracking-tight leading-tight mt-1 ${isActive ? "text-command-neon" : "text-slate-400"}`}>{item.label}</span>
+              <Icon
+                size={20}
+                className={
+                  isActive ? "scale-110 text-command-neon" : "scale-100"
+                }
+              />
+              <span
+                className={`text-[8px] font-black uppercase tracking-tight leading-tight mt-1 ${isActive ? "text-command-neon" : "text-slate-400"}`}
+              >
+                {item.label}
+              </span>
             </>
           );
 
@@ -97,8 +136,17 @@ export default function BottomNav({ activeView, onViewChange }: BottomNavProps) 
 
           const content = (
             <>
-              <Icon size={20} className={isActive ? "scale-110 text-command-neon" : "scale-100"} />
-              <span className={`text-[8px] font-black uppercase tracking-tight leading-tight mt-1 ${isActive ? "text-command-neon" : "text-slate-400"}`}>{item.label}</span>
+              <Icon
+                size={20}
+                className={
+                  isActive ? "scale-110 text-command-neon" : "scale-100"
+                }
+              />
+              <span
+                className={`text-[8px] font-black uppercase tracking-tight leading-tight mt-1 ${isActive ? "text-command-neon" : "text-slate-400"}`}
+              >
+                {item.label}
+              </span>
             </>
           );
 

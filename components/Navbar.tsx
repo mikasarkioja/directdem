@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { User, LogOut } from "lucide-react";
 import VerifiedBadge from "./VerifiedBadge";
 import CreditDisplay from "./CreditDisplay";
@@ -79,13 +80,12 @@ export default function Navbar({ user }: NavbarProps) {
                   </div>
                 </div>
               ) : (
-                <button
-                  onClick={() => router.push("/login")}
-                  className="px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium touch-manipulation select-none"
-                  style={{ minWidth: "44px", minHeight: "44px" }}
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-nordic-dark dark:text-nordic-gray hover:text-nordic-blue dark:hover:text-nordic-white transition-colors py-2 px-2 touch-manipulation"
                 >
                   Kirjaudu
-                </button>
+                </Link>
               )}
             </div>
 
@@ -101,13 +101,12 @@ export default function Navbar({ user }: NavbarProps) {
                   <User size={24} />
                 </button>
               ) : (
-                <button
-                  onClick={() => router.push("/login")}
-                  className="px-3 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium touch-manipulation select-none"
-                  style={{ minWidth: "44px", minHeight: "44px" }}
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-nordic-blue hover:underline py-2 px-2 touch-manipulation"
                 >
                   Kirjaudu
-                </button>
+                </Link>
               )}
             </div>
           </div>
@@ -151,15 +150,13 @@ export default function Navbar({ user }: NavbarProps) {
                   </div>
                 </div>
               ) : (
-                <button
-                  onClick={() => {
-                    router.push("/login");
-                    setShowMobileMenu(false);
-                  }}
-                  className="w-full px-4 py-2 bg-nordic-blue text-white rounded-lg hover:bg-nordic-deep transition-colors text-sm font-medium"
+                <Link
+                  href="/login"
+                  onClick={() => setShowMobileMenu(false)}
+                  className="block w-full text-center px-4 py-3 text-sm font-medium text-nordic-blue border border-nordic-blue/30 rounded-lg hover:bg-nordic-blue/5"
                 >
                   Kirjaudu
-                </button>
+                </Link>
               )}
             </div>
           )}

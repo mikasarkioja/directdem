@@ -7,6 +7,8 @@ export type MediaWatchFeedRow = {
   match_id: string;
   similarity_score: number;
   ai_analysis_summary: MediaWatchAiSummary | Record<string, unknown> | null;
+  /** Grounding-lähteet (Google Search) ja viitteet */
+  ai_analysis_json?: Record<string, unknown> | null;
   matched_at: string | null;
   news_id: string;
   news_title: string;

@@ -32,22 +32,48 @@ interface DashboardProps {
   initialView?: DashboardView;
 }
 
+const KNOWN_VIEWS = new Set<DashboardView>([
+  "overview",
+  "bills",
+  "municipal",
+  "consensus",
+  "profile",
+  "parties",
+  "debate",
+  "ranking",
+  "analysis",
+  "workspace",
+  "arena",
+  "kuntavahti",
+  "researcher",
+]);
+
+function normalizeDashboardView(
+  v: DashboardView | string | string[] | undefined,
+): DashboardView {
+  const raw = Array.isArray(v) ? v[0] : v;
+  if (typeof raw === "string" && KNOWN_VIEWS.has(raw as DashboardView)) {
+    return raw as DashboardView;
+  }
+  return "overview";
+}
+
 export default function Dashboard({
   user,
   initialView = "overview",
 }: DashboardProps) {
-  const [activeView, setActiveView] = useState<DashboardView>(initialView);
+  const [activeView, setActiveView] = useState<DashboardView>(() =>
+    normalizeDashboardView(initialView),
+  );
   const [viewContext, setViewContext] = useState<ViewContext>("parliament");
   const [selectedMunicipality, setSelectedMunicipality] = useState(
     user?.municipality || "Espoo",
   );
   const { role } = useRole();
 
-  // Sync state with initialView prop if it changes (e.g. navigation)
+  // Sync state with initialView when URL / server props change
   useEffect(() => {
-    if (initialView && initialView !== activeView) {
-      setActiveView(initialView);
-    }
+    setActiveView(normalizeDashboardView(initialView));
   }, [initialView]);
 
   const getHeaderTitle = () => {

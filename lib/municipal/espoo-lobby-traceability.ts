@@ -175,7 +175,7 @@ export async function scanEspooLobbyTraceability(): Promise<{
     .from("municipal_decisions")
     .select("id,title,summary,url")
     .eq("municipality", "Espoo")
-    .order("decision_date", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(5);
 
   if (decisionsError) {

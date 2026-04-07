@@ -4,7 +4,7 @@ import SubscribersManager from "@/components/admin/SubscribersManager";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminSubscribersPage() {
-  await requireAdmin();
+  await requireAdmin({ nextAfterLogin: "/admin/subscribers" });
   const subscribers = await getNewsletterSubscribers();
   const supabase = await createClient();
   const {

@@ -30,13 +30,35 @@ export async function checkAdminAccess(): Promise<boolean> {
   return profile.is_admin === true;
 }
 
+export type RequireAdminOptions = {
+  /** After login, user is sent here (e.g. /admin/subscribers). Only same-origin paths. */
+  nextAfterLogin?: string;
+};
+
+function safeInternalPath(path: string | undefined): string | null {
+  if (!path || typeof path !== "string") return null;
+  const p = path.trim();
+  if (!p.startsWith("/") || p.startsWith("//")) return null;
+  return p;
+}
+
 /**
- * Require admin access or redirect
+ * Require admin access or redirect (never silent bounce to etusivu).
  */
-export async function requireAdmin() {
+export async function requireAdmin(options?: RequireAdminOptions) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    const next = safeInternalPath(options?.nextAfterLogin);
+    redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
+  }
+
   const isAdmin = await checkAdminAccess();
   if (!isAdmin) {
-    redirect("/");
+    redirect("/auth/auth-error?message=admin_required");
   }
 }
 
@@ -45,7 +67,7 @@ export async function requireAdmin() {
  */
 export async function getAdminStats() {
   const supabase = await createClient();
-  
+
   // Check admin access
   const isAdmin = await checkAdminAccess();
   if (!isAdmin) {
@@ -111,7 +133,7 @@ export async function getAdminStats() {
  */
 export async function getBillsWithGap() {
   const supabase = await createClient();
-  
+
   const isAdmin = await checkAdminAccess();
   if (!isAdmin) {
     throw new Error("Unauthorized");
@@ -136,7 +158,7 @@ export async function getBillsWithGap() {
       const citizenForPercent = voteStats?.[0]?.for_percent
         ? Number(voteStats[0].for_percent)
         : 0;
-      
+
       // Mock parliament stance (replace with real data)
       const parliamentForPercent = 65;
       const gap = Math.abs(citizenForPercent - parliamentForPercent);
@@ -150,7 +172,7 @@ export async function getBillsWithGap() {
         gap: Math.round(gap * 10) / 10,
         isHighGap: gap > 20,
       };
-    })
+    }),
   );
 
   // Sort by gap (highest first)
@@ -162,7 +184,7 @@ export async function getBillsWithGap() {
  */
 export async function getVotesPerDay() {
   const supabase = await createClient();
-  
+
   const isAdmin = await checkAdminAccess();
   if (!isAdmin) {
     throw new Error("Unauthorized");
@@ -211,4 +233,3 @@ export async function getVotesPerDay() {
     }))
     .sort((a, b) => a.fullDate.localeCompare(b.fullDate));
 }
-

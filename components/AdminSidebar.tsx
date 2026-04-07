@@ -1,6 +1,14 @@
 "use client";
 
-import { FileText, Users, BarChart3, Home, Moon, Sun } from "lucide-react";
+import {
+  FileText,
+  Users,
+  BarChart3,
+  Home,
+  Moon,
+  Sun,
+  Mail,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type AdminView = "overview" | "bills" | "users" | "reports";
@@ -57,11 +65,21 @@ export default function AdminSidebar({
 
       <div className="p-4 border-t border-nordic-darker space-y-2">
         <button
+          type="button"
+          onClick={() => router.push("/admin/subscribers")}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-nordic-gray hover:bg-nordic-darker hover:text-nordic-white transition-colors text-left"
+        >
+          <Mail size={20} />
+          <span className="font-medium">Viikkobulletiini / tilaajat</span>
+        </button>
+        <button
           onClick={() => setDarkMode(!darkMode)}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-nordic-gray hover:bg-nordic-darker hover:text-nordic-white transition-colors"
         >
           {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-          <span className="font-medium">{darkMode ? "Light Mode" : "Dark Mode"}</span>
+          <span className="font-medium">
+            {darkMode ? "Light Mode" : "Dark Mode"}
+          </span>
         </button>
         <button
           onClick={() => router.push("/")}
@@ -74,4 +92,3 @@ export default function AdminSidebar({
     </aside>
   );
 }
-

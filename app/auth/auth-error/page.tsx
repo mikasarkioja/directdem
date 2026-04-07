@@ -5,6 +5,8 @@ const MESSAGES: Record<string, string> = {
   no_user_after_exchange: "Istuntoa ei saatu luotua. Yritä uudelleen.",
   exchange_failed:
     "Kirjautumiskoodi on vanhentunut tai virheellinen. Yritä kirjautua uudelleen.",
+  admin_required:
+    "Tarvitset ylläpitäjätilin (profiles.is_admin). Pyydä oikeuksia tai päivitä tieto Supabasessa.",
 };
 
 type Props = { searchParams: Promise<{ message?: string }> };
@@ -21,12 +23,20 @@ export default async function AuthErrorPage({ searchParams }: Props) {
           Kirjautumisvirhe
         </h1>
         <p className="mt-2 text-sm text-red-700 dark:text-red-300">{message}</p>
-        <Link
-          href="/login"
-          className="mt-4 inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-        >
-          Siirry kirjautumiseen
-        </Link>
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/login"
+            className="inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            Siirry kirjautumiseen
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-block rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-50 dark:border-red-700 dark:bg-transparent dark:text-red-200 dark:hover:bg-red-950/50"
+          >
+            Etusivu / dashboard
+          </Link>
+        </div>
       </div>
     </div>
   );

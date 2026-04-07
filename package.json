@@ -16,7 +16,12 @@
     "test:coverage": "vitest run --coverage",
     "grant-admin": "tsx scripts/grant-admin-by-email.ts",
     "test-bulletin": "tsx scripts/send-test-weekly-bulletin.ts",
-    "test-bulletin:fixture": "tsx scripts/send-test-weekly-bulletin.ts --fixture"
+    "test-bulletin:fixture": "tsx scripts/send-test-weekly-bulletin.ts --fixture",
+    "sync-bulletin-feed": "tsx scripts/sync-bulletin-feed.ts",
+    "sync-bills-latest": "tsx scripts/sync-latest-bills-eduskunta-espoo.ts",
+    "sync-all": "tsx scripts/sync-all.ts",
+    "sync-all:full": "tsx scripts/sync-all.ts --full",
+    "apply-lobbyist-schema": "tsx scripts/apply-lobbyist-schema.ts"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -77,6 +82,7 @@
     "jsdom": "^27.4.0",
     "lint-staged": "^16.2.7",
     "postcss": "^8.4.47",
+    "postgres": "^3.4.9",
     "prettier": "^3.8.0",
     "tailwindcss": "^3.4.13",
     "tsx": "^4.21.0",

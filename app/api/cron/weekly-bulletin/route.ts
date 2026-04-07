@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getResendFromEmail, sendResendEmail } from "@/lib/resend";
 import { generateWeeklyReportEmailPayload } from "@/lib/bulletin/generator";
+import { syncBulletinFeedTables } from "@/lib/bulletin/sync-feed-from-sources";
 import { scanEspooLobbyTraceability } from "@/lib/municipal/espoo-lobby-traceability";
 
 export const maxDuration = 300;
@@ -34,17 +35,31 @@ export async function GET(request: NextRequest) {
     const supabase = await createAdminClient();
     const fromEmail = getResendFromEmail();
 
-    // 1) Refresh Espoo lobby traceability data before bulletin generation
+    // 1) Hydrate national + lobby + municipal feed rows from source tables
+    try {
+      const syncResult = await syncBulletinFeedTables(supabase);
+      logger.info("Bulletin feed sync:", syncResult);
+      if (syncResult.errors.length) {
+        logger.warn("Bulletin feed sync had errors:", syncResult.errors);
+      }
+    } catch (syncError: any) {
+      logger.error(
+        "Bulletin feed sync failed:",
+        syncError?.message ?? syncError,
+      );
+    }
+
+    // 2) Refresh Espoo lobby traceability (espoo_lobby_traces) before generation
     try {
       await scanEspooLobbyTraceability();
     } catch (scanError: any) {
       logger.error("Espoo lobby scan failed:", scanError?.message ?? scanError);
     }
 
-    // 2) Create bulletin content once (generic mass send content)
+    // 3) Create bulletin content once (mass send uses same HTML for all)
     const payload = await generateWeeklyReportEmailPayload();
 
-    // 3) Save archive first
+    // 4) Save archive first
     const archiveResult = await supabase.from("newsletter_archive").insert({
       generated_html: payload.html,
       sent_at: new Date().toISOString(),
@@ -53,7 +68,7 @@ export async function GET(request: NextRequest) {
       logger.error("Failed to archive bulletin:", archiveResult.error.message);
     }
 
-    // 4) Fetch active recipients
+    // 5) Fetch active recipients
     let subscribersErrorMessage: string | null = null;
     const { data: subscribers, error: subscribersError } = await supabase
       .from("newsletter_subscribers")
@@ -72,7 +87,7 @@ export async function GET(request: NextRequest) {
       .map((s) => s.email)
       .filter((email): email is string => Boolean(email));
 
-    // 5) Mass send the same generated content to everyone
+    // 6) Mass send the same generated content to everyone
     let sentCount = 0;
     let sendErrors = 0;
     const batchSize = 50; // bonus: lightweight batch sending in chunks

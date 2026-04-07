@@ -12,6 +12,8 @@ const envSchema = z.object({
   /** Google Gemini (Media Watch -analyysi); mallin nimi: GEMINI_MEDIA_WATCH_MODEL */
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MEDIA_WATCH_MODEL: z.string().optional(),
+  /** Viikkobulletiinin editor (generateWeeklyBulletin); oletus koodissa gemini-3-flash-preview */
+  GEMINI_BULLETIN_MODEL: z.string().optional(),
 
   /** Cron-reitit (Authorization: Bearer …) */
   CRON_SECRET: z.string().optional(),

@@ -20,17 +20,26 @@ import {
   Calendar,
   MapPin,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
 import type { Bill, VoteStats, IntegrityAlert } from "@/lib/types";
+import type { LobbyInterventionRow } from "@/lib/lobby/types";
 import { regenerateBillSummary } from "@/app/actions/process-bill";
 import { getIntegrityAlertsForEvent } from "@/lib/actions/promise-actions";
-import ExpertSummary from "./committee/ExpertSummary";
+import CitizenLongForm from "./bills/CitizenLongForm";
 import ShadowPowerMeter from "./dashboard/ShadowPowerMeter";
 import VoteButton from "./VoteButton";
 import BillHeatmap from "./BillHeatmap";
 import { getVoteStats } from "@/app/actions/votes";
 import { trackEngagement, confirmAlert } from "@/app/actions/dna";
 import { fetchEnhancedMunicipalProfile } from "@/app/actions/municipal-ai";
+import {
+  fetchAndAnalyzeLobbyists,
+  getLobbyistInterventionsForBill,
+  getLobbyTraceabilityCapabilities,
+} from "@/app/actions/lobbyist-traceability";
+import { LobbyistBattleground } from "@/components/lobby/LobbyistBattleground";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -50,6 +59,14 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
   const [confirmedAlerts, setConfirmedAlerts] = useState<Set<string>>(
     new Set(),
   );
+  const [lobbyRows, setLobbyRows] = useState<LobbyInterventionRow[]>([]);
+  const [lobbyLoading, setLobbyLoading] = useState(true);
+  const [lobbySyncing, setLobbySyncing] = useState(false);
+  const [canLobbySync, setCanLobbySync] = useState(false);
+  const [billAiProfile, setBillAiProfile] = useState<{
+    expert_impact_assessment?: string | null;
+    deep_analysis?: string | null;
+  } | null>(null);
 
   const handleConfirmAlert = async (alertId: string) => {
     if (confirmedAlerts.has(alertId)) return;
@@ -81,6 +98,73 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
     };
   }, [bill.id, bill.parliamentId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLobbyLoading(true);
+      try {
+        const [rows, cap] = await Promise.all([
+          getLobbyistInterventionsForBill(bill.id),
+          getLobbyTraceabilityCapabilities(),
+        ]);
+        if (!cancelled) {
+          setLobbyRows(rows);
+          setCanLobbySync(cap.canSync);
+        }
+      } finally {
+        if (!cancelled) setLobbyLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bill.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/bills/${bill.id}/ai-profile`);
+        if (!res.ok) {
+          if (!cancelled) setBillAiProfile({});
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) {
+          setBillAiProfile({
+            expert_impact_assessment: data.expert_impact_assessment ?? null,
+            deep_analysis: data.deep_analysis ?? null,
+          });
+        }
+      } catch {
+        if (!cancelled) setBillAiProfile({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bill.id]);
+
+  const handleLobbySync = async () => {
+    setLobbySyncing(true);
+    try {
+      const res = await fetchAndAnalyzeLobbyists(bill.id);
+      if (res.success) {
+        toast.success(
+          `Lobbausanalyysi valmis: ${res.inserted ?? 0} organisaatiota.`,
+        );
+        const rows = await getLobbyistInterventionsForBill(bill.id);
+        setLobbyRows(rows);
+      } else {
+        toast.error(res.error || "Lobbausanalyysi epäonnistui.");
+      }
+    } catch {
+      toast.error("Lobbausanalyysi epäonnistui.");
+    } finally {
+      setLobbySyncing(false);
+    }
+  };
+
   const handleRegenerate = async () => {
     setProcessing(true);
     try {
@@ -94,6 +178,18 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
           "parliament",
         );
         if (freshEnhanced) setEnhancedData(freshEnhanced);
+        try {
+          const pr = await fetch(`/api/bills/${bill.id}/ai-profile`);
+          if (pr.ok) {
+            const d = await pr.json();
+            setBillAiProfile({
+              expert_impact_assessment: d.expert_impact_assessment ?? null,
+              deep_analysis: d.deep_analysis ?? null,
+            });
+          }
+        } catch {
+          /* keep existing billAiProfile */
+        }
         toast.success("AI-analyysi päivitetty!");
       }
     } catch (e) {
@@ -113,6 +209,14 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
   const frictionIndex =
     enhancedData?.forecast_metrics?.friction_index ||
     enhancedData?.analysis_data?.analysis_depth?.friction_index;
+
+  const expertDocument =
+    billAiProfile?.expert_impact_assessment?.trim() ||
+    savedSummary?.trim() ||
+    "" ||
+    "";
+
+  const deepDocument = billAiProfile?.deep_analysis?.trim() || "";
 
   return (
     <motion.div
@@ -164,22 +268,89 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
         </div>
 
         <div className="p-6 md:p-12 space-y-12">
-          {/* Primary focus: plain-language decoding */}
+          {/* Primary: pre-processed asiantuntijaselonteko & vaikutusarviointi */}
           <section
-            aria-label="Lain selkokielinen tiivistelma"
-            className="p-8 md:p-10 bg-blue-600/10 border border-blue-500/20 rounded-[2.5rem] space-y-5"
+            aria-label="Asiantuntijaselonteko ja vaikutusarviointi"
+            className="rounded-[2.5rem] border border-sky-500/25 bg-slate-950/60 overflow-hidden"
           >
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-300">
-              Mita tama laki tarkoittaa sinulle
-            </p>
-            <p className="text-2xl md:text-3xl font-semibold text-white leading-relaxed">
-              {savedSummary?.slice(0, 450) ||
-                "Selkokielinen tiivistelma paivittyy hetken kuluttua."}
-            </p>
-            <p className="text-sm md:text-base text-blue-100/90 font-medium leading-relaxed">
-              Arjen vaikutus: taman lain vaikutus voi nakya palveluissa,
-              kustannuksissa tai paatoksenteon nopeudessa alueellasi.
-            </p>
+            <div className="border-l-4 border-sky-500/80 px-6 md:px-10 py-8 md:py-10">
+              <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3 text-sky-300">
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/15 flex items-center justify-center border border-sky-500/25">
+                    <Info size={18} />
+                  </div>
+                  <h3 className="text-[11px] md:text-xs font-black uppercase tracking-[0.18em]">
+                    Asiantuntijaselonteko &amp; vaikutusarviointi
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRegenerate}
+                  disabled={processing}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-all"
+                >
+                  {processing ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={12} />
+                  )}
+                  Päivitä analyysi
+                </button>
+              </div>
+              <div className="max-h-[min(55vh,520px)] overflow-y-auto pr-2 custom-scrollbar">
+                {expertDocument ? (
+                  <CitizenLongForm text={expertDocument} />
+                ) : (
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    Esivalmisteltua asiantuntijatekstiä ei ole vielä tälle
+                    esitykselle. Voit päivittää analyysin tai odottaa
+                    taustakäsittelyä — sillä välin näet mittarit ja
+                    lobbaustiedot alla.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Syväanalyysi: optional long-form (~20k), AI + talous */}
+          <section aria-label="Syväanalyysi">
+            <details className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/50 group">
+              <summary className="cursor-pointer list-none flex flex-wrap items-center justify-between gap-3 px-6 py-5 md:px-8 md:py-6">
+                <div className="flex items-center gap-3 text-cyan-200">
+                  <Sparkles size={18} className="text-cyan-400" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+                      Syväanalyysi
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1 font-medium">
+                      AI + talous — laajennettu näkymä (n. 20&nbsp;000 merkkiä)
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/90 group-open:hidden">
+                  Avaa
+                </span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/90 hidden group-open:inline">
+                  Sulje
+                </span>
+              </summary>
+              <div className="px-6 md:px-8 pb-8 border-t border-white/5">
+                <div className="max-h-[min(65vh,720px)] overflow-y-auto pt-6 pr-2 custom-scrollbar">
+                  {deepDocument ? (
+                    <CitizenLongForm text={deepDocument} />
+                  ) : (
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      Syväanalyysiä ei ole vielä tallennettu tälle esitykselle.
+                      Se täydennetään erillisessä käsittelyputkessa (
+                      <code className="text-slate-400 text-xs">
+                        bill_ai_profiles.deep_analysis
+                      </code>
+                      ).
+                    </p>
+                  )}
+                </div>
+              </div>
+            </details>
           </section>
 
           {/* Secondary focus: predictive + traceability insights */}
@@ -265,6 +436,48 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
               Avaa varjo-aanestys
               <ExternalLink size={12} />
             </Link>
+          </section>
+
+          <section
+            aria-label="Lobbauskenttä ja synkronointi"
+            className="space-y-4 rounded-[2rem] border border-amber-500/15 bg-slate-950/40 p-6 md:p-8"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">
+                  Lobbyist traceability
+                </p>
+                <p className="text-sm text-slate-400 mt-1 max-w-xl">
+                  Näet organisaatioiden julkiset kannanotot ja tiivistelmät
+                  selkokielellä. Synkronointi hakee lähteet hallinnon
+                  palveluista ja analysoi ne tekoälyllä.
+                </p>
+              </div>
+              {canLobbySync ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-amber-600/50 text-amber-200 hover:bg-amber-500/10"
+                  disabled={lobbySyncing}
+                  onClick={handleLobbySync}
+                >
+                  {lobbySyncing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Päivitä lobbausdata
+                </Button>
+              ) : null}
+            </div>
+            {lobbyLoading ? (
+              <div className="flex items-center gap-2 text-xs text-slate-500 py-6">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Ladataan lobbauskenttää...
+              </div>
+            ) : (
+              <LobbyistBattleground interventions={lobbyRows} />
+            )}
           </section>
 
           {/* Friction Index */}
@@ -544,22 +757,6 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                 </div>
               </motion.div>
             </details>
-          )}
-
-          {/* Expert Summary */}
-          {savedSummary && (
-            <ExpertSummary
-              bill={
-                {
-                  ...bill,
-                  summary: savedSummary,
-                  ...(enhancedData?.analysis_data?.analysis_depth || {}),
-                } as any
-              }
-              onGiveStatement={() => {}}
-              onRegenerate={handleRegenerate}
-              isRegenerating={processing}
-            />
           )}
 
           {/* Hotspots Section */}

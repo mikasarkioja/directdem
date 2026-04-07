@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS bill_ai_profiles (
     audience_hook TEXT,
     dna_impact JSONB DEFAULT '{}', -- { "economic": 0.5, "liberal": 0.2, ... }
     controversy_score FLOAT DEFAULT 0,
+    expert_impact_assessment TEXT, -- ~8k asiantuntijaselonteko & vaikutusarviointi
+    deep_analysis TEXT, -- ~20k syväanalyysi (AI + talous)
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

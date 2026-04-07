@@ -66,7 +66,7 @@ async function main() {
         issueDate,
         parliamentData: {
           summary:
-            "Tämä on testilähetys: tuotantotietokannassa tarvitaan taulut (decisions, lobbyist_traces, …) ja OPENAI_API_KEY täyttöön.",
+            "Testilähetys. Tuotannossa: aja supabase/weekly-bulletin-production-schema.sql ja aseta OPENAI_API_KEY.",
           predictions: [
             {
               title: "Esimerkki: lakiuudistus etenee valiokuntaan",

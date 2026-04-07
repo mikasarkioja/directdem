@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/sync-news",
-      "schedule": "25 */2 * * *"
+      "schedule": "25 8 * * *"
     }
   ]
 }

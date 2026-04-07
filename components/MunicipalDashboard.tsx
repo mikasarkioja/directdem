@@ -2,9 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { fetchMunicipalDecisions } from "@/app/actions/municipal";
+import {
+  fetchMunicipalDecisions,
+  revalidateMunicipalDecisions,
+} from "@/app/actions/municipal";
 import type { UserProfile } from "@/lib/types";
-import { Loader2, RefreshCw, Building2, ChevronRight, Calendar, MapPin, XCircle, Zap, Info, CheckCircle2, AlertTriangle } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  Building2,
+  ChevronRight,
+  Calendar,
+  MapPin,
+  XCircle,
+  Zap,
+  Info,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 import MunicipalDetail from "./municipal/MunicipalDetail";
 
 interface MunicipalDashboardProps {
@@ -12,15 +27,19 @@ interface MunicipalDashboardProps {
   initialMunicipality?: string;
 }
 
-export default function MunicipalDashboard({ user, initialMunicipality = "Helsinki" }: MunicipalDashboardProps) {
+export default function MunicipalDashboard({
+  user,
+  initialMunicipality = "Helsinki",
+}: MunicipalDashboardProps) {
   const [municipality, setMunicipality] = useState(initialMunicipality);
   const [cases, setCases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCase, setSelectedCase] = useState<any | null>(null);
 
-  const loadCases = async (muni: string) => {
+  const loadCases = async (muni: string, bustCache = false) => {
     try {
       setLoading(true);
+      if (bustCache) await revalidateMunicipalDecisions(muni);
       const data = await fetchMunicipalDecisions(muni);
       setCases(data);
     } catch (error) {
@@ -42,9 +61,9 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
       {/* Detail View Modal */}
       <AnimatePresence>
         {selectedCase && (
-          <MunicipalDetail 
-            item={selectedCase} 
-            onClose={() => setSelectedCase(null)} 
+          <MunicipalDetail
+            item={selectedCase}
+            onClose={() => setSelectedCase(null)}
           />
         )}
       </AnimatePresence>
@@ -53,17 +72,19 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1 bg-[var(--accent-primary)]/10 rounded-full border border-[var(--accent-primary)]/20">
             <Building2 size={12} className="text-[var(--accent-primary)]" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-[var(--accent-primary)]">Kuntavahti</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-[var(--accent-primary)]">
+              Kuntavahti
+            </span>
           </div>
-          
+
           <div className="flex gap-1 p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10">
-            {cities.map(city => (
+            {cities.map((city) => (
               <button
                 key={city}
                 onClick={() => setMunicipality(city)}
                 className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-                  municipality === city 
-                    ? "bg-white dark:bg-white/10 text-command-dark dark:text-white shadow-sm" 
+                  municipality === city
+                    ? "bg-white dark:bg-white/10 text-command-dark dark:text-white shadow-sm"
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 }`}
               >
@@ -73,17 +94,31 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
           </div>
         </div>
 
-        <button onClick={() => loadCases(municipality)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors text-slate-400">
+        <button
+          onClick={() => loadCases(municipality, true)}
+          className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors text-slate-400"
+        >
           <RefreshCw size={16} />
         </button>
       </div>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 -mt-2 mb-2 max-w-2xl leading-relaxed">
+        Järjestys: valtuusto ensin, sitten muut elimet (lautakunnat ja jaostot
+        painetaan alas). Talousvaikutukseltaan vahvimmat edellä
+        (kustannusarviot, vaikutuspisteet, taloustermit), lopuksi uusimmat.
+        Listalla enintään kahdeksan lautakunta-/jaostoriviä, jotta näkymä ei
+        täyty lautakunnista.
+      </p>
 
       <div className="grid gap-4">
         {loading ? (
-          <div className="flex justify-center p-12"><Loader2 className="animate-spin text-command-neon" size={32} /></div>
+          <div className="flex justify-center p-12">
+            <Loader2 className="animate-spin text-command-neon" size={32} />
+          </div>
         ) : cases.length === 0 ? (
           <div className="p-12 text-center bg-slate-50 dark:bg-white/5 rounded-[2rem] border border-dashed border-slate-200 dark:border-white/10">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ei esityksiä löytynyt kaupungille {municipality}</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Ei esityksiä löytynyt kaupungille {municipality}
+            </p>
           </div>
         ) : (
           cases.map((item, index) => (
@@ -95,13 +130,15 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
               onClick={() => {
                 setSelectedCase(item);
                 // Scroll to top of the list to see the detail
-                const container = document.querySelector('.custom-scrollbar');
+                const container = document.querySelector(".custom-scrollbar");
                 if (container) {
-                  container.scrollTo({ top: 0, behavior: 'smooth' });
+                  container.scrollTo({ top: 0, behavior: "smooth" });
                 }
               }}
               className={`bg-white dark:bg-slate-900/50 border p-6 rounded-3xl cursor-pointer hover:border-[var(--accent-primary)]/30 transition-all group relative overflow-hidden ${
-                selectedCase?.id === item.id ? 'border-[var(--accent-primary)] shadow-lg' : 'border-slate-200 dark:border-white/5'
+                selectedCase?.id === item.id
+                  ? "border-[var(--accent-primary)] shadow-lg"
+                  : "border-slate-200 dark:border-white/5"
               }`}
             >
               <div className="flex justify-between items-start gap-4">
@@ -113,7 +150,9 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
                     {item.decision_date && (
                       <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1">
                         <Calendar size={10} />
-                        {new Date(item.decision_date).toLocaleDateString('fi-FI')}
+                        {new Date(item.decision_date).toLocaleDateString(
+                          "fi-FI",
+                        )}
                       </span>
                     )}
                     <span className="text-[9px] font-bold text-[var(--accent-primary)] opacity-60 uppercase tracking-widest ml-auto">
@@ -123,13 +162,17 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
                   <h3 className="text-base font-black text-command-dark dark:text-white group-hover:text-[var(--accent-primary)] transition-colors leading-tight mb-2">
                     {item.title}
                   </h3>
-                  
+
                   {/* Visual Cost Meter Badge */}
                   {item.cost_estimate && (
                     <div className="flex items-center gap-2 mb-3 px-3 py-1.5 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 w-fit">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">
-                        Kustannusarvio: {new Intl.NumberFormat('fi-FI').format(item.cost_estimate)} €
+                        Kustannusarvio:{" "}
+                        {new Intl.NumberFormat("fi-FI").format(
+                          item.cost_estimate,
+                        )}{" "}
+                        €
                       </span>
                     </div>
                   )}
@@ -139,7 +182,10 @@ export default function MunicipalDashboard({ user, initialMunicipality = "Helsin
                   </p>
                 </div>
                 <div className="self-center">
-                  <ChevronRight size={20} className="text-slate-300 group-hover:text-[var(--accent-primary)] group-hover:translate-x-1 transition-all" />
+                  <ChevronRight
+                    size={20}
+                    className="text-slate-300 group-hover:text-[var(--accent-primary)] group-hover:translate-x-1 transition-all"
+                  />
                 </div>
               </div>
             </motion.div>

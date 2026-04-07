@@ -85,9 +85,24 @@ async function main() {
             title: "Demokratiavaje-indeksi (demo)",
             percentage: 42,
           },
+          weeklyBillHeaders: [
+            {
+              parliamentId: "HE 1/2026",
+              title: "Esimerkkilaki (fixture)",
+              dateLabel: "1.1.2026",
+              url: "https://example.com/he",
+            },
+          ],
         },
         espooData: {
           summary: "Espoo-osio näkyy tässä testissä staattisena tekstinä.",
+          weeklyCaseHeaders: [
+            {
+              title: "Esimerkki: valtuuston esityslista (fixture)",
+              dateLabel: "2.1.2026",
+              url: "https://example.com/espoo",
+            },
+          ],
           updates: [
             {
               title: "Esimerkkipäätös",

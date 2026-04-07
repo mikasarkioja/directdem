@@ -13,52 +13,64 @@ import { isFeatureEnabled } from "@/lib/config/features";
 
 export const revalidate = 900; // Päivitä sivu 15 minuutin välein
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const user = await getUser();
   const resolvedSearchParams = await searchParams;
-  const view = (resolvedSearchParams.view as string) || "committee";
+  const view = (resolvedSearchParams.view as string) || "citizen";
   const lens = (resolvedSearchParams.lens as string) || "national";
-  
+
   // Esihaku: Ladataan kriittinen data jo palvelimella
   const billsPromise = fetchBillsFromSupabase();
   const feedPromise = getIntelligenceFeed(user);
-  
+
   // Kunnalliset päätökset jos ollaan kuntanäkymässä tai linssi on asetettu
   let municipalPromise: Promise<any[]> = Promise.resolve([]);
   if (view === "kuntavahti" || lens !== "national") {
-    const muniName = lens !== "national" ? lens.charAt(0).toUpperCase() + lens.slice(1) : "Espoo";
+    const muniName =
+      lens !== "national"
+        ? lens.charAt(0).toUpperCase() + lens.slice(1)
+        : "Espoo";
     municipalPromise = fetchMunicipalDecisions(muniName);
   }
-  
+
   // Tutkijatilastot jos ollaan tutkijanäkymässä
   let statsPromise: Promise<any> = Promise.resolve(null);
   if (view === "researcher") {
     statsPromise = getResearcherStats();
   }
 
-  const [initialBills, initialMunicipalTasks, initialStats, feedItems] = await Promise.all([
-    billsPromise,
-    municipalPromise,
-    statsPromise,
-    feedPromise
-  ]);
+  const [initialBills, initialMunicipalTasks, initialStats, feedItems] =
+    await Promise.all([
+      billsPromise,
+      municipalPromise,
+      statsPromise,
+      feedPromise,
+    ]);
 
   const isResearcher = view === "researcher";
 
   return (
     <div className="min-h-screen bg-nordic-white">
       <Navbar user={user} />
-      <main className={`${isResearcher ? 'max-w-[1600px]' : 'max-w-7xl'} mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-500 space-y-12`}>
-        <Suspense fallback={
-          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-            <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
-            <p className="text-slate-400 font-black uppercase tracking-widest text-xs animate-pulse">
-              Ladataan Digitaalista Työhuonetta...
-            </p>
-          </div>
-        }>
-          <DashboardClient 
-            initialUser={user} 
+      <main
+        className={`${isResearcher ? "max-w-[1600px]" : "max-w-7xl"} mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-500 space-y-12`}
+      >
+        <Suspense
+          fallback={
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+              <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+              <p className="text-slate-400 font-black uppercase tracking-widest text-xs animate-pulse">
+                Ladataan Digitaalista Työhuonetta...
+              </p>
+            </div>
+          }
+        >
+          <DashboardClient
+            initialUser={user}
             prefetchedBills={initialBills}
             prefetchedMunicipalTasks={initialMunicipalTasks}
             prefetchedStats={initialStats}
@@ -75,4 +87,3 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     </div>
   );
 }
-

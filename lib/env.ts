@@ -9,6 +9,13 @@ const envSchema = z.object({
   // OpenAI
   OPENAI_API_KEY: z.string().min(1).optional().default("missing"),
 
+  /** Google Gemini (Media Watch -analyysi); mallin nimi: GEMINI_MEDIA_WATCH_MODEL */
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MEDIA_WATCH_MODEL: z.string().optional(),
+
+  /** Cron-reitit (Authorization: Bearer …) */
+  CRON_SECRET: z.string().optional(),
+
   // Feature Flags
   NEXT_PUBLIC_XP_SYSTEM_ENABLED: z.string().optional().default("true"),
   NEXT_PUBLIC_MUNICIPAL_WATCH_ENABLED: z.string().optional().default("true"),

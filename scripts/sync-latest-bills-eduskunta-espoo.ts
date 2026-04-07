@@ -1,14 +1,14 @@
 /**
  * Populate latest:
  *   • Eduskunta HE-list → public.bills (parliament_id upsert)
- *   • Espoo valtuusto RSS → public.municipal_cases (municipality + external_id upsert)
+ *   • Espoo meeting-items RSS → public.municipal_cases (municipality + external_id upsert)
  *
  * Requires in .env.local: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *
  * Usage:
  *   npx tsx scripts/sync-latest-bills-eduskunta-espoo.ts
  *   npx tsx scripts/sync-latest-bills-eduskunta-espoo.ts --eduskunta 80 --espoo 40
- *   npx tsx scripts/sync-latest-bills-eduskunta-espoo.ts --espoo-all   # all RSS rows, not only "valtuusto"
+ *   npx tsx scripts/sync-latest-bills-eduskunta-espoo.ts --espoo-valtuusto-only   # narrow RSS filter only
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -27,7 +27,7 @@ function parseArgs(): {
   const a = process.argv.slice(2);
   let eduskunta = 50;
   let espoo = 40;
-  let espooAllRss = false;
+  let espooAllRss = true;
   for (let i = 0; i < a.length; i++) {
     if (a[i] === "--eduskunta" && a[i + 1]) {
       eduskunta = Math.max(1, parseInt(a[i + 1], 10) || 50);
@@ -37,6 +37,8 @@ function parseArgs(): {
       i++;
     } else if (a[i] === "--espoo-all") {
       espooAllRss = true;
+    } else if (a[i] === "--espoo-valtuusto-only") {
+      espooAllRss = false;
     }
   }
   return { eduskunta, espoo, espooAllRss };

@@ -37,6 +37,21 @@ export interface DemocracyDeficit {
   percentage: number;
 }
 
+/** Factual index rows (not from AI) — Eduskunta `bills` in the reporting window. */
+export interface WeeklyParliamentBillHeader {
+  parliamentId: string;
+  title: string;
+  dateLabel: string;
+  url?: string | null;
+}
+
+/** Factual index rows — Espoo `municipal_cases` in the reporting window. */
+export interface WeeklyEspooCaseHeader {
+  title: string;
+  dateLabel: string;
+  url?: string | null;
+}
+
 export interface WeeklyBulletinEmailProps {
   issueDate: string;
   parliamentData: {
@@ -44,11 +59,15 @@ export interface WeeklyBulletinEmailProps {
     predictions: WeeklyPrediction[];
     lobbyistHits: LobbyistHit[];
     deficitIndicator?: DemocracyDeficit;
+    /** All legislative bill titles from the last week (Eduskunta). */
+    weeklyBillHeaders?: WeeklyParliamentBillHeader[];
   };
   espooData: {
     summary: string;
     updates: EspooUpdate[];
     deficitIndicator?: DemocracyDeficit;
+    /** All municipal case titles from the last week (Espoo). */
+    weeklyCaseHeaders?: WeeklyEspooCaseHeader[];
   };
 }
 
@@ -63,6 +82,8 @@ export default function WeeklyBulletin({
   parliamentData,
   espooData,
 }: WeeklyBulletinEmailProps) {
+  const parliamentHeaders = parliamentData.weeklyBillHeaders ?? [];
+  const espooHeaders = espooData.weeklyCaseHeaders ?? [];
   return (
     <Html>
       <Head />
@@ -81,6 +102,47 @@ export default function WeeklyBulletin({
               🏛️ Eduskunta
             </Heading>
             <Text style={styles.paragraph}>{parliamentData.summary}</Text>
+
+            <Heading as="h3" style={styles.subSectionTitle}>
+              Viikon lainsäädännölliset esitykset (Eduskunta)
+            </Heading>
+            {parliamentHeaders.length === 0 ? (
+              <Text style={styles.paragraph}>
+                Ei uusia tai päivitettyjä esityksiä raportointijaksolla
+                (viimeiset 7 päivää).
+              </Text>
+            ) : (
+              <Section style={styles.headerIndexBox}>
+                {parliamentHeaders.map((row, idx) => (
+                  <Text key={`bill-h-${idx}`} style={styles.headerIndexLine}>
+                    {row.url ? (
+                      <Link href={row.url} style={styles.headerIndexLink}>
+                        <strong style={{ color: "#0f172a" }}>
+                          {row.parliamentId}
+                        </strong>
+                        {" — "}
+                        {row.title}
+                      </Link>
+                    ) : (
+                      <>
+                        <strong style={{ color: "#0f172a" }}>
+                          {row.parliamentId}
+                        </strong>
+                        {" — "}
+                        {row.title}
+                      </>
+                    )}
+                    {row.dateLabel ? (
+                      <span style={styles.headerIndexMeta}>
+                        {" "}
+                        ({row.dateLabel})
+                      </span>
+                    ) : null}
+                  </Text>
+                ))}
+              </Section>
+            )}
+
             <Heading as="h3" style={styles.subSectionTitle}>
               Viikon ennusteet
             </Heading>
@@ -155,6 +217,36 @@ export default function WeeklyBulletin({
               📍 Espoo
             </Heading>
             <Text style={styles.paragraph}>{espooData.summary}</Text>
+
+            <Heading as="h3" style={styles.subSectionTitle}>
+              Viikon esitykset (Espoo)
+            </Heading>
+            {espooHeaders.length === 0 ? (
+              <Text style={styles.paragraph}>
+                Ei uusia esityksiä raportointijaksolla (viimeiset 7 päivää).
+              </Text>
+            ) : (
+              <Section style={styles.headerIndexBoxEspoo}>
+                {espooHeaders.map((row, idx) => (
+                  <Text key={`espoo-h-${idx}`} style={styles.headerIndexLine}>
+                    {row.url ? (
+                      <Link href={row.url} style={styles.headerIndexLink}>
+                        {row.title}
+                      </Link>
+                    ) : (
+                      row.title
+                    )}
+                    {row.dateLabel ? (
+                      <span style={styles.headerIndexMeta}>
+                        {" "}
+                        ({row.dateLabel})
+                      </span>
+                    ) : null}
+                  </Text>
+                ))}
+              </Section>
+            )}
+
             <Heading as="h3" style={styles.subSectionTitle}>
               Espoo-vahti
             </Heading>
@@ -342,5 +434,34 @@ const styles = {
     color: "#1d4ed8",
     textDecoration: "underline",
     fontWeight: "700",
+  },
+  headerIndexBox: {
+    backgroundColor: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    borderRadius: "8px",
+    padding: "12px 14px",
+    marginBottom: "16px",
+  },
+  headerIndexBoxEspoo: {
+    backgroundColor: "#ecfdf5",
+    border: "1px solid #a7f3d0",
+    borderRadius: "8px",
+    padding: "12px 14px",
+    marginBottom: "16px",
+  },
+  headerIndexLine: {
+    margin: "0 0 8px",
+    color: "#334155",
+    fontSize: "13px",
+    lineHeight: "1.55",
+  },
+  headerIndexLink: {
+    color: "#1d4ed8",
+    textDecoration: "none",
+    fontWeight: "600",
+  },
+  headerIndexMeta: {
+    color: "#64748b",
+    fontWeight: "400",
   },
 } as const;

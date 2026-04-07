@@ -11,7 +11,7 @@ export async function startDeepAnalysis(itemId: string) {
 
   // 1. Get the item from either table
   let item: any = null;
-  
+
   const { data: analysisItem } = await supabase
     .from("meeting_analysis")
     .select("*")
@@ -26,15 +26,34 @@ export async function startDeepAnalysis(itemId: string) {
       .select("*")
       .eq("id", itemId)
       .maybeSingle();
-    
+
     if (decisionItem) {
       item = {
         id: decisionItem.id,
         meeting_title: decisionItem.title,
         municipality: decisionItem.municipality,
-        raw_content: decisionItem.content_summary,
-        ai_summary: decisionItem.ai_summary || {}
+        raw_content: decisionItem.content_summary ?? decisionItem.summary,
+        ai_summary: decisionItem.ai_summary || {},
       };
+    } else {
+      const { data: caseItem } = await supabase
+        .from("municipal_cases")
+        .select("*")
+        .eq("id", itemId)
+        .maybeSingle();
+
+      if (caseItem) {
+        const raw = [caseItem.summary, caseItem.raw_text]
+          .filter(Boolean)
+          .join("\n\n");
+        item = {
+          id: caseItem.id,
+          meeting_title: caseItem.title,
+          municipality: caseItem.municipality,
+          raw_content: raw || caseItem.title,
+          ai_summary: {},
+        };
+      }
     }
   }
 
@@ -46,7 +65,7 @@ export async function startDeepAnalysis(itemId: string) {
     title: item.meeting_title || item.title,
     municipality: item.municipality,
     raw_content: item.raw_content,
-    attachment_urls: item.ai_summary?.attachment_urls || [] 
+    attachment_urls: item.ai_summary?.attachment_urls || [],
   });
 
   if (result.success) {
@@ -56,11 +75,15 @@ export async function startDeepAnalysis(itemId: string) {
   return result;
 }
 
-export async function fetchEnhancedMunicipalProfile(itemId: string, municipality: string) {
+export async function fetchEnhancedMunicipalProfile(
+  itemId: string,
+  municipality: string,
+) {
   const supabase = await createClient();
-  const enhancedId = municipality === "parliament" 
-    ? itemId 
-    : `MUNI-${municipality.toUpperCase()}-${itemId}`;
+  const enhancedId =
+    municipality === "parliament"
+      ? itemId
+      : `MUNI-${municipality.toUpperCase()}-${itemId}`;
 
   const { data, error } = await supabase
     .from("bill_enhanced_profiles")
@@ -94,15 +117,29 @@ export async function generateMunicipalAiSummary(itemId: string) {
       .select("*")
       .eq("id", itemId)
       .maybeSingle();
-    
+
     if (decisionItem) {
       item = decisionItem;
       sourceTable = "municipal_decisions";
+    } else {
+      const { data: caseItem } = await supabase
+        .from("municipal_cases")
+        .select("*")
+        .eq("id", itemId)
+        .maybeSingle();
+
+      if (caseItem) {
+        item = caseItem;
+        sourceTable = "municipal_cases";
+      }
     }
   }
 
   if (!item) {
-    return { success: false, error: "Kohdetta ei löytynyt kummastakaan taulusta." };
+    return {
+      success: false,
+      error: "Kohdetta ei löytynyt kummastakaan taulusta.",
+    };
   }
 
   try {
@@ -112,7 +149,8 @@ export async function generateMunicipalAiSummary(itemId: string) {
       .select("full_name, party")
       .eq("municipality", item.municipality);
 
-    const councilorList = councilors?.map(c => `${c.full_name} (${c.party})`).join(", ") || "";
+    const councilorList =
+      councilors?.map((c) => `${c.full_name} (${c.party})`).join(", ") || "";
 
     // 3. AI Analysis & Deep Analysis Combined
     const { text: analysisJson } = await generateText({
@@ -159,46 +197,56 @@ export async function generateMunicipalAiSummary(itemId: string) {
       prompt: `
         Kaupunki: ${item.municipality}
         Otsikko: ${item.meeting_title || item.title}
-        Sisältö: ${(item.raw_content || item.content_summary || "").substring(0, 20000) || "Ei sisältöä."}
+        Sisältö: ${(item.raw_content || item.content_summary || item.summary || "").substring(0, 20000) || "Ei sisältöä."}
         
         Mahdolliset valtuutetut: ${councilorList}
       `,
       maxTokens: 8000,
-      temperature: 0.7
+      temperature: 0.7,
     });
 
-    const cleanedJson = analysisJson.replace(/```json\n?/, "").replace(/\n?```/, "").trim();
+    const cleanedJson = analysisJson
+      .replace(/```json\n?/, "")
+      .replace(/\n?```/, "")
+      .trim();
     const analysis = JSON.parse(cleanedJson);
 
     // 4. Update the DB (Both tables and enhanced profile)
     const enhancedId = `MUNI-${item.municipality.toUpperCase()}-${item.id}`;
-    
-    // Update meeting_analysis
+
     if (sourceTable === "meeting_analysis") {
-      await supabase.from("meeting_analysis").update({ ai_summary: analysis }).eq("id", itemId);
-    } else {
-      await supabase.from("municipal_decisions").update({ ai_summary: analysis }).eq("id", itemId);
+      await supabase
+        .from("meeting_analysis")
+        .update({ ai_summary: analysis })
+        .eq("id", itemId);
+    } else if (sourceTable === "municipal_decisions") {
+      await supabase
+        .from("municipal_decisions")
+        .update({ ai_summary: analysis })
+        .eq("id", itemId);
     }
+    // municipal_cases: persistent AI payload lives in bill_enhanced_profiles only
 
     // Update bill_enhanced_profiles for deep data persistent storage
-    await supabase.from("bill_enhanced_profiles").upsert({
-      bill_id: enhancedId,
-      title: item.meeting_title || item.title,
-      category: "Municipal",
-      dna_impact_vector: analysis.dna_impact,
-      analysis_data: { 
-        simple_summary: item.meeting_title || item.title,
-        analysis_depth: analysis.deep_analysis 
+    await supabase.from("bill_enhanced_profiles").upsert(
+      {
+        bill_id: enhancedId,
+        title: item.meeting_title || item.title,
+        category: "Municipal",
+        dna_impact_vector: analysis.dna_impact,
+        analysis_data: {
+          simple_summary: item.meeting_title || item.title,
+          analysis_depth: analysis.deep_analysis,
+        },
+        forecast_metrics: { friction_index: analysis.friction_index },
       },
-      forecast_metrics: { friction_index: analysis.friction_index }
-    }, { onConflict: "bill_id" });
+      { onConflict: "bill_id" },
+    );
 
     revalidatePath("/dashboard");
     return { success: true, analysis };
-
   } catch (err: any) {
     console.error("AI Generation Error:", err);
     return { success: false, error: err.message };
   }
 }
-

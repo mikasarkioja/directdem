@@ -16,6 +16,7 @@ import {
   PlusCircle,
   ShieldAlert,
   Briefcase,
+  UserCircle,
   Calendar,
   ChevronRight,
   Zap,
@@ -39,6 +40,9 @@ import ExpertSummary from "@/components/committee/ExpertSummary";
 import DNAActivation from "@/components/dashboard/DNAActivation";
 import ResearcherProfiling from "@/components/researcher/ResearcherProfiling";
 import MunicipalWatchFeed from "@/components/municipal/MunicipalWatchFeed";
+import MediaWatchPanel from "@/components/dashboard/MediaWatchPanel";
+import CitizenRealmBar from "@/components/dashboard/CitizenRealmBar";
+import CitizenBillMediaStrip from "@/components/dashboard/CitizenBillMediaStrip";
 import QuickPulse from "@/components/dashboard/QuickPulse";
 import LensSwitcher from "@/components/dashboard/LensSwitcher";
 import LocalWeather from "@/components/dashboard/LocalWeather";
@@ -91,9 +95,16 @@ export default function DashboardClient({
   );
   const [loading, setLoading] = useState(false); // Default to false since we have prefetched data
   const [creating, setCreating] = useState(false);
-  const [activeView, setActiveView] = useState<
-    "committee" | "kuntavahti" | "economy" | "researcher"
-  >("committee");
+  /** Kansalainen = kevyt selaus; committee = edustajan työtila (analyysit, media, talous). */
+  const [workspace, setWorkspace] = useState<
+    "citizen" | "committee" | "researcher"
+  >("citizen");
+  const [citizenRealm, setCitizenRealm] = useState<"parliament" | "municipal">(
+    "parliament",
+  );
+  const [committeePanel, setCommitteePanel] = useState<
+    "desk" | "media_watch" | "economy"
+  >("desk");
   const [lens, setLens] = useState<LensMode>("national");
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [newName, setNewName] = useState("");
@@ -151,25 +162,46 @@ export default function DashboardClient({
 
   useEffect(() => {
     const view = searchParams.get("view");
-    if (view === "kuntavahti") {
-      setActiveView("kuntavahti");
-    } else if (view === "researcher") {
-      setActiveView("researcher");
-    } else if (view === "economy") {
-      setActiveView("economy");
-    } else {
-      setActiveView("committee");
+    if (view === "researcher") {
+      setWorkspace("researcher");
+      return;
     }
+    if (view === "kuntavahti") {
+      setWorkspace("citizen");
+      setCitizenRealm("municipal");
+      return;
+    }
+    if (view === "media_watch") {
+      setWorkspace("committee");
+      setCommitteePanel("media_watch");
+      return;
+    }
+    if (view === "economy") {
+      setWorkspace("committee");
+      setCommitteePanel("economy");
+      return;
+    }
+    if (view === "committee" || view === "edustaja" || view === "shadow") {
+      setWorkspace("committee");
+      setCommitteePanel("desk");
+      return;
+    }
+    setWorkspace("citizen");
+    setCitizenRealm("parliament");
   }, [searchParams]);
   const [news, setNews] = useState<NewsItem[]>([]);
 
   useEffect(() => {
     async function loadNews() {
-      const newsData = await getCombinedNews(lens);
+      const feedLens =
+        workspace === "citizen" && citizenRealm === "parliament"
+          ? "national"
+          : lens;
+      const newsData = await getCombinedNews(feedLens);
       setNews(newsData);
     }
     loadNews();
-  }, [lens]);
+  }, [lens, workspace, citizenRealm]);
 
   useEffect(() => {
     // Check if DNA was just completed (fallback for slow DB sync)
@@ -203,39 +235,37 @@ export default function DashboardClient({
 
   useEffect(() => {
     async function loadData() {
-      // Allow unauthenticated users to see the citizen view
-      const currentUser = initialUser || profile;
-
-      // Skit initial load if we already have prefetched data for the current lens
-      const isInitialLoad =
-        bills.length === prefetchedBills.length &&
-        municipalTasks.length === prefetchedMunicipalTasks.length &&
-        loading === false;
-
-      if (
-        isInitialLoad &&
-        profile?.id === initialUser?.id &&
-        initialUser !== null
-      ) {
-        // ...
-      }
-
       setLoading(true);
       try {
         console.log(
-          `[Dashboard] Loading data for lens: ${lens}, view: ${activeView}`,
+          `[Dashboard] Loading lens: ${lens}, workspace: ${workspace}, realm: ${citizenRealm}, panel: ${committeePanel}`,
         );
-        const profileData = initialUser ? await getUserProfile() : profile;
-        setProfile(profileData);
+        if (initialUser) {
+          const profileData = await getUserProfile();
+          setProfile(profileData);
+        }
 
-        if (lens === "national" && activeView !== "researcher") {
+        const needsNationalBills =
+          (workspace === "citizen" && citizenRealm === "parliament") ||
+          (workspace === "committee" &&
+            committeePanel === "desk" &&
+            lens === "national");
+
+        const needsMunicipalGrid =
+          workspace === "committee" &&
+          committeePanel === "desk" &&
+          lens !== "national";
+
+        if (needsNationalBills) {
           const billsData = await fetchBillsFromSupabase();
           console.log(`[Dashboard] Fetched ${billsData.length} national bills`);
           setBills(billsData);
           if (billsData.length > 0 && !selectedBill) {
             setSelectedBill(billsData[0]);
           }
-        } else if (lens !== "national") {
+        }
+
+        if (needsMunicipalGrid) {
           const muniName = lens.charAt(0).toUpperCase() + lens.slice(1);
           const tasks = await fetchMunicipalDecisions(muniName);
           console.log(
@@ -253,12 +283,8 @@ export default function DashboardClient({
       }
     }
 
-    if (initialUser) {
-      loadData();
-    } else {
-      setLoading(false);
-    }
-  }, [initialUser, lens, activeView]);
+    loadData();
+  }, [initialUser, lens, workspace, citizenRealm, committeePanel]);
 
   const handleCreateProfile = async () => {
     setCreating(true);
@@ -371,15 +397,32 @@ export default function DashboardClient({
     }
   };
 
-  const handleRoleSwitch = (newView: typeof activeView) => {
-    if (newView === "researcher" || newView === "committee") {
-      if (!initialUser) {
-        toast.error("Tämä toiminto vaatii kirjautumisen.");
-        window.location.href = "/login?callback=/dashboard?view=" + newView;
-        return;
-      }
+  const handleWorkspaceSwitch = (
+    next: "citizen" | "committee" | "researcher",
+  ) => {
+    if ((next === "committee" || next === "researcher") && !initialUser) {
+      toast.error("Tämä toiminto vaatii kirjautumisen.");
+      window.location.href =
+        "/login?callback=/dashboard?view=" +
+        (next === "committee" ? "committee" : "researcher");
+      return;
     }
-    setActiveView(newView);
+    setWorkspace(next);
+    if (next === "citizen") {
+      setCommitteePanel("desk");
+    }
+    if (next === "researcher") {
+      return;
+    }
+  };
+
+  const handleCitizenRealmChange = (realm: "parliament" | "municipal") => {
+    setCitizenRealm(realm);
+    if (realm === "parliament") {
+      setLens("national");
+    } else if (lens === "national") {
+      setLens("espoo");
+    }
   };
 
   if (loading) {
@@ -394,7 +437,7 @@ export default function DashboardClient({
   }
 
   // Jos ollaan committee-näkymässä (Shadow MP) mutta profiilia ei ole alustettu
-  if (!profile?.shadow_id_number && activeView === "committee" && initialUser) {
+  if (!profile?.shadow_id_number && workspace === "committee" && initialUser) {
     return (
       <div className="max-w-2xl mx-auto mt-20 p-12 bg-slate-900 rounded-[3rem] border border-white/10 text-center space-y-8 shadow-2xl relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-transparent pointer-events-none" />
@@ -513,9 +556,9 @@ export default function DashboardClient({
         )}
       </AnimatePresence>
 
-      {/* Työhuoneen Navigointipalkki */}
-      <div className="flex items-center justify-between bg-slate-900/50 border border-white/5 p-2 rounded-2xl backdrop-blur-sm">
-        <div className="flex items-center gap-1">
+      {/* Työhuoneen navigointi: ensin kansalainen vs edustaja, sitten edustajan alipaneelit */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between bg-slate-900/50 border border-white/5 p-2 rounded-2xl backdrop-blur-sm">
+        <div className="flex items-center gap-1 shrink-0">
           <Link
             href="/"
             className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
@@ -532,46 +575,108 @@ export default function DashboardClient({
             Moduulit
           </Link>
         </div>
-        <div className="flex items-center bg-white/5 rounded-xl p-1 gap-1">
-          {activeView !== "researcher" && (
-            <>
-              {isFeatureEnabled("XP_SYSTEM_ENABLED") && (
+
+        <div className="flex flex-col items-stretch gap-2 flex-1 min-w-0 max-w-3xl mx-auto">
+          <div className="flex flex-wrap justify-center bg-white/5 rounded-xl p-1 gap-1">
+            {workspace !== "researcher" && (
+              <>
                 <button
-                  onClick={() => handleRoleSwitch("committee")}
-                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "committee" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  type="button"
+                  onClick={() => handleWorkspaceSwitch("citizen")}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${workspace === "citizen" ? "bg-white/15 text-white shadow-md" : "text-slate-400 hover:text-white"}`}
                 >
+                  <UserCircle size={14} />
+                  Kansalainen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleWorkspaceSwitch("committee")}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${workspace === "committee" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+                >
+                  <Briefcase size={14} />
                   Edustaja
                 </button>
-              )}
-              {isFeatureEnabled("MUNICIPAL_WATCH_ENABLED") && (
+                {workspace === "committee" && (
+                  <div className="hidden sm:flex items-center gap-1 pl-1 ml-1 border-l border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setCommitteePanel("desk")}
+                      className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${committeePanel === "desk" ? "bg-white/15 text-white" : "text-slate-400 hover:text-white"}`}
+                    >
+                      Työpöytä
+                    </button>
+                    {isFeatureEnabled("MEDIA_WATCH_ENABLED") && (
+                      <button
+                        type="button"
+                        onClick={() => setCommitteePanel("media_watch")}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${committeePanel === "media_watch" ? "bg-white/15 text-white" : "text-slate-400 hover:text-white"}`}
+                      >
+                        Media Watch
+                      </button>
+                    )}
+                    {isFeatureEnabled("ECONOMY_ENABLED") && (
+                      <button
+                        type="button"
+                        onClick={() => setCommitteePanel("economy")}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${committeePanel === "economy" ? "bg-white/15 text-white" : "text-slate-400 hover:text-white"}`}
+                      >
+                        Talous
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+            {isFeatureEnabled("RESEARCHER_ENABLED") && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!initialUser) {
+                    toast.error("Tutkijatila vaatii kirjautumisen.");
+                    window.location.href =
+                      "/login?callback=/dashboard?view=researcher";
+                    return;
+                  }
+                  setWorkspace("researcher");
+                }}
+                className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspace === "researcher" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"}`}
+              >
+                Tutkija
+              </button>
+            )}
+          </div>
+          {workspace === "committee" && (
+            <div className="flex sm:hidden flex-wrap justify-center gap-1 px-1">
+              <button
+                type="button"
+                onClick={() => setCommitteePanel("desk")}
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${committeePanel === "desk" ? "bg-white/15 text-white" : "text-slate-500"}`}
+              >
+                Työpöytä
+              </button>
+              {isFeatureEnabled("MEDIA_WATCH_ENABLED") && (
                 <button
-                  onClick={() => handleRoleSwitch("kuntavahti")}
-                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "kuntavahti" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  type="button"
+                  onClick={() => setCommitteePanel("media_watch")}
+                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${committeePanel === "media_watch" ? "bg-white/15 text-white" : "text-slate-500"}`}
                 >
-                  Kuntavahti
+                  Media
                 </button>
               )}
               {isFeatureEnabled("ECONOMY_ENABLED") && (
                 <button
-                  onClick={() => handleRoleSwitch("economy")}
-                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "economy" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  type="button"
+                  onClick={() => setCommitteePanel("economy")}
+                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${committeePanel === "economy" ? "bg-white/15 text-white" : "text-slate-500"}`}
                 >
                   Talous
                 </button>
               )}
-            </>
-          )}
-          {isFeatureEnabled("RESEARCHER_ENABLED") && (
-            <button
-              onClick={() => handleRoleSwitch("researcher")}
-              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "researcher" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"}`}
-            >
-              Tutkija
-            </button>
+            </div>
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 justify-end flex-wrap shrink-0">
           {!initialUser && (
             <Link
               href="/login"
@@ -581,11 +686,18 @@ export default function DashboardClient({
               Kirjaudu
             </Link>
           )}
-          <LensSwitcher currentLens={lens} onLensChange={setLens} />
-          <div className="flex items-center gap-2 pr-4">
+          {workspace === "citizen" && citizenRealm === "parliament" ? (
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-2 whitespace-nowrap">
+              Eduskunta
+            </span>
+          ) : (workspace === "citizen" && citizenRealm === "municipal") ||
+            (workspace === "committee" && committeePanel === "desk") ? (
+            <LensSwitcher currentLens={lens} onLensChange={setLens} />
+          ) : null}
+          <div className="flex items-center gap-2 pr-1">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-              {lens === "national" ? "Valtakunnallinen" : "Kunnallinen"} Online
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 hidden sm:inline">
+              {lens === "national" ? "Valtakunnallinen" : "Kunnallinen"} online
             </span>
           </div>
         </div>
@@ -594,7 +706,41 @@ export default function DashboardClient({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Sidebar: ID Card & Agenda */}
         <aside className="lg:col-span-3 space-y-8">
-          {activeView !== "researcher" ? (
+          {workspace === "researcher" ? null : workspace === "citizen" ? (
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-5 space-y-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  Kansalaisnäkymä
+                </p>
+                <p className="text-sm font-medium text-slate-200 leading-relaxed">
+                  Uusimmat lakiluonnokset ja uutisnostot. Syvälliset työkalut
+                  (media vs. päätös, varjoäänestys, lobbausindeksi) ovat
+                  edustajan työhuoneessa.
+                </p>
+                {initialUser ? (
+                  <button
+                    type="button"
+                    onClick={() => handleWorkspaceSwitch("committee")}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-purple-500/35 bg-purple-600/15 text-[10px] font-black uppercase tracking-widest text-purple-200 hover:bg-purple-600/25 transition-colors"
+                  >
+                    <Briefcase size={14} />
+                    Siirry edustajan työhuoneeseen
+                  </button>
+                ) : (
+                  <Link
+                    href="/login?callback=/dashboard?view=committee"
+                    className="flex w-full items-center justify-center gap-2 py-3 rounded-xl border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-white/10 transition-colors"
+                  >
+                    <LogIn size={14} />
+                    Kirjaudu edustajan työtilaan
+                  </Link>
+                )}
+              </div>
+              {citizenRealm === "municipal" && (
+                <LocalWeather lens={lens} user={mergedUser} />
+              )}
+            </div>
+          ) : (
             <>
               <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-1">
                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">
@@ -635,7 +781,8 @@ export default function DashboardClient({
                 </div>
               </div>
             </>
-          ) : (
+          )}
+          {workspace === "researcher" ? (
             <div className="space-y-6">
               <div className="bg-white border border-slate-200 rounded-[2rem] p-8 space-y-6 shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-5">
@@ -744,54 +891,85 @@ export default function DashboardClient({
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </aside>
 
         {/* Center: Task Stream (Committee Bills) or DNA Activation or Municipal Watch */}
         <main
-          className={`${activeView === "researcher" ? "lg:col-span-9" : "lg:col-span-6"} space-y-8`}
+          className={`${
+            workspace === "researcher" ? "lg:col-span-9" : "lg:col-span-6"
+          } space-y-8`}
         >
-          {activeView === "researcher" && !profile?.researcher_initialized ? (
+          {workspace === "researcher" && !profile?.researcher_initialized ? (
             <ResearcherProfiling onComplete={handleResearcherProfileComplete} />
-          ) : !hasDna && activeView !== "researcher" ? (
+          ) : !hasDna &&
+            workspace === "committee" &&
+            committeePanel === "desk" ? (
             <DNAActivation />
           ) : (
             <>
-              {/* Päivän Pulse - Only visible for non-researchers */}
-              {activeView !== "researcher" &&
+              {workspace === "committee" &&
+                committeePanel === "desk" &&
                 isFeatureEnabled("PULSE_ENABLED") && <QuickPulse lens={lens} />}
 
-              {activeView === "researcher" ? (
+              {workspace === "researcher" ? (
                 <ResearcherWorkspace
                   userPlan={mergedUser.plan_type || "free"}
                   researcherProfile={profile}
                 />
-              ) : activeView === "economy" ? (
+              ) : workspace === "committee" && committeePanel === "economy" ? (
                 <PricingTable
                   userId={mergedUser.id}
                   hasStripeId={!!mergedUser.stripe_customer_id}
                 />
-              ) : activeView === "kuntavahti" ? (
-                <MunicipalWatchFeed user={mergedUser} />
-              ) : lens === "national" ? (
+              ) : workspace === "committee" &&
+                committeePanel === "media_watch" ? (
+                <MediaWatchPanel user={mergedUser} />
+              ) : workspace === "citizen" && citizenRealm === "municipal" ? (
+                <div className="space-y-6">
+                  <CitizenRealmBar
+                    realm={citizenRealm}
+                    onChange={handleCitizenRealmChange}
+                  />
+                  <MunicipalWatchFeed user={mergedUser} />
+                </div>
+              ) : (workspace === "citizen" && citizenRealm === "parliament") ||
+                (workspace === "committee" &&
+                  committeePanel === "desk" &&
+                  lens === "national") ? (
                 <>
-                  <div className="flex justify-between items-end">
+                  {workspace === "citizen" && citizenRealm === "parliament" && (
+                    <CitizenRealmBar
+                      realm={citizenRealm}
+                      onChange={handleCitizenRealmChange}
+                    />
+                  )}
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
                     <div className="space-y-1">
-                      <h2 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">
-                        Viikkokatsaus
+                      <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-white leading-none">
+                        {workspace === "citizen" &&
+                        citizenRealm === "parliament"
+                          ? "Uusimmat lakiesitykset"
+                          : "Viikkokatsaus"}
                       </h2>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                        Ymmarra nopeasti, mita kasittelyssa olevat lait
-                        tarkoittavat sinulle
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest max-w-md leading-relaxed">
+                        {workspace === "citizen" &&
+                        citizenRealm === "parliament"
+                          ? "Selkea lista ja uutisnosto oikealla. Syvemmät mittarit ja lausunnot: edustajan työhuone."
+                          : "Ymmarra nopeasti, mita kasittelyssa olevat lait tarkoittavat sinulle"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href="/dashboard?view=kuntavahti&lens=espoo"
-                        className="px-4 py-2 rounded-xl border border-blue-500/30 bg-blue-600/10 text-[10px] font-black uppercase tracking-widest text-blue-300 hover:bg-blue-600/20 transition-all"
-                      >
-                        Dynasty-skanneri
-                      </Link>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!(
+                        workspace === "citizen" && citizenRealm === "parliament"
+                      ) && (
+                        <Link
+                          href="/dashboard?view=kuntavahti&lens=espoo"
+                          className="px-4 py-2 rounded-xl border border-blue-500/30 bg-blue-600/10 text-[10px] font-black uppercase tracking-widest text-blue-300 hover:bg-blue-600/20 transition-all"
+                        >
+                          Dynasty-skanneri
+                        </Link>
+                      )}
                       <div className="bg-slate-900 px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase text-purple-400">
                         {bills.length} lakia
                       </div>
@@ -837,61 +1015,86 @@ export default function DashboardClient({
                           </p>
                         </section>
 
-                        <section
-                          aria-label="Nopeat vaikutusmittarit"
-                          className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                        >
-                          {(() => {
-                            const { passProbability, lobbyIndex } =
-                              getBillSignals(selectedBill);
-                            return (
-                              <>
-                                <div className="bg-slate-950/50 border border-emerald-500/20 rounded-2xl p-5 space-y-3">
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
-                                    Predictive influence
-                                  </p>
-                                  <div className="h-2.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                                    <div
-                                      className={`h-full ${passProbability >= 55 ? "bg-emerald-500" : "bg-rose-500"}`}
-                                      style={{ width: `${passProbability}%` }}
-                                    />
-                                  </div>
-                                  <p className="text-xs font-bold text-slate-200">
-                                    Lapimenon todennakoisyys: {passProbability}%
-                                  </p>
-                                </div>
-                                <div className="bg-slate-950/50 border border-amber-500/20 rounded-2xl p-5 space-y-3">
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
-                                    Lobbyist traceability
-                                  </p>
-                                  <div className="h-2.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                                    <div
-                                      className={`h-full ${lobbyIndex >= 70 ? "bg-orange-500" : lobbyIndex >= 45 ? "bg-amber-500" : "bg-emerald-500"}`}
-                                      style={{ width: `${lobbyIndex}%` }}
-                                    />
-                                  </div>
-                                  <p className="text-xs font-bold text-slate-200">
-                                    Lobbausindeksi: {lobbyIndex}/100
-                                  </p>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </section>
+                        {workspace === "citizen" &&
+                          citizenRealm === "parliament" && (
+                            <CitizenBillMediaStrip
+                              billId={selectedBill.id}
+                              parliamentId={selectedBill.parliamentId}
+                            />
+                          )}
 
-                        <div className="flex justify-end">
-                          <Link
-                            href={`/arena?billId=${selectedBill.id}`}
-                            className="px-4 py-2 rounded-xl border border-purple-500/30 bg-purple-500/10 text-[10px] font-black uppercase tracking-widest text-purple-300 hover:bg-purple-500/20 transition-all"
-                          >
-                            Varjo-aanestys
-                          </Link>
-                        </div>
+                        {!(
+                          workspace === "citizen" &&
+                          citizenRealm === "parliament"
+                        ) && (
+                          <>
+                            <section
+                              aria-label="Nopeat vaikutusmittarit"
+                              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                            >
+                              {(() => {
+                                const { passProbability, lobbyIndex } =
+                                  getBillSignals(selectedBill);
+                                return (
+                                  <>
+                                    <div className="bg-slate-950/50 border border-emerald-500/20 rounded-2xl p-5 space-y-3">
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                                        Predictive influence
+                                      </p>
+                                      <div className="h-2.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                                        <div
+                                          className={`h-full ${passProbability >= 55 ? "bg-emerald-500" : "bg-rose-500"}`}
+                                          style={{
+                                            width: `${passProbability}%`,
+                                          }}
+                                        />
+                                      </div>
+                                      <p className="text-xs font-bold text-slate-200">
+                                        Lapimenon todennakoisyys:{" "}
+                                        {passProbability}%
+                                      </p>
+                                    </div>
+                                    <div className="bg-slate-950/50 border border-amber-500/20 rounded-2xl p-5 space-y-3">
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+                                        Lobbyist traceability
+                                      </p>
+                                      <div className="h-2.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                                        <div
+                                          className={`h-full ${lobbyIndex >= 70 ? "bg-orange-500" : lobbyIndex >= 45 ? "bg-amber-500" : "bg-emerald-500"}`}
+                                          style={{ width: `${lobbyIndex}%` }}
+                                        />
+                                      </div>
+                                      <p className="text-xs font-bold text-slate-200">
+                                        Lobbausindeksi: {lobbyIndex}/100
+                                      </p>
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </section>
 
-                        <ExpertSummary
-                          bill={selectedBill}
-                          onGiveStatement={handleGiveStatement}
-                        />
+                            <div className="flex justify-end">
+                              <Link
+                                href={`/arena?billId=${selectedBill.id}`}
+                                className="px-4 py-2 rounded-xl border border-purple-500/30 bg-purple-500/10 text-[10px] font-black uppercase tracking-widest text-purple-300 hover:bg-purple-500/20 transition-all"
+                              >
+                                Varjo-aanestys
+                              </Link>
+                            </div>
+
+                            <ExpertSummary
+                              bill={selectedBill}
+                              onGiveStatement={handleGiveStatement}
+                            />
+                          </>
+                        )}
+                        {workspace === "citizen" &&
+                          citizenRealm === "parliament" && (
+                            <p className="text-[11px] text-slate-500 font-medium">
+                              Edustajan työhuoneessa: ennusteet, lobbausindeksi,
+                              varjoäänestys ja lausunnot.
+                            </p>
+                          )}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -923,53 +1126,63 @@ export default function DashboardClient({
                                       "Tiivistelma paivittyy..."}
                                   </p>
                                 </div>
-                                <div className="space-y-2 mt-4">
-                                  <div>
-                                    <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1">
-                                      <span>Lapimeno</span>
-                                      <span
-                                        className={
-                                          passProbability >= 55
-                                            ? "text-emerald-400"
-                                            : "text-rose-400"
-                                        }
-                                      >
-                                        {passProbability}%
-                                      </span>
+                                {!(
+                                  workspace === "citizen" &&
+                                  citizenRealm === "parliament"
+                                ) && (
+                                  <div className="space-y-2 mt-4">
+                                    <div>
+                                      <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1">
+                                        <span>Lapimeno</span>
+                                        <span
+                                          className={
+                                            passProbability >= 55
+                                              ? "text-emerald-400"
+                                              : "text-rose-400"
+                                          }
+                                        >
+                                          {passProbability}%
+                                        </span>
+                                      </div>
+                                      <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                        <div
+                                          className={`${passProbability >= 55 ? "bg-emerald-500" : "bg-rose-500"} h-full`}
+                                          style={{
+                                            width: `${passProbability}%`,
+                                          }}
+                                        />
+                                      </div>
                                     </div>
-                                    <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                                      <div
-                                        className={`${passProbability >= 55 ? "bg-emerald-500" : "bg-rose-500"} h-full`}
-                                        style={{ width: `${passProbability}%` }}
-                                      />
+                                    <div>
+                                      <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1">
+                                        <span>Lobbausindeksi</span>
+                                        <span
+                                          className={
+                                            lobbyIndex >= 70
+                                              ? "text-orange-400"
+                                              : lobbyIndex >= 45
+                                                ? "text-amber-400"
+                                                : "text-emerald-400"
+                                          }
+                                        >
+                                          {lobbyIndex}/100
+                                        </span>
+                                      </div>
+                                      <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                        <div
+                                          className={`${lobbyIndex >= 70 ? "bg-orange-500" : lobbyIndex >= 45 ? "bg-amber-500" : "bg-emerald-500"} h-full`}
+                                          style={{ width: `${lobbyIndex}%` }}
+                                        />
+                                      </div>
                                     </div>
                                   </div>
-                                  <div>
-                                    <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1">
-                                      <span>Lobbausindeksi</span>
-                                      <span
-                                        className={
-                                          lobbyIndex >= 70
-                                            ? "text-orange-400"
-                                            : lobbyIndex >= 45
-                                              ? "text-amber-400"
-                                              : "text-emerald-400"
-                                        }
-                                      >
-                                        {lobbyIndex}/100
-                                      </span>
-                                    </div>
-                                    <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                                      <div
-                                        className={`${lobbyIndex >= 70 ? "bg-orange-500" : lobbyIndex >= 45 ? "bg-amber-500" : "bg-emerald-500"} h-full`}
-                                        style={{ width: `${lobbyIndex}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
+                                )}
                                 <div className="flex items-center gap-1 mt-4 text-[7px] font-black uppercase tracking-widest text-slate-500 group-hover:text-purple-400 transition-colors">
                                   <ChevronRight size={10} />
-                                  Avaa analyysi
+                                  {workspace === "citizen" &&
+                                  citizenRealm === "parliament"
+                                    ? "Lue tiivistelmä"
+                                    : "Avaa analyysi"}
                                 </div>
                               </>
                             );
@@ -978,7 +1191,7 @@ export default function DashboardClient({
                       ))}
                   </div>
                 </>
-              ) : (
+              ) : workspace === "committee" && committeePanel === "desk" ? (
                 <>
                   <div className="flex justify-between items-end">
                     <div className="space-y-1">
@@ -1041,25 +1254,42 @@ export default function DashboardClient({
                       ))}
                   </div>
                 </>
-              )}
+              ) : null}
             </>
           )}
         </main>
 
-        {/* Right Sidebar: Live News & Notifications */}
-        {activeView !== "researcher" && (
-          <aside className="lg:col-span-3 space-y-8 h-full flex flex-col">
-            <div className="flex-1">
-              <TransactionFeed />
-            </div>
+        {/* Right: kansalaisella pelkkä uutislista; edustajalla myös transaktiot ja hälytykset */}
+        {workspace !== "researcher" && (
+          <aside className="lg:col-span-3 space-y-6 h-full flex flex-col">
+            {workspace === "committee" && (
+              <div className="flex-1 min-h-0">
+                <TransactionFeed />
+              </div>
+            )}
 
-            <div className="bg-slate-900/80 border border-white/10 rounded-[2.5rem] p-8 space-y-8 backdrop-blur-md">
-              <h4 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
+            <div
+              className={`border border-white/10 backdrop-blur-md space-y-6 flex flex-col ${
+                workspace === "citizen"
+                  ? "rounded-2xl bg-slate-950/70 p-6"
+                  : "rounded-[2.5rem] bg-slate-900/80 p-8 space-y-8"
+              }`}
+            >
+              <h4 className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
                 <Newspaper size={16} className="text-purple-500" />
-                {lens === "national"
-                  ? "Valtakunnallinen Feed"
-                  : `${lens.charAt(0).toUpperCase() + lens.slice(1)} Feed`}
+                {workspace === "citizen" && citizenRealm === "parliament"
+                  ? "Uutiset ja poiminnat"
+                  : lens === "national"
+                    ? "Valtakunnallinen feed"
+                    : `${lens.charAt(0).toUpperCase() + lens.slice(1)} feed`}
               </h4>
+              {workspace === "citizen" && citizenRealm === "parliament" && (
+                <p className="text-[10px] text-slate-500 leading-relaxed -mt-2">
+                  Yle ja havaitut sidonnaisuus-/tutka­signaalit. Valitun lain
+                  automaattiset mediaosuumat näkyvät lain kortissa; koko Media
+                  Watch on edustajan työhuoneessa.
+                </p>
+              )}
 
               <div className="space-y-6">
                 {news.length > 0 ? (
@@ -1126,24 +1356,30 @@ export default function DashboardClient({
                 )}
               </div>
 
-              <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 transition-all">
-                Näytä kaikki uutiset
+              <button
+                type="button"
+                className="w-full py-3.5 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 transition-all"
+              >
+                Lataa lisää (tulossa)
               </button>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-600 to-blue-700 rounded-[2.5rem] p-8 text-white space-y-4 shadow-xl">
-              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-                <Bell size={24} />
+            {workspace === "committee" && (
+              <div className="bg-gradient-to-br from-purple-600 to-blue-700 rounded-[2rem] p-6 text-white space-y-3 shadow-xl">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Bell size={20} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-black uppercase tracking-tight">
+                    Edustajan hälytykset
+                  </h4>
+                  <p className="text-[11px] font-medium text-white/85 leading-relaxed">
+                    Istunto- ja valiokuntamuistutukset näytetään tässä
+                    työtilassa.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <h4 className="text-sm font-black uppercase tracking-tight">
-                  Pikailmoitus
-                </h4>
-                <p className="text-xs font-medium text-white/80 leading-relaxed">
-                  Äänestys valiokunnassa alkaa 15 minuutin kuluttua.
-                </p>
-              </div>
-            </div>
+            )}
           </aside>
         )}
       </div>

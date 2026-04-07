@@ -1,11 +1,12 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getBillContent } from "@/lib/eduskunta-api";
 import { generateCitizenSummary } from "@/lib/ai-summary";
 import { prepareBillTextForAI } from "@/lib/text-cleaner";
 import { parseSummary } from "@/lib/summary-parser";
 import { trackFeatureUsage, logAiCost } from "@/lib/analytics/tracker";
+import { syncExpertImpactToBillAiProfile } from "@/lib/bills/sync-expert-to-ai-profile";
 import type { Bill } from "@/lib/types";
 
 /**
@@ -88,6 +89,15 @@ async function processBillToSelkokieliInternal(
         console.log(
           `[processBillToSelkokieli] Successfully parsed existing summary, returning from cache`,
         );
+        try {
+          const admin = await createAdminClient();
+          await syncExpertImpactToBillAiProfile(admin, billId, bill.summary);
+        } catch (e) {
+          console.warn(
+            "[processBillToSelkokieli] expert_impact_assessment sync (cache):",
+            e,
+          );
+        }
         return {
           success: true,
           summary: bill.summary,
@@ -334,6 +344,16 @@ async function processBillToSelkokieliInternal(
           };
         }
 
+        try {
+          const admin = await createAdminClient();
+          await syncExpertImpactToBillAiProfile(admin, billId, cleanedSummary);
+        } catch (e) {
+          console.warn(
+            "[processBillToSelkokieli] expert_impact_assessment sync:",
+            e,
+          );
+        }
+
         return {
           success: true,
           summary: cleanedSummary,
@@ -505,6 +525,16 @@ async function processBillToSelkokieliInternal(
       `[processBillToSelkokieli] Summary saved successfully! Summary length: ${summary.length} chars`,
     );
 
+    try {
+      const admin = await createAdminClient();
+      await syncExpertImpactToBillAiProfile(admin, billId, cleanedSummary);
+    } catch (e) {
+      console.warn(
+        "[processBillToSelkokieli] expert_impact_assessment sync (main path):",
+        e,
+      );
+    }
+
     return {
       success: true,
       summary,
@@ -517,6 +547,140 @@ async function processBillToSelkokieliInternal(
       success: false,
       error: error.message || "Unknown error during bill processing",
     };
+  }
+}
+
+/**
+ * Generate and store long-form syväanalyysi (~25k chars, incl. expert rationale + stakeholders) in bill_ai_profiles.deep_analysis.
+ */
+export async function generateBillDeepAnalysis(billId: string): Promise<{
+  success: boolean;
+  error?: string;
+  chars?: number;
+}> {
+  if (!billId?.trim()) {
+    return { success: false, error: "billId puuttuu." };
+  }
+
+  const admin = await createAdminClient();
+
+  const { data: bill, error: billError } = await admin
+    .from("bills")
+    .select("id, title, summary, raw_text, parliament_id")
+    .eq("id", billId)
+    .single();
+
+  if (billError || !bill) {
+    return { success: false, error: "Lakiesitystä ei löydy." };
+  }
+
+  let base =
+    bill.summary && bill.summary.length > 600
+      ? bill.summary
+      : prepareBillTextForAI(bill.raw_text || "") || bill.title || "";
+
+  if (base.length < 200) {
+    return {
+      success: false,
+      error:
+        "Liian vähän lähdetekstiä. Päivitä ensin asiantuntija-analyysi (Päivitä analyysi).",
+    };
+  }
+
+  base = base.slice(0, 38_000);
+
+  try {
+    const { generateText } = await import("ai");
+    const { openai } = await import("@ai-sdk/openai");
+
+    const { text, usage } = await generateText({
+      model: openai("gpt-4o") as any,
+      system: `Olet valtiontalouden, oikeuden ja yhteiskuntapolitiikan riippumaton asiantuntija.
+Kirjoitat syvällisen analyysin **suomeksi**. Puolueettomuus ja lähteiden erottelu ovat tärkeitä.
+Rakenna teksti väliotsikoilla (###). Älä toista vain esityksen otsikkoa; pureudu sisältöön.
+Jos lähdetekstissä ei ole nimettyjä kannanottoja, älä keksi lainauksia: ilmoita että kannat ovat **arvio** aihepiirin ja tyypillisen intressikentän perusteella.`,
+      prompt: `Lakiesitys: ${bill.title} (${bill.parliament_id || ""})
+
+Alla lähdemateriaali (tiivistelmä ja/tai raakateksti):
+
+${base}
+
+---
+Tuota **yksi yhtenäinen syväanalyysi** pitkänä markdown-tekstinä.
+
+**Pituus:** pyri **noin 22 000–25 000 merkkiin** (tilaa riittää; käytä sitä syventäviin kappaleisiin ja perusteluihin). Jos jokin osa jää ohueksi, laajenna talousvaikutus- ja sidosryhmäosioita.
+
+**Pakollinen rakenne** (käytä täsmälleen näitä pääotsikkoja, järjestys alla):
+
+### Keskeinen sisältö ja tavoite
+
+### Asiantuntijan näkemys: miksi laki on tarpeen
+- Selosta asiantuntijatason perusteella: mikä ongelma tai aukko nykyisessä järjestelmässä korjautuu, mitkä lainsäädäntötavoitteet ja yhteiskunnalliset tehtävät tukevat uudistusta, ja mitä voisi tapahtua ilman lakia (neutraalisti, ilman sensationalismia). Erotta selvästi faktuaalinen esityksen sisältö omasta synteesistäsi.
+
+### Talous- ja julkisen talouden vaikutukset
+- Arviot, jos tekstissä lukuja; muuten kvalitatiivinen ja järjestelmätason analyysi.
+
+### Vaikutus eri ryhmiin
+- Tuloluokat, alueet, palveluntuottajat, viranomaiset, kotitaloudet, työnantajat/työntekijät jne. soveltuvin osin.
+
+### Etujärjestöt ja intressit: puolesta ja vastaan
+Tämä osio on **keskeinen**. Käytä alaotsikkoja:
+
+#### Tukevat tai todennäköisesti myötäiset intressit
+- Luettele **konkreettisia** tyyppejä: esim. työmarkkina- ja elinkeinoelämän järjestöt, alakohtaiset etujärjestöt, kuluttaja- tai ammattijärjestöt, kuntasektori, järjestökenttä, tutkimuslaitokset — vain jos ne liittyvät esityksen aiheeseen.
+- Jokaiselle 1–2 lausetta: *miksi* intressi linjautuu esityksen kanssa.
+- Jos et näe lähteessä virallisia lausuntoja, merkitse selvästi: "**Arvio** (ei viitettä annettuun lausuntoon tässä aineistossa)."
+
+#### Vastustavat tai kriittiset intressit
+- Sama rakenne: ketkä todennäköisesti vastustavat tai vaativat muutoksia ja miksi.
+
+#### Yhteenveto intressitörmäyksestä
+- Tiivis synteesi ristiriidoista ja neuvottelupainopisteistä.
+
+### Oikeudelliset ja hallinnolliset riskit sekä toteutus
+
+### Poliittinen ja lobbausympäristö
+- Neutraalisti; vältä huhupuhetta. Viittaa vain aineistoon tai yleiseen prosessitietoon.
+
+### Yhteenveto ja tuleva näkymä
+
+Älä käytä JSONia; pelkkä markdown.`,
+      maxTokens: 16_000,
+      temperature: 0.35,
+    } as any);
+
+    await logAiCost(
+      "Bill deep analysis",
+      "gpt-4o",
+      usage.promptTokens,
+      usage.completionTokens,
+    );
+
+    const deep = (text ?? "").trim();
+    if (deep.length < 5_000) {
+      return {
+        success: false,
+        error: "Malli palautti liian lyhyen analyysin. Yritä uudelleen.",
+      };
+    }
+
+    const { error: upErr } = await admin.from("bill_ai_profiles").upsert(
+      {
+        bill_id: billId,
+        deep_analysis: deep.slice(0, 260_000),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "bill_id" },
+    );
+
+    if (upErr) {
+      return { success: false, error: upErr.message };
+    }
+
+    return { success: true, chars: deep.length };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { success: false, error: msg };
   }
 }
 

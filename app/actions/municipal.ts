@@ -3,15 +3,27 @@
 import { createClient } from "@/lib/supabase/server";
 import { getMunicipalAPI } from "@/lib/municipal-api";
 import { generateMockCitizenPulse } from "@/lib/bill-helpers";
-import { syncAllMunicipalities } from "@/lib/municipal/sync-engine";
 import type { MunicipalCase, SupabaseMunicipalCase } from "@/lib/types";
-import { unstable_cache } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import {
+  buildKuntavahtiOrderedSlice,
+  compareKuntavahtiListPriority,
+  KUNTAVAHTI_MAX_LAUTAKUNTA_SLOTS,
+  municipalRowFinancialScore,
+} from "@/lib/municipal/kuntavahti-priority";
+
+/** Call before refetching decisions so the refresh control is not stuck on stale cached data. */
+export async function revalidateMunicipalDecisions(municipality: string) {
+  revalidateTag(`municipal-${municipality}`);
+}
 
 /**
  * Fetches municipal cases from Supabase or syncs from API if empty
  */
-export async function fetchMunicipalCases(municipality: string = "Espoo"): Promise<MunicipalCase[]> {
+export async function fetchMunicipalCases(
+  municipality: string = "Espoo",
+): Promise<MunicipalCase[]> {
   const supabase = await createClient();
 
   const { data: casesData, error } = await supabase
@@ -36,20 +48,27 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
       costEstimate: c.cost_estimate || undefined,
       category: c.category || undefined,
       url: c.url || undefined,
-      citizenPulse: generateMockCitizenPulse({ title: c.title, abstract: c.summary || "" }),
+      citizenPulse: generateMockCitizenPulse({
+        title: c.title,
+        abstract: c.summary || "",
+      }),
     }));
   }
 
   // If no data, attempt sync
   try {
-    console.log(`[fetchMunicipalCases] No data in DB, syncing from ${municipality} API...`);
+    console.log(
+      `[fetchMunicipalCases] No data in DB, syncing from ${municipality} API...`,
+    );
     const api = getMunicipalAPI(municipality);
     const items = await api.fetchLatestItems(10);
 
-    console.log(`[fetchMunicipalCases] Received ${items.length} items from API`);
+    console.log(
+      `[fetchMunicipalCases] Received ${items.length} items from API`,
+    );
 
     if (items.length > 0) {
-      const casesToInsert = items.map(item => ({
+      const casesToInsert = items.map((item) => ({
         municipality: item.municipality,
         external_id: item.url || item.id, // RSS-linkkiä käytetään uniikkina tunnisteena
         title: item.title,
@@ -58,15 +77,17 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
         status: item.status || "agenda",
         meeting_date: item.meetingDate || new Date().toISOString(),
         org_name: item.orgName || "Kaupunginvaltuusto",
-        url: item.url || ""
+        url: item.url || "",
       }));
 
-      console.log(`[fetchMunicipalCases] Upserting ${casesToInsert.length} cases to Supabase...`);
+      console.log(
+        `[fetchMunicipalCases] Upserting ${casesToInsert.length} cases to Supabase...`,
+      );
       const { data: inserted, error: insertError } = await supabase
         .from("municipal_cases")
-        .upsert(casesToInsert, { 
+        .upsert(casesToInsert, {
           onConflict: "municipality,external_id",
-          ignoreDuplicates: false 
+          ignoreDuplicates: false,
         })
         .select();
 
@@ -75,7 +96,9 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
         throw insertError;
       }
 
-      console.log(`[fetchMunicipalCases] Successfully upserted ${inserted?.length || 0} cases`);
+      console.log(
+        `[fetchMunicipalCases] Successfully upserted ${inserted?.length || 0} cases`,
+      );
 
       if (inserted && inserted.length > 0) {
         return inserted.map((c: SupabaseMunicipalCase) => ({
@@ -92,12 +115,18 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
           costEstimate: c.cost_estimate || undefined,
           category: c.category || undefined,
           url: c.url || undefined,
-          citizenPulse: generateMockCitizenPulse({ title: c.title, abstract: c.summary || "" }),
+          citizenPulse: generateMockCitizenPulse({
+            title: c.title,
+            abstract: c.summary || "",
+          }),
         }));
       }
     }
   } catch (syncError) {
-    console.error(`[fetchMunicipalCases] Failed to sync municipal cases for ${municipality}:`, syncError);
+    console.error(
+      `[fetchMunicipalCases] Failed to sync municipal cases for ${municipality}:`,
+      syncError,
+    );
   }
 
   return [];
@@ -106,50 +135,116 @@ export async function fetchMunicipalCases(municipality: string = "Espoo"): Promi
 /**
  * Fetches municipal decisions from the new modular table
  */
-export async function fetchMunicipalDecisions(municipality: string = "Espoo"): Promise<any[]> {
+export async function fetchMunicipalDecisions(
+  municipality: string = "Espoo",
+): Promise<any[]> {
   const fetcher = unstable_cache(
     async () => {
-      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
-      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
-      
+      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+
       if (!url || !key) return [];
       const supabase = createSupabaseClient(url, key);
 
-      const { data, error } = await supabase
+      const decisionQuery = supabase
         .from("municipal_decisions")
         .select("*")
         .eq("municipality", municipality)
-        .order("decision_date", { ascending: false })
-        .limit(30);
+        .order("decision_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false, nullsFirst: false })
+        .limit(60);
 
-      if (error) {
-        console.error("Error fetching decisions:", error);
-        return [];
+      const casesQuery = supabase
+        .from("municipal_cases")
+        .select("*")
+        .eq("municipality", municipality)
+        .order("meeting_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false, nullsFirst: false })
+        .limit(60);
+
+      const [
+        { data: decisions, error: decErr },
+        { data: cases, error: caseErr },
+      ] = await Promise.all([decisionQuery, casesQuery]);
+
+      if (decErr) console.error("Error fetching municipal_decisions:", decErr);
+      if (caseErr) console.error("Error fetching municipal_cases:", caseErr);
+
+      const decisionRows = (decisions || []).map((d: any) => ({
+        ...d,
+        content_summary: d.content_summary ?? d.summary ?? "",
+      }));
+
+      const seenExternal = new Set<string>();
+      for (const d of decisionRows) {
+        const ext =
+          typeof d.external_id === "string" ? d.external_id.trim() : "";
+        if (ext) seenExternal.add(ext);
       }
 
-      const finalData = data || [];
-      if (finalData.length === 0) return [];
+      const caseRows: any[] = [];
+      for (const c of cases || []) {
+        const ext =
+          typeof c.external_id === "string" ? c.external_id.trim() : "";
+        if (ext && seenExternal.has(ext)) continue;
+        if (ext) seenExternal.add(ext);
 
-      // Haetaan myös mahdolliset kustannusarviot bill_enhanced_profiles -taulusta
-      const enhancedIds = finalData.map(d => `MUNI-${municipality.toUpperCase()}-${d.id}`);
+        caseRows.push({
+          id: c.id,
+          municipality: c.municipality,
+          external_id: c.external_id,
+          title: c.title,
+          content_summary: c.summary || "",
+          proposer: c.org_name || c.municipality,
+          status: (c.status || "OPEN").toString().toUpperCase(),
+          decision_date: c.meeting_date,
+          url: c.url,
+          cost_estimate: c.cost_estimate ?? null,
+          created_at: c.created_at,
+        });
+      }
+
+      const mergedRaw = [...decisionRows, ...caseRows];
+      const enhancedIds = mergedRaw.map(
+        (d) => `MUNI-${municipality.toUpperCase()}-${d.id}`,
+      );
       const { data: enhanced } = await supabase
         .from("bill_enhanced_profiles")
         .select("bill_id, analysis_data")
         .in("bill_id", enhancedIds);
 
-      const enhancedMap = new Map();
-      enhanced?.forEach(e => {
-        const cost = e.analysis_data?.analysis_depth?.economic_impact?.total_cost_estimate;
-        if (cost) enhancedMap.set(e.bill_id, cost);
+      const enhancedMap = new Map<string, number>();
+      enhanced?.forEach((e) => {
+        const cost =
+          e.analysis_data?.analysis_depth?.economic_impact?.total_cost_estimate;
+        if (cost != null && Number(cost) > 0)
+          enhancedMap.set(e.bill_id, Number(cost));
       });
 
-      return finalData.map(d => ({
+      const merged = mergedRaw.map((d) => ({
         ...d,
-        cost_estimate: enhancedMap.get(`MUNI-${municipality.toUpperCase()}-${d.id}`)
+        cost_estimate:
+          d.cost_estimate ??
+          enhancedMap.get(`MUNI-${municipality.toUpperCase()}-${d.id}`) ??
+          null,
       }));
+
+      merged.sort((a, b) =>
+        compareKuntavahtiListPriority(a, b, (r) =>
+          municipalRowFinancialScore(r as any),
+        ),
+      );
+
+      const finalData = buildKuntavahtiOrderedSlice(merged, 30, {
+        maxLautakuntaSlots: KUNTAVAHTI_MAX_LAUTAKUNTA_SLOTS,
+      });
+
+      if (finalData.length === 0) return [];
+
+      return finalData;
     },
     [`municipal-decisions-${municipality}`],
-    { revalidate: 3600, tags: [`municipal-${municipality}`] }
+    { revalidate: 3600, tags: [`municipal-${municipality}`] },
   );
 
   return fetcher();
@@ -161,10 +256,12 @@ export async function fetchMunicipalDecisions(municipality: string = "Espoo"): P
 export async function voteOnMunicipalCase(
   caseId: string,
   position: "for" | "against" | "neutral",
-  municipality: string
+  municipality: string,
 ) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) throw new Error("Authentication required");
 
@@ -175,17 +272,19 @@ export async function voteOnMunicipalCase(
     .eq("id", user.id)
     .single();
 
-  const isResident = profile?.municipality?.toLowerCase() === municipality.toLowerCase();
+  const isResident =
+    profile?.municipality?.toLowerCase() === municipality.toLowerCase();
 
-  const { error } = await supabase
-    .from("municipal_votes")
-    .upsert({
+  const { error } = await supabase.from("municipal_votes").upsert(
+    {
       case_id: caseId,
       user_id: user.id,
       position,
       is_resident: isResident,
-      updated_at: new Date().toISOString()
-    }, { onConflict: "case_id,user_id" });
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "case_id,user_id" },
+  );
 
   if (error) throw error;
   return { success: true };

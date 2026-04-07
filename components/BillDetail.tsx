@@ -24,7 +24,10 @@ import {
 } from "lucide-react";
 import type { Bill, VoteStats, IntegrityAlert } from "@/lib/types";
 import type { LobbyInterventionRow } from "@/lib/lobby/types";
-import { regenerateBillSummary } from "@/app/actions/process-bill";
+import {
+  generateBillDeepAnalysis,
+  regenerateBillSummary,
+} from "@/app/actions/process-bill";
 import { getIntegrityAlertsForEvent } from "@/lib/actions/promise-actions";
 import CitizenLongForm from "./bills/CitizenLongForm";
 import ShadowPowerMeter from "./dashboard/ShadowPowerMeter";
@@ -63,6 +66,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
   const [lobbyLoading, setLobbyLoading] = useState(true);
   const [lobbySyncing, setLobbySyncing] = useState(false);
   const [canLobbySync, setCanLobbySync] = useState(false);
+  const [deepGenerating, setDeepGenerating] = useState(false);
   const [billAiProfile, setBillAiProfile] = useState<{
     expert_impact_assessment?: string | null;
     deep_analysis?: string | null;
@@ -125,12 +129,12 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
     (async () => {
       try {
         const res = await fetch(`/api/bills/${bill.id}/ai-profile`);
-        if (!res.ok) {
-          if (!cancelled) setBillAiProfile({});
-          return;
-        }
-        const data = await res.json();
+        const data = res.ok ? await res.json() : null;
         if (!cancelled) {
+          if (!data || data.error) {
+            setBillAiProfile({});
+            return;
+          }
           setBillAiProfile({
             expert_impact_assessment: data.expert_impact_assessment ?? null,
             deep_analysis: data.deep_analysis ?? null,
@@ -165,6 +169,41 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
     }
   };
 
+  const refreshAiProfile = async () => {
+    try {
+      const pr = await fetch(`/api/bills/${bill.id}/ai-profile`);
+      if (!pr.ok) return;
+      const d = await pr.json();
+      if (!d.error) {
+        setBillAiProfile({
+          expert_impact_assessment: d.expert_impact_assessment ?? null,
+          deep_analysis: d.deep_analysis ?? null,
+        });
+      }
+    } catch {
+      /* keep state */
+    }
+  };
+
+  const handleDeepAnalysis = async () => {
+    setDeepGenerating(true);
+    try {
+      const result = await generateBillDeepAnalysis(bill.id);
+      if (result.success) {
+        toast.success(
+          `Syväanalyysi valmis (${result.chars?.toLocaleString("fi-FI") ?? "?"} merkkiä).`,
+        );
+        await refreshAiProfile();
+      } else {
+        toast.error(result.error || "Syväanalyysi epäonnistui.");
+      }
+    } catch {
+      toast.error("Syväanalyysi epäonnistui.");
+    } finally {
+      setDeepGenerating(false);
+    }
+  };
+
   const handleRegenerate = async () => {
     setProcessing(true);
     try {
@@ -178,18 +217,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
           "parliament",
         );
         if (freshEnhanced) setEnhancedData(freshEnhanced);
-        try {
-          const pr = await fetch(`/api/bills/${bill.id}/ai-profile`);
-          if (pr.ok) {
-            const d = await pr.json();
-            setBillAiProfile({
-              expert_impact_assessment: d.expert_impact_assessment ?? null,
-              deep_analysis: d.deep_analysis ?? null,
-            });
-          }
-        } catch {
-          /* keep existing billAiProfile */
-        }
+        await refreshAiProfile();
         toast.success("AI-analyysi päivitetty!");
       }
     } catch (e) {
@@ -210,10 +238,11 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
     enhancedData?.forecast_metrics?.friction_index ||
     enhancedData?.analysis_data?.analysis_depth?.friction_index;
 
+  const summaryLooksLikeTitle =
+    (savedSummary?.trim() ?? "") === (bill.title?.trim() ?? "");
   const expertDocument =
     billAiProfile?.expert_impact_assessment?.trim() ||
-    savedSummary?.trim() ||
-    "" ||
+    (!summaryLooksLikeTitle ? savedSummary?.trim() : "") ||
     "";
 
   const deepDocument = billAiProfile?.deep_analysis?.trim() || "";
@@ -312,7 +341,7 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
             </div>
           </section>
 
-          {/* Syväanalyysi: optional long-form (~20k), AI + talous */}
+          {/* Syväanalyysi: optional long-form (~25k), expert + stakeholders + talous */}
           <section aria-label="Syväanalyysi">
             <details className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/50 group">
               <summary className="cursor-pointer list-none flex flex-wrap items-center justify-between gap-3 px-6 py-5 md:px-8 md:py-6">
@@ -323,16 +352,36 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                       Syväanalyysi
                     </p>
                     <p className="text-xs text-slate-400 mt-1 font-medium">
-                      AI + talous — laajennettu näkymä (n. 20&nbsp;000 merkkiä)
+                      AI + talous — asiantuntijan perustelut, etujärjestökenttä
+                      ja pitkä analyysi (tavoite n. 25&nbsp;000 merkkiä)
                     </p>
                   </div>
                 </div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/90 group-open:hidden">
-                  Avaa
-                </span>
-                <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/90 hidden group-open:inline">
-                  Sulje
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-[9px] font-black uppercase tracking-widest text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50"
+                    disabled={deepGenerating}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void handleDeepAnalysis();
+                    }}
+                  >
+                    {deepGenerating ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={12} />
+                    )}
+                    Käynnistä syväanalyysi
+                  </button>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/90 group-open:hidden">
+                    Avaa
+                  </span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/90 hidden group-open:inline pointer-events-none">
+                    Sulje
+                  </span>
+                </div>
               </summary>
               <div className="px-6 md:px-8 pb-8 border-t border-white/5">
                 <div className="max-h-[min(65vh,720px)] overflow-y-auto pt-6 pr-2 custom-scrollbar">

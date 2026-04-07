@@ -1,4 +1,5 @@
 import Parser from "rss-parser";
+import { fetchLatestEspooIssues } from "@/lib/municipal/espoo-client";
 
 /**
  * Municipal API Fetcher
@@ -34,89 +35,52 @@ export abstract class MunicipalAPI {
  */
 export class EspooAPI extends MunicipalAPI {
   municipalityName = "Espoo";
-  private meetingItemsRss =
-    "https://espoo.oncloudos.com/cgi/DREQUEST.PHP?page=rss/meetingitems&show=30";
 
+  /**
+   * @param opts.valtuustoOnly When true, narrows to valtuusto/hallitus/päätös-style rows (see espoo-client).
+   *                          Default in callers should be false so the full latest RSS feed is synced.
+   */
   async fetchLatestItems(
     limit: number = 10,
     opts?: { valtuustoOnly?: boolean },
   ): Promise<MunicipalAgendaItem[]> {
-    const valtuustoOnly = opts?.valtuustoOnly !== false;
+    const valtuustoOnly = opts?.valtuustoOnly === true;
     console.log(`[EspooAPI] Fetching items from Espoo Dynasty RSS...`);
     try {
-      const feed = await parser.parseURL(this.meetingItemsRss);
-
-      // SUODATUS-logiikka: Poimi vain kohteet, joiden otsikossa tai kuvauksessa on "Kaupunginvaltuusto"
-      const filteredItems = valtuustoOnly
-        ? feed.items.filter((item) => {
-            const title = (item.title || "").toLowerCase();
-            const snippet = (item.contentSnippet || "").toLowerCase();
-            const content = (item.content || "").toLowerCase();
-
-            return (
-              title.includes("kaupunginvaltuusto") ||
-              snippet.includes("kaupunginvaltuusto") ||
-              content.includes("kaupunginvaltuusto")
-            );
-          })
-        : [...feed.items];
-
+      const issues = await fetchLatestEspooIssues(limit, {
+        keywordFilter: valtuustoOnly,
+      });
       console.log(
-        `[EspooAPI] RSS sync: Using ${filteredItems.length} items (${valtuustoOnly ? "valtuusto filter" : "no filter"}) of ${feed.items.length}`,
+        `[EspooAPI] RSS sync: ${issues.length} items (${valtuustoOnly ? "narrow filter" : "full feed"})`,
       );
-
-      if (filteredItems.length === 0) {
-        // If no fresh items found, try to return mock data for development
-        return this.getMockItems();
+      if (issues.length === 0) {
+        console.warn(
+          "[EspooAPI] No items from RSS (empty feed, filter, or fetch error)",
+        );
+        return [];
       }
 
-      return filteredItems.slice(0, limit).map((item) => ({
-        // RSS-linkkiä käytetään uniikkina tunnisteena duplikaattien estämiseksi
-        id: item.link || Math.random().toString(),
-        title: item.title || "Nimetön asia",
-        summary: item.contentSnippet || item.title,
-        content: item.content || item.contentSnippet,
-        status: "agenda",
-        meetingDate: item.pubDate,
-        orgName: "Kaupunginvaltuusto",
-        url: item.link,
-        municipality: this.municipalityName,
-      }));
-    } catch (error: any) {
-      console.error("[EspooAPI] RSS fetch failed:", error.message);
-      return this.getMockItems();
+      return issues.map((issue) => {
+        const link = issue.id.startsWith("http") ? issue.id : "";
+        return {
+          id: link || issue.id,
+          title: issue.title,
+          summary: issue.summary,
+          content: issue.summary,
+          status: "agenda",
+          meetingDate: issue.modified,
+          orgName: issue.proposer || "Espoon kaupunki",
+          url: link || undefined,
+          municipality: this.municipalityName,
+        };
+      });
+    } catch (error: unknown) {
+      console.error(
+        "[EspooAPI] RSS fetch failed:",
+        error instanceof Error ? error.message : error,
+      );
+      return [];
     }
-  }
-
-  private getMockItems(): MunicipalAgendaItem[] {
-    console.log("[EspooAPI] Returning realistic mock items as fallback");
-    return [
-      {
-        id: "mock-espoo-1",
-        title:
-          "Keskuspuhdistamon laajennus ja modernisointi (Kaupunginvaltuusto)",
-        summary:
-          "Päätös Blominmäen jätevedenpuhdistamon kapasiteetin nostamisesta vastaamaan kasvavaa asukasmäärää.",
-        content:
-          "Kaupunginvaltuusto päätti hyväksyä suunnitelman laajentaa puhdistamoa...",
-        status: "decided",
-        meetingDate: "2026-01-03T10:00:00Z",
-        orgName: "Kaupunginvaltuusto",
-        municipality: "Espoo",
-      },
-      {
-        id: "mock-espoo-2",
-        title: "Länsiväylän meluaitojen toteuttaminen (Kaupunginvaltuusto)",
-        summary:
-          "Espoon kaupunki antaa lausunnon Länsiväylän parantamisen ympäristövaikutuksista Tapiolan kohdalla.",
-        content:
-          "Kaupunginvaltuusto käsittelee hankkeen toteutussuunnitelmaa...",
-        status: "agenda",
-        meetingDate: "2026-01-15T17:00:00Z",
-        orgName: "Kaupunginvaltuusto",
-        municipality: "Espoo",
-      },
-    ];
   }
 }
 

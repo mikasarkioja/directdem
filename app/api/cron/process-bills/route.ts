@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { syncExpertImpactToBillAiProfile } from "@/lib/bills/sync-expert-to-ai-profile";
 import { getLatestBills } from "@/lib/eduskunta-api";
 import { getBillContent } from "@/lib/eduskunta-api";
 import { prepareBillTextForAI } from "@/lib/text-cleaner";
@@ -11,7 +12,7 @@ export const maxDuration = 300; // 5 minutes for processing multiple bills
 /**
  * Cron job endpoint that runs daily at 06:00
  * Fetches the 5 latest bills, processes them through AI, and stores them
- * 
+ *
  * Protected by CRON_SECRET environment variable
  */
 export async function GET(request: NextRequest) {
@@ -24,10 +25,7 @@ export async function GET(request: NextRequest) {
       // In production, Vercel automatically adds the authorization header
       // For local testing, you can bypass this check
       if (process.env.NODE_ENV === "production") {
-        return NextResponse.json(
-          { error: "Unauthorized" },
-          { status: 401 }
-        );
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     }
 
@@ -70,7 +68,12 @@ export async function GET(request: NextRequest) {
           title: issue.title,
           summary: issue.abstract,
           raw_text: issue.abstract,
-          status: issue.status === "active" ? "voting" : issue.status === "pending" ? "draft" : "in_progress",
+          status:
+            issue.status === "active"
+              ? "voting"
+              : issue.status === "pending"
+                ? "draft"
+                : "in_progress",
           category: issue.category || "Hallituksen esitys",
           published_date: issue.publishedDate || new Date().toISOString(),
           url: issue.url,
@@ -93,11 +96,18 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (error) {
-        results.errors.push(`Failed to upsert ${bill.parliament_id}: ${error.message}`);
-        console.error(`[Cron] Error upserting bill ${bill.parliament_id}:`, error);
+        results.errors.push(
+          `Failed to upsert ${bill.parliament_id}: ${error.message}`,
+        );
+        console.error(
+          `[Cron] Error upserting bill ${bill.parliament_id}:`,
+          error,
+        );
       } else if (data) {
         insertedBillIds.push(data.id);
-        console.log(`[Cron] Upserted bill: ${bill.parliament_id} (ID: ${data.id})`);
+        console.log(
+          `[Cron] Upserted bill: ${bill.parliament_id} (ID: ${data.id})`,
+        );
       }
     }
 
@@ -110,7 +120,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Process each bill through AI (if summary doesn't exist or is too short)
-    console.log(`[Cron] Processing ${insertedBillIds.length} bills through AI...`);
+    console.log(
+      `[Cron] Processing ${insertedBillIds.length} bills through AI...`,
+    );
 
     for (const billId of insertedBillIds) {
       try {
@@ -122,13 +134,17 @@ export async function GET(request: NextRequest) {
           .single();
 
         if (billError || !bill) {
-          results.errors.push(`Bill ${billId} not found: ${billError?.message}`);
+          results.errors.push(
+            `Bill ${billId} not found: ${billError?.message}`,
+          );
           continue;
         }
 
         // Skip if summary already exists and is substantial
         if (bill.summary && bill.summary.length > 200) {
-          console.log(`[Cron] Skipping ${bill.parliament_id} - summary already exists`);
+          console.log(
+            `[Cron] Skipping ${bill.parliament_id} - summary already exists`,
+          );
           results.billsSkipped++;
           continue;
         }
@@ -137,7 +153,9 @@ export async function GET(request: NextRequest) {
         let billText = bill.raw_text;
 
         if (!billText || billText.length < 500) {
-          console.log(`[Cron] Fetching full content for ${bill.parliament_id}...`);
+          console.log(
+            `[Cron] Fetching full content for ${bill.parliament_id}...`,
+          );
           const content = await getBillContent(bill.parliament_id);
 
           if (content) {
@@ -148,10 +166,14 @@ export async function GET(request: NextRequest) {
               .update({ raw_text: billText })
               .eq("id", billId);
           } else {
-            console.warn(`[Cron] Could not fetch full content for ${bill.parliament_id}`);
+            console.warn(
+              `[Cron] Could not fetch full content for ${bill.parliament_id}`,
+            );
             // Use abstract as fallback
             if (!billText) {
-              results.errors.push(`No content available for ${bill.parliament_id}`);
+              results.errors.push(
+                `No content available for ${bill.parliament_id}`,
+              );
               continue;
             }
           }
@@ -161,16 +183,24 @@ export async function GET(request: NextRequest) {
         const preparedText = prepareBillTextForAI(billText);
 
         if (preparedText.length < 100) {
-          results.errors.push(`Text too short for ${bill.parliament_id} after processing`);
+          results.errors.push(
+            `Text too short for ${bill.parliament_id} after processing`,
+          );
           continue;
         }
 
         // Generate AI summary using OpenAI
-        console.log(`[Cron] Generating AI summary for ${bill.parliament_id}...`);
-        
+        console.log(
+          `[Cron] Generating AI summary for ${bill.parliament_id}...`,
+        );
+
         if (!process.env.OPENAI_API_KEY) {
-          results.errors.push(`OpenAI API key not configured - skipping ${bill.parliament_id}`);
-          console.warn("[Cron] OPENAI_API_KEY not set, skipping AI summary generation");
+          results.errors.push(
+            `OpenAI API key not configured - skipping ${bill.parliament_id}`,
+          );
+          console.warn(
+            "[Cron] OPENAI_API_KEY not set, skipping AI summary generation",
+          );
           continue;
         }
 
@@ -198,13 +228,17 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
           } as any);
           summary = text;
         } catch (aiError: any) {
-          results.errors.push(`AI generation failed for ${bill.parliament_id}: ${aiError.message}`);
+          results.errors.push(
+            `AI generation failed for ${bill.parliament_id}: ${aiError.message}`,
+          );
           console.error(`[Cron] AI generation error:`, aiError);
           continue;
         }
 
         if (!summary || summary.length < 50) {
-          results.errors.push(`Generated summary too short for ${bill.parliament_id}`);
+          results.errors.push(
+            `Generated summary too short for ${bill.parliament_id}`,
+          );
           continue;
         }
 
@@ -218,11 +252,19 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
           .eq("id", billId);
 
         if (updateError) {
-          results.errors.push(`Failed to save summary for ${bill.parliament_id}: ${updateError.message}`);
+          results.errors.push(
+            `Failed to save summary for ${bill.parliament_id}: ${updateError.message}`,
+          );
           console.error(`[Cron] Error saving summary:`, updateError);
         } else {
           results.billsProcessed++;
           console.log(`[Cron] Successfully processed ${bill.parliament_id}`);
+          try {
+            const admin = await createAdminClient();
+            await syncExpertImpactToBillAiProfile(admin, billId, summary);
+          } catch (syncErr) {
+            console.warn(`[Cron] bill_ai_profiles expert sync:`, syncErr);
+          }
         }
 
         // Small delay between AI calls to avoid rate limiting
@@ -235,7 +277,8 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
     }
 
     const endTime = new Date().toISOString();
-    const duration = new Date(endTime).getTime() - new Date(results.startTime).getTime();
+    const duration =
+      new Date(endTime).getTime() - new Date(results.startTime).getTime();
 
     console.log(`[Cron] Completed in ${duration}ms`);
     console.log(`[Cron] Results:`, results);
@@ -255,8 +298,7 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
         error: error.message || "Unknown error",
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

@@ -31,20 +31,28 @@ export interface MunicipalWatchItem {
 }
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import {
+  buildKuntavahtiOrderedSlice,
+  compareMunicipalWatchItems,
+  KUNTAVAHTI_MAX_LAUTAKUNTA_SLOTS,
+} from "@/lib/municipal/kuntavahti-priority";
 
 export async function fetchMunicipalWatchFeed(limit = 30) {
   const fetcher = unstable_cache(
     async () => {
-      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
-      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
-      
+      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+      const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+
       if (!url || !key) return [];
-      
+
       const supabase = createSupabaseClient(url, key);
+
+      const fetchCap = Math.min(120, Math.max(80, limit * 4));
 
       const { data, error } = await supabase
         .from("meeting_analysis")
-        .select(`
+        .select(
+          `
           id,
           municipality,
           meeting_title,
@@ -62,16 +70,18 @@ export async function fetchMunicipalWatchFeed(limit = 30) {
               party
             )
           )
-        `)
-        .order("meeting_date", { ascending: false })
-        .limit(limit);
+        `,
+        )
+        .order("meeting_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false, nullsFirst: false })
+        .limit(fetchCap);
 
       if (error) {
         console.error("Error fetching municipal watch feed:", error);
         return [];
       }
 
-      return (data || []).map((item: any) => ({
+      const mapped = (data || []).map((item: any) => ({
         id: item.id,
         municipality: item.municipality,
         meeting_title: item.meeting_title,
@@ -85,14 +95,18 @@ export async function fetchMunicipalWatchFeed(limit = 30) {
           discrepancy: f.discrepancy,
           description: f.description,
           councilor_name: f.councilors?.full_name,
-          councilor_party: f.councilors?.party
-        }))
+          councilor_party: f.councilors?.party,
+        })),
       })) as MunicipalWatchItem[];
+
+      mapped.sort(compareMunicipalWatchItems);
+      return buildKuntavahtiOrderedSlice(mapped, limit, {
+        maxLautakuntaSlots: KUNTAVAHTI_MAX_LAUTAKUNTA_SLOTS,
+      });
     },
     [`municipal-watch-feed-${limit}`],
-    { revalidate: 900, tags: ["municipal-watch"] }
+    { revalidate: 900, tags: ["municipal-watch"] },
   );
 
   return fetcher();
 }
-

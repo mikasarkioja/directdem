@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/server";
 import { render } from "@react-email/render";
-import WeeklyBulletin from "@/components/emails/WeeklyBulletin";
+import WeeklyBulletin, {
+  type WeeklyEspooCaseHeader,
+  type WeeklyParliamentBillHeader,
+} from "@/components/emails/WeeklyBulletin";
 
 type DecisionRow = {
   id: string;
@@ -91,8 +94,153 @@ export type WeeklyReportData = z.infer<typeof WeeklyReportSchema>;
 export type WeeklyReportEmailPayload = {
   issueDate: string;
   report: WeeklyReportData;
+  parliamentBillHeaders: WeeklyParliamentBillHeader[];
+  espooCaseHeaders: WeeklyEspooCaseHeader[];
   html: string;
 };
+
+const LEGISLATIVE_HEADER_LIMIT = 200;
+
+function formatFiDateShort(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  return d.toLocaleDateString("fi-FI", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  });
+}
+
+function sortKey(iso: string | null | undefined): number {
+  if (!iso) return 0;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+/**
+ * Full title index for the bulletin: Eduskunta `bills` and Espoo `municipal_cases`
+ * touched in the last week (published_date / meeting_date or sync created_at).
+ */
+export async function fetchWeeklyLegislativeHeaders(
+  supabase: Awaited<ReturnType<typeof createAdminClient>>,
+  sevenDaysAgoIso: string,
+): Promise<{
+  parliament: WeeklyParliamentBillHeader[];
+  espoo: WeeklyEspooCaseHeader[];
+}> {
+  type BillRow = {
+    id: string;
+    parliament_id: string | null;
+    title: string | null;
+    published_date: string | null;
+    created_at: string | null;
+    url: string | null;
+  };
+  type CaseRow = {
+    id: string;
+    title: string | null;
+    meeting_date: string | null;
+    created_at: string | null;
+    url: string | null;
+  };
+
+  const [pubResult, creResult] = await Promise.all([
+    supabase
+      .from("bills")
+      .select("id, parliament_id, title, published_date, created_at, url")
+      .gte("published_date", sevenDaysAgoIso)
+      .limit(LEGISLATIVE_HEADER_LIMIT),
+    supabase
+      .from("bills")
+      .select("id, parliament_id, title, published_date, created_at, url")
+      .gte("created_at", sevenDaysAgoIso)
+      .limit(LEGISLATIVE_HEADER_LIMIT),
+  ]);
+
+  if (pubResult.error) {
+    logger.warn(
+      "bills (published_date) header query:",
+      pubResult.error.message,
+    );
+  }
+  if (creResult.error) {
+    logger.warn("bills (created_at) header query:", creResult.error.message);
+  }
+
+  const billMap = new Map<string, BillRow>();
+  for (const r of [
+    ...(pubResult.data ?? []),
+    ...(creResult.data ?? []),
+  ] as BillRow[]) {
+    billMap.set(r.id, r);
+  }
+
+  const parliament = Array.from(billMap.values())
+    .sort(
+      (a, b) =>
+        sortKey(b.published_date || b.created_at) -
+        sortKey(a.published_date || a.created_at),
+    )
+    .slice(0, LEGISLATIVE_HEADER_LIMIT)
+    .map((b) => ({
+      parliamentId: b.parliament_id?.trim() || "—",
+      title: b.title?.trim() || "(ei otsikkoa)",
+      dateLabel: formatFiDateShort(b.published_date || b.created_at),
+      url: b.url,
+    }));
+
+  const [espooMeeting, espooCreated] = await Promise.all([
+    supabase
+      .from("municipal_cases")
+      .select("id, title, meeting_date, created_at, url")
+      .eq("municipality", "Espoo")
+      .gte("meeting_date", sevenDaysAgoIso)
+      .limit(LEGISLATIVE_HEADER_LIMIT),
+    supabase
+      .from("municipal_cases")
+      .select("id, title, meeting_date, created_at, url")
+      .eq("municipality", "Espoo")
+      .gte("created_at", sevenDaysAgoIso)
+      .limit(LEGISLATIVE_HEADER_LIMIT),
+  ]);
+
+  if (espooMeeting.error) {
+    logger.warn(
+      "municipal_cases Espoo (meeting_date):",
+      espooMeeting.error.message,
+    );
+  }
+  if (espooCreated.error) {
+    logger.warn(
+      "municipal_cases Espoo (created_at):",
+      espooCreated.error.message,
+    );
+  }
+
+  const caseMap = new Map<string, CaseRow>();
+  for (const r of [
+    ...(espooMeeting.data ?? []),
+    ...(espooCreated.data ?? []),
+  ] as CaseRow[]) {
+    caseMap.set(r.id, r);
+  }
+
+  const espoo = Array.from(caseMap.values())
+    .sort(
+      (a, b) =>
+        sortKey(b.meeting_date || b.created_at) -
+        sortKey(a.meeting_date || a.created_at),
+    )
+    .slice(0, LEGISLATIVE_HEADER_LIMIT)
+    .map((c) => ({
+      title: c.title?.trim() || "(ei otsikkoa)",
+      dateLabel: formatFiDateShort(c.meeting_date || c.created_at),
+      url: c.url,
+    }));
+
+  return { parliament, espoo };
+}
 
 const logger = {
   info: (...args: unknown[]) => console.log("[WeeklyGenerator]", ...args),
@@ -256,7 +404,19 @@ export async function generateWeeklyReport(): Promise<WeeklyReportData> {
 
 export async function generateWeeklyReportEmailPayload(): Promise<WeeklyReportEmailPayload> {
   try {
-    const report = await generateWeeklyReport();
+    const sevenDaysAgoIso = new Date(
+      Date.now() - 7 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    const supabase = await createAdminClient();
+    const [
+      { parliament: parliamentBillHeaders, espoo: espooCaseHeaders },
+      report,
+    ] = await Promise.all([
+      fetchWeeklyLegislativeHeaders(supabase, sevenDaysAgoIso),
+      generateWeeklyReport(),
+    ]);
+
     const issueDate = new Date().toLocaleDateString("fi-FI", {
       day: "numeric",
       month: "long",
@@ -265,11 +425,23 @@ export async function generateWeeklyReportEmailPayload(): Promise<WeeklyReportEm
     const html = await render(
       WeeklyBulletin({
         issueDate,
-        parliamentData: report.parliamentData,
-        espooData: report.espooData,
+        parliamentData: {
+          ...report.parliamentData,
+          weeklyBillHeaders: parliamentBillHeaders,
+        },
+        espooData: {
+          ...report.espooData,
+          weeklyCaseHeaders: espooCaseHeaders,
+        },
       }),
     );
-    return { issueDate, report, html };
+    return {
+      issueDate,
+      report,
+      parliamentBillHeaders,
+      espooCaseHeaders,
+      html,
+    };
   } catch (error: any) {
     logger.error(
       "generateWeeklyReportEmailPayload failed:",

@@ -3,6 +3,7 @@ export interface FeatureFlags {
   ECONOMY_ENABLED: boolean;
   RESEARCHER_ENABLED: boolean;
   MUNICIPAL_WATCH_ENABLED: boolean;
+  MEDIA_WATCH_ENABLED: boolean;
   PULSE_ENABLED: boolean;
   INTELLIGENCE_FEED_ENABLED: boolean;
   XP_SYSTEM_ENABLED: boolean;
@@ -24,6 +25,10 @@ export const FEATURES: FeatureFlags = {
   RESEARCHER_ENABLED: toBool(process.env.NEXT_PUBLIC_RESEARCHER_ENABLED, true),
   MUNICIPAL_WATCH_ENABLED: toBool(
     process.env.NEXT_PUBLIC_MUNICIPAL_WATCH_ENABLED,
+    true,
+  ),
+  MEDIA_WATCH_ENABLED: toBool(
+    process.env.NEXT_PUBLIC_MEDIA_WATCH_ENABLED,
     true,
   ),
   PULSE_ENABLED: toBool(process.env.NEXT_PUBLIC_PULSE_ENABLED, true),

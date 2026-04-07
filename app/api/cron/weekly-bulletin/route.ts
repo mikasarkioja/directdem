@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getResendClient } from "@/lib/resend";
+import { getResendFromEmail, sendResendEmail } from "@/lib/resend";
 import { generateWeeklyReportEmailPayload } from "@/lib/bulletin/generator";
 import { scanEspooLobbyTraceability } from "@/lib/municipal/espoo-lobby-traceability";
 
@@ -32,9 +32,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createAdminClient();
-    const resend = getResendClient();
-    const fromEmail =
-      process.env.RESEND_FROM_EMAIL ?? "noreply@eduskuntavahti.fi";
+    const fromEmail = getResendFromEmail();
 
     // 1) Refresh Espoo lobby traceability data before bulletin generation
     try {
@@ -81,7 +79,7 @@ export async function GET(request: NextRequest) {
     for (let i = 0; i < recipientEmails.length; i += batchSize) {
       const chunk = recipientEmails.slice(i, i + batchSize);
       try {
-        await resend.emails.send({
+        await sendResendEmail({
           from: fromEmail,
           to: chunk,
           subject: `DirectDem viikkobulletiini - ${payload.issueDate}`,

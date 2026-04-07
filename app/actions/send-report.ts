@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getResendClient } from "@/lib/resend";
+import { getResendFromEmail, sendResendEmail } from "@/lib/resend";
 import WeeklyReportEmail from "@/components/emails/WeeklyReportEmail";
 import { render } from "@react-email/render";
 
@@ -24,7 +24,10 @@ export async function sendWeeklyReport(): Promise<{
       .eq("join_report_list", true);
 
     if (usersError) {
-      console.error("[sendWeeklyReport] Error fetching opted-in users:", usersError);
+      console.error(
+        "[sendWeeklyReport] Error fetching opted-in users:",
+        usersError,
+      );
       return {
         success: false,
         emailsSent: 0,
@@ -49,7 +52,10 @@ export async function sendWeeklyReport(): Promise<{
       .not("email", "is", null);
 
     if (profilesError) {
-      console.error("[sendWeeklyReport] Error fetching profiles with emails:", profilesError);
+      console.error(
+        "[sendWeeklyReport] Error fetching profiles with emails:",
+        profilesError,
+      );
       return {
         success: false,
         emailsSent: 0,
@@ -74,7 +80,8 @@ export async function sendWeeklyReport(): Promise<{
 
     const { data: votes, error: votesError } = await supabase
       .from("votes")
-      .select(`
+      .select(
+        `
         id,
         position,
         created_at,
@@ -84,7 +91,8 @@ export async function sendWeeklyReport(): Promise<{
           parliament_id,
           status
         )
-      `)
+      `,
+      )
       .in("user_id", userIds)
       .gte("created_at", oneWeekAgo.toISOString())
       .order("created_at", { ascending: false });
@@ -156,8 +164,10 @@ export async function sendWeeklyReport(): Promise<{
       },
       percentages: {
         for: bill.total > 0 ? Math.round((bill.for / bill.total) * 100) : 0,
-        against: bill.total > 0 ? Math.round((bill.against / bill.total) * 100) : 0,
-        neutral: bill.total > 0 ? Math.round((bill.neutral / bill.total) * 100) : 0,
+        against:
+          bill.total > 0 ? Math.round((bill.against / bill.total) * 100) : 0,
+        neutral:
+          bill.total > 0 ? Math.round((bill.neutral / bill.total) * 100) : 0,
       },
     }));
 
@@ -181,20 +191,20 @@ export async function sendWeeklyReport(): Promise<{
         totalVotes: votes?.length || 0,
         weekStart: weekStartStr,
         weekEnd: weekEndStr,
-      })
+      }),
     );
 
     // 8. Initialize Resend and send emails
-    const resend = getResendClient();
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@eduskuntavahti.fi";
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://eduskuntavahti.fi";
+    const fromEmail = getResendFromEmail();
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || "https://eduskuntavahti.fi";
 
     let emailsSent = 0;
     const errors: string[] = [];
 
     for (const user of optedInUserEmails) {
       try {
-        await resend.emails.send({
+        await sendResendEmail({
           from: fromEmail,
           to: user.email!,
           subject: `Eduskuntavahti - Viikkoraportti ${weekStartStr} - ${weekEndStr}`,
@@ -202,7 +212,10 @@ export async function sendWeeklyReport(): Promise<{
         });
         emailsSent++;
       } catch (emailError: any) {
-        console.error(`[sendWeeklyReport] Failed to send email to ${user.email}:`, emailError);
+        console.error(
+          `[sendWeeklyReport] Failed to send email to ${user.email}:`,
+          emailError,
+        );
         errors.push(`${user.email}: ${emailError.message}`);
       }
     }
@@ -289,14 +302,12 @@ export async function sendTestReport(): Promise<{
         totalVotes: 100,
         weekStart: weekStartStr,
         weekEnd: weekEndStr,
-      })
+      }),
     );
 
-    // Send test email
-    const resend = getResendClient();
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@eduskuntavahti.fi";
+    const fromEmail = getResendFromEmail();
 
-    await resend.emails.send({
+    await sendResendEmail({
       from: fromEmail,
       to: user.email,
       subject: `[TEST] Eduskuntavahti - Viikkoraportti ${weekStartStr} - ${weekEndStr}`,
@@ -315,4 +326,3 @@ export async function sendTestReport(): Promise<{
     };
   }
 }
-

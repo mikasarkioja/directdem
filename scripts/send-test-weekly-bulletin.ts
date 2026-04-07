@@ -5,8 +5,11 @@
  * Usage:
  *   npx tsx scripts/send-test-weekly-bulletin.ts [email]
  *   npx tsx scripts/send-test-weekly-bulletin.ts --fixture [email]
+ *   npx tsx scripts/send-test-weekly-bulletin.ts --fixture --use-env-from [email]
  *
  * --fixture: skip Supabase/OpenAI; sends a static sample layout (for Resend/domain checks).
+ * By default this script sets RESEND_FORCE_SANDBOX so `from` uses onboarding@resend.dev
+ * (works without verifying your domain). Pass --use-env-from to use RESEND_FROM_EMAIL instead.
  * Email defaults to ADMIN_EMAIL env or mika.sarkioja@gmail.com
  */
 
@@ -18,24 +21,33 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 const defaultAdmin = "mika.sarkioja@gmail.com";
 
-function parseArgs(): { fixture: boolean; to: string } {
+function parseArgs(): {
+  fixture: boolean;
+  to: string;
+  useEnvFrom: boolean;
+} {
   const raw = process.argv.slice(2);
   let fixture = false;
+  let useEnvFrom = false;
   const rest: string[] = [];
   for (const a of raw) {
     if (a === "--fixture") fixture = true;
+    else if (a === "--use-env-from") useEnvFrom = true;
     else rest.push(a);
   }
   const to =
     rest[0]?.trim().toLowerCase() ||
     process.env.ADMIN_EMAIL?.trim().toLowerCase() ||
     defaultAdmin;
-  return { fixture, to };
+  return { fixture, to, useEnvFrom };
 }
 
 async function main() {
-  const { fixture, to } = parseArgs();
-  const { getResendClient } = await import("../lib/resend");
+  const { fixture, to, useEnvFrom } = parseArgs();
+  if (!useEnvFrom) {
+    process.env.RESEND_FORCE_SANDBOX = "true";
+  }
+  const { getResendFromEmail, sendResendEmail } = await import("../lib/resend");
 
   let issueDate: string;
   let html: string;
@@ -97,19 +109,23 @@ async function main() {
     html = payload.html;
   }
 
-  const resend = getResendClient();
-  const fromEmail =
-    process.env.RESEND_FROM_EMAIL ?? "noreply@eduskuntavahti.fi";
+  const fromEmail = getResendFromEmail();
 
+  console.log("[test-bulletin] From:", fromEmail);
   console.log("[test-bulletin] Sending to", to);
-  await resend.emails.send({
+  const { id } = await sendResendEmail({
     from: fromEmail,
     to,
     subject: `[TESTI] DirectDem viikkobulletiini - ${issueDate}`,
     html,
   });
 
-  console.log("[test-bulletin] OK — check inbox (and spam) for", to);
+  console.log(
+    "[test-bulletin] OK — Resend id:",
+    id,
+    "— check inbox and spam for",
+    to,
+  );
 }
 
 main().catch((e) => {

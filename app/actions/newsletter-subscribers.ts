@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkAdminAccess } from "@/app/actions/admin";
-import { getResendClient } from "@/lib/resend";
+import { getResendFromEmail, sendResendEmail } from "@/lib/resend";
 import { generateWeeklyReportEmailPayload } from "@/lib/bulletin/generator";
 
 const emailSchema = z.string().trim().email("Virheellinen sähköpostiosoite");
@@ -105,11 +105,9 @@ export async function sendTestBulletin(emailInput: string): Promise<{
 
   try {
     const payload = await generateWeeklyReportEmailPayload();
-    const resend = getResendClient();
-    const fromEmail =
-      process.env.RESEND_FROM_EMAIL ?? "noreply@eduskuntavahti.fi";
+    const fromEmail = getResendFromEmail();
 
-    await resend.emails.send({
+    await sendResendEmail({
       from: fromEmail,
       to: parsed.data.toLowerCase(),
       subject: `[TESTI] DirectDem viikkobulletiini - ${payload.issueDate}`,

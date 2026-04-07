@@ -42,3 +42,6 @@ BEGIN
     END IF;
 END $$;
 
+-- Admin routes (requireAdmin) and newsletter_subscribers RLS
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_profiles_is_admin ON public.profiles (is_admin);

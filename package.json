@@ -13,7 +13,8 @@
     "prepare": "husky install",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "grant-admin": "tsx scripts/grant-admin-by-email.ts"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

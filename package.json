@@ -14,7 +14,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "grant-admin": "tsx scripts/grant-admin-by-email.ts"
+    "grant-admin": "tsx scripts/grant-admin-by-email.ts",
+    "test-bulletin": "tsx scripts/send-test-weekly-bulletin.ts",
+    "test-bulletin:fixture": "tsx scripts/send-test-weekly-bulletin.ts --fixture"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/cron/citizen-pulse",
-      "schedule": "5 * * * *"
+      "schedule": "30 9 * * *"
     }
   ]
 }

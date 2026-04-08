@@ -1,12 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  variable: "--font-news-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Eduskuntavahti - Varjo-suora demokratia",
-  description: "Vaikuta suoraan Suomen lainsäädäntöön. Vertaa kansalaisten mielipiteitä eduskunnan päätöksiin.",
+  description:
+    "Vaikuta suoraan Suomen lainsäädäntöön. Vertaa kansalaisten mielipiteitä eduskunnan päätöksiin.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -18,9 +29,7 @@ export const metadata: Metadata = {
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
+    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
   },
 };
 
@@ -48,14 +57,26 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="format-detection" content="telephone=no" />
       </head>
-      <body className={inter.className}>
+      <body
+        className={`${inter.variable} ${sourceSerif.variable} font-sans antialiased`}
+      >
         <RoleProvider>
           {children}
-          <Toaster position="top-center" />
+          <Toaster
+            position="top-center"
+            containerStyle={{ zIndex: 100050 }}
+            toastOptions={{
+              duration: 8000,
+              className: "text-sm",
+              style: {
+                background: "#1e293b",
+                color: "#f1f5f9",
+                border: "1px solid #334155",
+              },
+            }}
+          />
         </RoleProvider>
       </body>
     </html>
   );
 }
-
-

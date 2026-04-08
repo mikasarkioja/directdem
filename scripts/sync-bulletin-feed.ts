@@ -10,6 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import path from "path";
 import { syncBulletinFeedTables } from "../lib/bulletin/sync-feed-from-sources";
+import { recordSyncSuccess } from "@/lib/ops/sync-logs";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
@@ -29,6 +30,9 @@ async function main() {
 
   const result = await syncBulletinFeedTables(supabase);
   console.log(JSON.stringify(result, null, 2));
+  if (!result.errors.length) {
+    await recordSyncSuccess(supabase, "sync-bulletin-feed");
+  }
   if (result.errors.length) {
     process.exitCode = 1;
   }

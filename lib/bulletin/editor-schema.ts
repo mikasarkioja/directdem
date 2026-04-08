@@ -58,6 +58,22 @@ export const weeklyBulletinEditorModelSchema = z.object({
     )
     .max(35)
     .default([]),
+  /** Monilähteinen jäljitettävyys — vain "Mahdollinen eturistiriita", ei vahvistettua väärinkäytöstä. */
+  potentialInterestConflicts: z
+    .array(
+      z.object({
+        headline: z.string(),
+        dek: z.string(),
+        body: z.string(),
+        personLabel: z.string(),
+        heOrBillLabel: z.string(),
+        organizationsInvolved: z.array(z.string()).max(6).default([]),
+        evidenceSummary: z.string(),
+        officialDataNote: z.string().optional(),
+      }),
+    )
+    .max(12)
+    .default([]),
 });
 
 export type WeeklyBulletinEditorModel = z.infer<

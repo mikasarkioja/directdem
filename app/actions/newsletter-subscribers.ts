@@ -110,7 +110,7 @@ export async function sendTestBulletin(emailInput: string): Promise<{
     await sendResendEmail({
       from: fromEmail,
       to: parsed.data.toLowerCase(),
-      subject: `[TESTI] DirectDem viikkobulletiini - ${payload.issueDate}`,
+      subject: `[TESTI] Omatase viikkolehti – ${payload.issueDate}`,
       html: payload.html,
     });
 

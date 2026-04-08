@@ -5,13 +5,15 @@ import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { fetchBillsFromSupabase } from "@/app/actions/bills-supabase";
 import { fetchMunicipalDecisions } from "@/app/actions/municipal";
-import { getResearcherStats } from "@/app/actions/researcher";
 import { getIntelligenceFeed } from "@/lib/feed/feed-service";
 import IntelligenceFeedWrapper from "@/components/feed/IntelligenceFeedWrapper";
+import CitizenPulseSection from "@/components/feed/CitizenPulseSection";
 import { IntelligenceFeedSkeleton } from "@/components/feed/IntelligenceFeed";
 import { isFeatureEnabled } from "@/lib/config/features";
+import { redirect } from "next/navigation";
+import { getCachedCitizenPulseSummary } from "@/lib/feed/citizen-pulse-cache";
 
-export const revalidate = 900; // Päivitä sivu 15 minuutin välein
+export const revalidate = 900;
 
 export default async function DashboardPage({
   searchParams,
@@ -20,14 +22,21 @@ export default async function DashboardPage({
 }) {
   const user = await getUser();
   const resolvedSearchParams = await searchParams;
-  const view = (resolvedSearchParams.view as string) || "citizen";
-  const lens = (resolvedSearchParams.lens as string) || "national";
+  const viewParam = resolvedSearchParams.view;
+  const view =
+    (Array.isArray(viewParam) ? viewParam[0] : viewParam) || "citizen";
 
-  // Esihaku: Ladataan kriittinen data jo palvelimella
+  if (view === "researcher") {
+    redirect("/dashboard/researcher");
+  }
+
+  const lensParam = resolvedSearchParams.lens;
+  const lens =
+    (Array.isArray(lensParam) ? lensParam[0] : lensParam) || "national";
+
   const billsPromise = fetchBillsFromSupabase();
   const feedPromise = getIntelligenceFeed(user);
 
-  // Kunnalliset päätökset jos ollaan kuntanäkymässä tai linssi on asetettu
   let municipalPromise: Promise<any[]> = Promise.resolve([]);
   if (view === "kuntavahti" || lens !== "national") {
     const muniName =
@@ -37,34 +46,44 @@ export default async function DashboardPage({
     municipalPromise = fetchMunicipalDecisions(muniName);
   }
 
-  // Tutkijatilastot jos ollaan tutkijanäkymässä
-  let statsPromise: Promise<any> = Promise.resolve(null);
-  if (view === "researcher") {
-    statsPromise = getResearcherStats();
-  }
-
-  const [initialBills, initialMunicipalTasks, initialStats, feedItems] =
+  const [initialBills, initialMunicipalTasks, feedItems, cachedPulse] =
     await Promise.all([
       billsPromise,
       municipalPromise,
-      statsPromise,
       feedPromise,
+      getCachedCitizenPulseSummary(),
     ]);
 
-  const isResearcher = view === "researcher";
+  const showFeed = isFeatureEnabled("INTELLIGENCE_FEED_ENABLED");
 
   return (
     <div className="min-h-screen bg-nordic-white">
       <Navbar user={user} />
-      <main
-        className={`${isResearcher ? "max-w-[1600px]" : "max-w-7xl"} mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-500 space-y-12`}
-      >
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 transition-all duration-500 space-y-10 md:space-y-12 feed-news-theme">
+        {showFeed ? (
+          <>
+            <Suspense fallback={<IntelligenceFeedSkeleton />}>
+              <CitizenPulseSection
+                cachedPulse={cachedPulse}
+                feedItemCount={feedItems.length}
+              />
+            </Suspense>
+            <Suspense fallback={<IntelligenceFeedSkeleton />}>
+              <IntelligenceFeedWrapper
+                initialItems={feedItems}
+                userDna={user}
+                variant="citizen"
+              />
+            </Suspense>
+          </>
+        ) : null}
+
         <Suspense
           fallback={
-            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-4">
               <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
               <p className="text-slate-400 font-black uppercase tracking-widest text-xs animate-pulse">
-                Ladataan Digitaalista Työhuonetta...
+                Ladataan työpöytää...
               </p>
             </div>
           }
@@ -73,16 +92,10 @@ export default async function DashboardPage({
             initialUser={user}
             prefetchedBills={initialBills}
             prefetchedMunicipalTasks={initialMunicipalTasks}
-            prefetchedStats={initialStats}
+            prefetchedStats={null}
+            pageVariant="dashboard"
           />
         </Suspense>
-
-        {/* Intelligence Feed Section */}
-        {isFeatureEnabled("INTELLIGENCE_FEED_ENABLED") && (
-          <Suspense fallback={<IntelligenceFeedSkeleton />}>
-            <IntelligenceFeedWrapper initialItems={feedItems} userDna={user} />
-          </Suspense>
-        )}
       </main>
     </div>
   );

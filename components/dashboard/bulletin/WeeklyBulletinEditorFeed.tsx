@@ -1,3 +1,5 @@
+"use client";
+
 import type { WeeklyBulletinPayload } from "@/app/actions/weekly-bulletin-editor";
 import { ReferenceRichText } from "@/components/dashboard/bulletin/reference-rich-text";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +85,55 @@ export default function WeeklyBulletinEditorFeed({
         </CardContent>
       </Card>
 
+      <p className="text-[11px] leading-relaxed text-slate-500">
+        <strong className="font-semibold text-slate-400">Lähteet:</strong>{" "}
+        Tekstin numeroidut viitteet [1], [2] … viittaavat alla olevaan
+        lähdeluetteloon ja (kun saatavilla) Google Grounding -listaan.
+      </p>
+
+      {/* Top 3 decisions (from impact scores) */}
+      {bulletin.impactScores.length > 0 ? (
+        <section aria-labelledby="top3-heading" className="space-y-3">
+          <h2
+            id="top3-heading"
+            className={`${serifClassName} text-xl font-semibold text-slate-50 sm:text-2xl`}
+          >
+            Kolme tärkeintä päätöstä
+          </h2>
+          <p className="text-[11px] text-slate-500">
+            Järjestys: AI:n vaikutuskertoimet. Tarkista yksityiskohdat
+            numeroviitteillä ja lähteillä sivun lopussa.
+          </p>
+          <ol className="list-decimal space-y-3 pl-5 marker:text-[var(--accent-primary)]">
+            {[...bulletin.impactScores]
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 3)
+              .map((row, idx) => (
+                <li
+                  key={`${row.decisionId}-${idx}`}
+                  className="rounded-lg border border-slate-800 bg-slate-900/45 px-4 py-3 text-slate-200"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-lg font-black tabular-nums text-[var(--accent-primary)]">
+                      {row.score}
+                    </span>
+                    <span className="truncate font-mono text-[10px] text-slate-500">
+                      {row.decisionId}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-snug">
+                    <ReferenceRichText text={row.rationale} sources={src} />
+                  </p>
+                </li>
+              ))}
+          </ol>
+          <p className="text-[10px] text-slate-600">
+            Viitteet: ks. &quot;Lähteet (bulletiinin viitteet)&quot; ja
+            Google-haku alla.
+          </p>
+        </section>
+      ) : null}
+
       {/* Impact strip */}
       {bulletin.impactScores.length > 0 ? (
         <section aria-labelledby="impact-heading">
@@ -124,8 +175,12 @@ export default function WeeklyBulletinEditorFeed({
           id="lobby-heading"
           className={`${serifClassName} text-2xl font-semibold text-slate-50`}
         >
-          Vaikuttajien viikko
+          Lobbyistitutka — vaikuttajien viikko
         </h2>
+        <p className="text-[11px] text-slate-500">
+          Aktiviteettiloki ja lausunnot: viitteet [n] yhdistyvät alla oleviin
+          URL-lähteisiin.
+        </p>
         {bulletin.lobbyistWeek.sectionEyebrow ? (
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             {bulletin.lobbyistWeek.sectionEyebrow}
@@ -192,6 +247,53 @@ export default function WeeklyBulletinEditorFeed({
         </Card>
       </section>
 
+      {bulletin.potentialInterestConflicts.length > 0 ? (
+        <section
+          aria-labelledby="interest-conflict-heading"
+          className="space-y-4"
+        >
+          <h2
+            id="interest-conflict-heading"
+            className={`${serifClassName} text-2xl font-semibold text-amber-100`}
+          >
+            Mahdolliset eturistiriidat (automaattinen ristiinviittaus)
+          </h2>
+          <p className="text-xs text-amber-200/80">
+            Signaalit perustuvat virallisiin sidonnaisuusilmoituksiin,
+            lausuntoihin ja metatietoihin. Ne eivät todista väärinkäytöstä —
+            vain mahdollinen eturistiriita, joka vaatisi toimituksellisen
+            arvion.
+          </p>
+          <ul className="space-y-4">
+            {bulletin.potentialInterestConflicts.map((c, idx) => (
+              <li
+                key={`${c.heOrBillLabel}-${c.personLabel}-${idx}`}
+                className="rounded-lg border border-amber-500/25 bg-amber-950/20 p-4"
+              >
+                <p className="text-sm font-semibold text-amber-50">
+                  {c.headline}
+                </p>
+                <p className="mt-1 text-xs text-amber-100/80">{c.dek}</p>
+                <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-200">
+                  <ReferenceRichText text={c.body} sources={src} />
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  {c.personLabel} · {c.heOrBillLabel}
+                  {c.organizationsInvolved.length
+                    ? ` · ${c.organizationsInvolved.join(", ")}`
+                    : ""}
+                </p>
+                {c.officialDataNote ? (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {c.officialDataNote}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {/* Pulse / Espoo */}
       <section aria-labelledby="pulse-heading">
         <h2
@@ -203,6 +305,9 @@ export default function WeeklyBulletinEditorFeed({
         </h2>
         <Card className="border-slate-800 bg-slate-900/30">
           <CardContent className="space-y-4 p-5 sm:p-6">
+            <p className="text-[11px] text-slate-500">
+              Lähteet: numeroidut viitteet ja lähdeluettelo sivun alaosassa.
+            </p>
             <p className="leading-relaxed text-slate-200">
               <ReferenceRichText text={bulletin.pulse.summary} sources={src} />
             </p>

@@ -1,6 +1,12 @@
 "use client";
 
-import { Scale, TrendingUp, TrendingDown, Building2 } from "lucide-react";
+import {
+  Scale,
+  TrendingUp,
+  TrendingDown,
+  Building2,
+  ExternalLink,
+} from "lucide-react";
 import type { LobbyInterventionRow } from "@/lib/lobby/types";
 import {
   Card,
@@ -192,9 +198,16 @@ function OrgCard({
             href={row.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] font-bold uppercase tracking-wider text-blue-400 hover:underline"
+            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-400 hover:underline"
           >
-            Lähde ({row.source_type})
+            <ExternalLink className="h-3 w-3" aria-hidden />
+            Virallinen lähde (
+            {row.source_type === "lausunto"
+              ? "Lausuntopalvelu"
+              : row.source_type === "avoimuus"
+                ? "Avoimuusrekisteri"
+                : row.source_type}
+            )
           </a>
         ) : null}
       </CardContent>

@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         await sendResendEmail({
           from: fromEmail,
           to: chunk,
-          subject: `DirectDem viikkobulletiini - ${payload.issueDate}`,
+          subject: `Omatase viikkolehti – ${payload.issueDate}`,
           html: payload.html,
         });
         sentCount += chunk.length;

@@ -1,96 +1,57 @@
 /**
- * Mock News Fetcher for DirectDem Agora
- * Simulates fetching relevant news from HS.fi and Iltalehti.fi
+ * Uutishaku manifesteille / demoihin — vain tietokannasta (news_articles).
  */
+
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 export interface NewsItem {
   id: string;
   title: string;
-  source: "Helsingin Sanomat" | "Iltalehti";
+  /** Lähteen nimi tietokannasta */
+  source: string;
   url: string;
   publishedAt: string;
 }
 
+/**
+ * Hakee viimeisimmät rivit `news_articles`-taulusta ja suodattaa kevyesti aiheen mukaan.
+ * Ei mock-rivejä: tyhjä lista jos taulu tyhjä tai Supabase puuttuu.
+ */
 export async function fetchRelevantNews(topic: string): Promise<NewsItem[]> {
-  // In a real implementation, we could use an RSS parser or a News API
-  // For now, we simulate relevant results based on common Finnish political topics
-  
-  console.log(`[NewsFetcher] Searching news for: ${topic}`);
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+  if (!url || !key) return [];
 
-  // Artificial delay
-  await new Promise(resolve => setTimeout(resolve, 800));
+  const supabase = createSupabaseClient(url, key);
+  const { data, error } = await supabase
+    .from("news_articles")
+    .select("id, title, source_url, published_at, source_name, content")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(40);
 
-  const mockNews: Record<string, NewsItem[]> = {
-    "default": [
-      {
-        id: "1",
-        title: "Asiantuntijat erimielisiä uuden lakimuutoksen vaikutuksista",
-        source: "Helsingin Sanomat",
-        url: "https://www.hs.fi/politiikka/",
-        publishedAt: new Date().toISOString()
-      },
-      {
-        id: "2",
-        title: "Kysely: Enemmistö suomalaisista kannattaa uudistusta",
-        source: "Iltalehti",
-        url: "https://www.iltalehti.fi/politiikka/",
-        publishedAt: new Date().toISOString()
-      },
-      {
-        id: "3",
-        title: "Valtiovarainministeriö varoittaa kustannusten noususta",
-        source: "Helsingin Sanomat",
-        url: "https://www.hs.fi/talous/",
-        publishedAt: new Date().toISOString()
-      }
-    ],
-    "alkoholi": [
-      {
-        id: "a1",
-        title: "Alkoholilain uudistus kuumentaa tunteita eduskunnassa",
-        source: "Helsingin Sanomat",
-        url: "https://www.hs.fi/politiikka/",
-        publishedAt: new Date().toISOString()
-      },
-      {
-        id: "a2",
-        title: "THL varoittaa: Viinien tulo ruokakauppoihin lisää haittoja",
-        source: "Iltalehti",
-        url: "https://www.iltalehti.fi/uutiset/",
-        publishedAt: new Date().toISOString()
-      },
-      {
-        id: "a3",
-        title: "Pienpanimot iloitsevat: 'Tämä pelastaa suomalaisen käsityöläisoluen'",
-        source: "Iltalehti",
-        url: "https://www.iltalehti.fi/talous/",
-        publishedAt: new Date().toISOString()
-      }
-    ],
-    "liikenne": [
-      {
-        id: "l1",
-        title: "Espoon uusi pyörätieverkosto jakoi mielipiteet valtuustossa",
-        source: "Helsingin Sanomat",
-        url: "https://www.hs.fi/kaupunki/",
-        publishedAt: new Date().toISOString()
-      },
-      {
-        id: "l2",
-        title: "Autoilijat raivoissaan: 'Keskusta tukkeutuu täysin'",
-        source: "Iltalehti",
-        url: "https://www.iltalehti.fi/autot/",
-        publishedAt: new Date().toISOString()
-      }
-    ]
-  };
+  if (error || !data?.length) {
+    if (error) console.warn("[fetchRelevantNews]", error.message);
+    return [];
+  }
 
-  // Basic keyword matching
-  const lowerTopic = topic.toLowerCase();
-  if (lowerTopic.includes("alkoholi") || lowerTopic.includes("viini")) return mockNews.alkoholi;
-  if (lowerTopic.includes("liikenne") || lowerTopic.includes("pyörä") || lowerTopic.includes("tie")) return mockNews.liikenne;
-  
-  return mockNews.default;
+  const topicWords = topic
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 1);
+
+  const scored = data.filter((row) => {
+    if (!topicWords.length) return true;
+    const hay = `${row.title} ${row.content || ""}`.toLowerCase();
+    return topicWords.some((w) => hay.includes(w));
+  });
+
+  const picked = (scored.length ? scored : data).slice(0, 12);
+
+  return picked.map((row) => ({
+    id: row.id,
+    title: row.title || "Ei otsikkoa",
+    source: row.source_name?.trim() || "Uutisaineisto",
+    url: row.source_url || "#",
+    publishedAt: row.published_at || new Date().toISOString(),
+  }));
 }
-
-

@@ -1,19 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
 } from "recharts";
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Users, 
-  Zap, 
-  Activity, 
+import {
+  TrendingUp,
+  DollarSign,
+  Users,
+  Zap,
+  Activity,
   ShieldAlert,
   Terminal,
   Cpu,
-  Loader2
+  Loader2,
+  Download,
 } from "lucide-react";
 import { getAdminAnalytics } from "@/app/actions/admin-analytics";
 import { motion } from "framer-motion";
@@ -42,7 +51,9 @@ export default function AdminAnalyticsPage() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center font-mono">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-cyan-500 animate-spin" />
-          <p className="text-cyan-500 font-black uppercase tracking-widest text-xs">Accessing Admin Control Layer...</p>
+          <p className="text-cyan-500 font-black uppercase tracking-widest text-xs">
+            Accessing Admin Control Layer...
+          </p>
         </div>
       </div>
     );
@@ -53,8 +64,14 @@ export default function AdminAnalyticsPage() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-rose-500/10 border border-rose-500/20 p-8 rounded-2xl text-center space-y-4">
           <ShieldAlert className="w-12 h-12 text-rose-500 mx-auto" />
-          <h2 className="text-xl font-black text-white uppercase tracking-tighter">Access Denied</h2>
-          <p className="text-rose-400 text-sm font-mono tracking-tight">&gt; ERROR: UNAUTHORIZED_IDENTITY<br/>&gt; TRACE: Admin privileges required.</p>
+          <h2 className="text-xl font-black text-white uppercase tracking-tighter">
+            Access Denied
+          </h2>
+          <p className="text-rose-400 text-sm font-mono tracking-tight">
+            &gt; ERROR: UNAUTHORIZED_IDENTITY
+            <br />
+            &gt; TRACE: Admin privileges required.
+          </p>
         </div>
       </div>
     );
@@ -69,25 +86,51 @@ export default function AdminAnalyticsPage() {
             <Terminal className="text-rose-500" size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-black uppercase tracking-tighter">Admin Control Center</h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">System Monitoring & Analytics v4.2</p>
+            <h1 className="text-3xl font-black uppercase tracking-tighter">
+              Admin Control Center
+            </h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">
+              System Monitoring & Analytics v4.2
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">System Health: Normal</span>
+          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
+            System Health: Normal
+          </span>
         </div>
       </div>
 
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
-          { label: "Total AI Spend", value: `$${data.totalSpend}`, icon: DollarSign, color: "text-rose-500" },
-          { label: "Active Sessions", value: "1,204", icon: Users, color: "text-cyan-500" },
-          { label: "AI Requests / 24h", value: "482", icon: Zap, color: "text-yellow-500" },
-          { label: "System Uptime", value: "99.98%", icon: Activity, color: "text-emerald-500" }
+          {
+            label: "Total AI Spend",
+            value: `$${data.totalSpend}`,
+            icon: DollarSign,
+            color: "text-rose-500",
+          },
+          {
+            label: "Active Sessions",
+            value: "1,204",
+            icon: Users,
+            color: "text-cyan-500",
+          },
+          {
+            label: "AI Requests / 24h",
+            value: "482",
+            icon: Zap,
+            color: "text-yellow-500",
+          },
+          {
+            label: "System Uptime",
+            value: "99.98%",
+            icon: Activity,
+            color: "text-emerald-500",
+          },
         ].map((stat, i) => (
-          <motion.div 
+          <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -97,8 +140,12 @@ export default function AdminAnalyticsPage() {
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
               <stat.icon size={48} />
             </div>
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</p>
-            <p className={`text-3xl font-black ${stat.color} tracking-tighter`}>{stat.value}</p>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+              {stat.label}
+            </p>
+            <p className={`text-3xl font-black ${stat.color} tracking-tighter`}>
+              {stat.value}
+            </p>
           </motion.div>
         ))}
       </div>
@@ -114,13 +161,34 @@ export default function AdminAnalyticsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.aiCostChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
-                <XAxis dataKey="date" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                  itemStyle={{ color: '#f43f5e' }}
+                <XAxis
+                  dataKey="date"
+                  stroke="#475569"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
                 />
-                <Line type="monotone" dataKey="cost" stroke="#f43f5e" strokeWidth={2} dot={{ r: 4, fill: '#f43f5e' }} />
+                <YAxis
+                  stroke="#475569"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#0f172a",
+                    border: "1px solid #ffffff10",
+                    borderRadius: "12px",
+                  }}
+                  itemStyle={{ color: "#f43f5e" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="cost"
+                  stroke="#f43f5e"
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: "#f43f5e" }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -136,15 +204,123 @@ export default function AdminAnalyticsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.featureChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
-                <XAxis dataKey="name" stroke="#475569" fontSize={8} tickLine={false} axisLine={false} />
-                <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                  itemStyle={{ color: '#06b6d4' }}
+                <XAxis
+                  dataKey="name"
+                  stroke="#475569"
+                  fontSize={8}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#475569"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#0f172a",
+                    border: "1px solid #ffffff10",
+                    borderRadius: "12px",
+                  }}
+                  itemStyle={{ color: "#06b6d4" }}
                 />
                 <Bar dataKey="count" fill="#06b6d4" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Tutkijatyöpöydän viennit */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="bg-slate-900/50 border border-white/5 p-8 rounded-[2.5rem] space-y-6">
+          <h3 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
+            <Download size={20} className="text-emerald-400" />
+            Tutkijan aineistoviennit
+          </h3>
+          <p className="text-[11px] text-slate-500">
+            Lokitaulu: researcher_export_logs (CSV/JSON + valinnainen AI
+            Insight).
+          </p>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.researcherExportChartData ?? []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
+                <XAxis
+                  dataKey="name"
+                  stroke="#475569"
+                  fontSize={8}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#475569"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#0f172a",
+                    border: "1px solid #ffffff10",
+                    borderRadius: "12px",
+                  }}
+                  itemStyle={{ color: "#34d399" }}
+                />
+                <Bar dataKey="count" fill="#34d399" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="bg-slate-900/50 border border-white/5 rounded-[2.5rem] overflow-hidden">
+          <div className="p-8 border-b border-white/5">
+            <h3 className="text-lg font-black uppercase tracking-tight">
+              Viennit (viimeisimmät)
+            </h3>
+          </div>
+          <div className="overflow-x-auto max-h-72 overflow-y-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <th className="p-4">Aika</th>
+                  <th className="p-4">Aineisto</th>
+                  <th className="p-4">Muoto</th>
+                  <th className="p-4">Rivit</th>
+                  <th className="p-4">AI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.researcherExportLogs ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-slate-500 text-center">
+                      Ei vientilokeja tai taulu puuttuu (aja migraatio).
+                    </td>
+                  </tr>
+                ) : (
+                  (data.researcherExportLogs ?? []).map(
+                    (row: any, i: number) => (
+                      <tr
+                        key={i}
+                        className="border-b border-white/5 hover:bg-white/5"
+                      >
+                        <td className="p-4 text-slate-400">
+                          {new Date(row.created_at).toLocaleString("fi-FI")}
+                        </td>
+                        <td className="p-4 font-mono text-[10px]">
+                          {row.dataset_key}
+                        </td>
+                        <td className="p-4 uppercase">{row.export_format}</td>
+                        <td className="p-4">{row.row_count}</td>
+                        <td className="p-4">
+                          {row.ai_insight_requested ? "Kyllä" : "Ei"}
+                        </td>
+                      </tr>
+                    ),
+                  )
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -156,7 +332,9 @@ export default function AdminAnalyticsPage() {
             <Cpu size={20} className="text-yellow-500" />
             Recent AI Processor Activity
           </h3>
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Last 10 Actions</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            Last 10 Actions
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -171,12 +349,25 @@ export default function AdminAnalyticsPage() {
             </thead>
             <tbody className="text-xs">
               {data.recentAi.map((log: any, i: number) => (
-                <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="p-6 text-slate-400 font-bold">{new Date(log.created_at).toLocaleString()}</td>
-                  <td className="p-6 font-black uppercase tracking-tight">{log.feature_context}</td>
-                  <td className="p-6 text-slate-500 uppercase font-black text-[10px]">{log.model_name}</td>
-                  <td className="p-6 text-slate-400">{log.input_tokens} / {log.output_tokens}</td>
-                  <td className="p-6 font-black text-rose-500">${log.cost_usd.toFixed(4)}</td>
+                <tr
+                  key={i}
+                  className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                >
+                  <td className="p-6 text-slate-400 font-bold">
+                    {new Date(log.created_at).toLocaleString()}
+                  </td>
+                  <td className="p-6 font-black uppercase tracking-tight">
+                    {log.feature_context}
+                  </td>
+                  <td className="p-6 text-slate-500 uppercase font-black text-[10px]">
+                    {log.model_name}
+                  </td>
+                  <td className="p-6 text-slate-400">
+                    {log.input_tokens} / {log.output_tokens}
+                  </td>
+                  <td className="p-6 font-black text-rose-500">
+                    ${log.cost_usd.toFixed(4)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -186,4 +377,3 @@ export default function AdminAnalyticsPage() {
     </div>
   );
 }
-

@@ -2,6 +2,8 @@ export interface FeatureFlags {
   ARENA_ENABLED: boolean;
   ECONOMY_ENABLED: boolean;
   RESEARCHER_ENABLED: boolean;
+  /** Erillinen tutkijatyöpöytä (/dashboard/researcher): linssiarkkitehtuuri + vienti */
+  RESEARCHER_MODE: boolean;
   MUNICIPAL_WATCH_ENABLED: boolean;
   MEDIA_WATCH_ENABLED: boolean;
   PULSE_ENABLED: boolean;
@@ -23,6 +25,7 @@ export const FEATURES: FeatureFlags = {
   ARENA_ENABLED: toBool(process.env.NEXT_PUBLIC_ARENA_ENABLED, true),
   ECONOMY_ENABLED: toBool(process.env.NEXT_PUBLIC_ECONOMY_ENABLED, false),
   RESEARCHER_ENABLED: toBool(process.env.NEXT_PUBLIC_RESEARCHER_ENABLED, true),
+  RESEARCHER_MODE: toBool(process.env.NEXT_PUBLIC_RESEARCHER_MODE, false),
   MUNICIPAL_WATCH_ENABLED: toBool(
     process.env.NEXT_PUBLIC_MUNICIPAL_WATCH_ENABLED,
     true,
@@ -57,4 +60,9 @@ export const FEATURES: FeatureFlags = {
 
 export function isFeatureEnabled(feature: keyof FeatureFlags): boolean {
   return FEATURES[feature];
+}
+
+/** Tutkijan workbench-reitti ja raskaat analyysityökalut vaativat erillisen moodin */
+export function isResearcherWorkbenchEnabled(): boolean {
+  return FEATURES.RESEARCHER_MODE && FEATURES.RESEARCHER_ENABLED;
 }

@@ -5,6 +5,7 @@ import {
   backfillDecisionCorpusEmbeddings,
   matchNewsArticleToCorpus,
 } from "@/lib/media-watch/pipeline";
+import { recordSyncSuccess } from "@/lib/ops/sync-logs";
 
 export type SyncNewsResult = {
   ok: boolean;
@@ -93,6 +94,8 @@ export async function runMediaWatchNewsSync(options?: {
       });
       newMatches += n;
     }
+
+    await recordSyncSuccess(admin, "sync-news");
 
     return {
       ok: true,

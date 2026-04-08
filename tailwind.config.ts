@@ -9,7 +9,21 @@ const config: Config = {
   darkMode: "class",
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        serif: ["var(--font-news-serif)", "Georgia", "serif"],
+      },
+      spacing: {
+        // 8 px perusruudukko (4 = 16px Tailwind-oletus; täydennykset)
+        "18": "4.5rem",
+      },
       colors: {
+        news: {
+          ink: "#0a0a0a",
+          muted: "#525252",
+          paper: "#fafafa",
+          line: "#e5e5e5",
+        },
         command: {
           bg: "#0F172A", // Slate 900
           card: "#1E293B", // Slate 800

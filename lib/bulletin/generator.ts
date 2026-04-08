@@ -1,10 +1,16 @@
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/server";
 import { render } from "@react-email/render";
+import EditorialWeeklyMagazineEmail from "@/components/emails/EditorialWeeklyMagazineEmail";
 import WeeklyBulletin, {
   type WeeklyEspooCaseHeader,
   type WeeklyParliamentBillHeader,
 } from "@/components/emails/WeeklyBulletin";
+import { buildEditorialBulletinPayloadForEmail } from "@/lib/bulletin/build-editorial-for-email";
+import {
+  getWeeklyMagazineEmailFromCache,
+  saveWeeklyMagazineEmailCache,
+} from "@/lib/bulletin/weekly-magazine-cache";
 
 type DecisionRow = {
   id: string;
@@ -93,13 +99,25 @@ const WeeklyReportSchema = z.object({
 export type WeeklyReportData = z.infer<typeof WeeklyReportSchema>;
 export type WeeklyReportEmailPayload = {
   issueDate: string;
-  report: WeeklyReportData;
+  html: string;
   parliamentBillHeaders: WeeklyParliamentBillHeader[];
   espooCaseHeaders: WeeklyEspooCaseHeader[];
-  html: string;
+  /** Present when OpenAI legacy path ran */
+  report?: WeeklyReportData;
+  variant?: "magazine" | "legacy";
 };
 
 const LEGISLATIVE_HEADER_LIMIT = 200;
+
+function weeklyEmailBaseUrl(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.VERCEL_URL?.trim() ||
+    "";
+  if (!raw) return "https://omatase.fi";
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  return `https://${raw}`;
+}
 
 function formatFiDateShort(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -409,22 +427,77 @@ export async function generateWeeklyReportEmailPayload(): Promise<WeeklyReportEm
     ).toISOString();
 
     const supabase = await createAdminClient();
+    const forceLegacy =
+      process.env.WEEKLY_BULLETIN_FORCE_LEGACY === "true" ||
+      process.env.WEEKLY_BULLETIN_FORCE_LEGACY === "1";
+
     const [
       { parliament: parliamentBillHeaders, espoo: espooCaseHeaders },
-      report,
+      cached,
     ] = await Promise.all([
       fetchWeeklyLegislativeHeaders(supabase, sevenDaysAgoIso),
-      generateWeeklyReport(),
+      getWeeklyMagazineEmailFromCache(),
     ]);
 
-    const issueDate = new Date().toLocaleDateString("fi-FI", {
+    const issueDateNow = new Date().toLocaleDateString("fi-FI", {
       day: "numeric",
       month: "long",
       year: "numeric",
     });
+
+    if (cached && !forceLegacy) {
+      return {
+        issueDate: cached.issueDate?.trim() ? cached.issueDate : issueDateNow,
+        html: cached.html,
+        parliamentBillHeaders,
+        espooCaseHeaders,
+        variant: "magazine",
+      };
+    }
+
+    const end = new Date();
+    const start = new Date(end);
+    start.setUTCDate(start.getUTCDate() - 7);
+    const startIso = start.toISOString();
+    const endIso = end.toISOString();
+
+    if (!forceLegacy) {
+      try {
+        const bulletin = await buildEditorialBulletinPayloadForEmail(
+          startIso,
+          endIso,
+        );
+        const periodLabel = `${start.toLocaleDateString("fi-FI")} – ${end.toLocaleDateString("fi-FI")}`;
+        const html = await render(
+          EditorialWeeklyMagazineEmail({
+            issueDate: issueDateNow,
+            periodLabel,
+            bulletin,
+            baseUrl: weeklyEmailBaseUrl(),
+            parliamentBillHeaders,
+            espooCaseHeaders,
+          }),
+        );
+        await saveWeeklyMagazineEmailCache(html, issueDateNow);
+        return {
+          issueDate: issueDateNow,
+          html,
+          parliamentBillHeaders,
+          espooCaseHeaders,
+          variant: "magazine",
+        };
+      } catch (magErr: unknown) {
+        logger.warn(
+          "Magazine path failed, legacy fallback:",
+          magErr instanceof Error ? magErr.message : magErr,
+        );
+      }
+    }
+
+    const report = await generateWeeklyReport();
     const html = await render(
       WeeklyBulletin({
-        issueDate,
+        issueDate: issueDateNow,
         parliamentData: {
           ...report.parliamentData,
           weeklyBillHeaders: parliamentBillHeaders,
@@ -436,16 +509,17 @@ export async function generateWeeklyReportEmailPayload(): Promise<WeeklyReportEm
       }),
     );
     return {
-      issueDate,
+      issueDate: issueDateNow,
       report,
       parliamentBillHeaders,
       espooCaseHeaders,
       html,
+      variant: "legacy",
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       "generateWeeklyReportEmailPayload failed:",
-      error?.message ?? error,
+      error instanceof Error ? error.message : error,
     );
     throw error;
   }

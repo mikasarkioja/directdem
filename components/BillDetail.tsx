@@ -21,6 +21,8 @@ import {
   MapPin,
   TrendingUp,
   Loader2,
+  AlertTriangle,
+  Users,
 } from "lucide-react";
 import type { Bill, VoteStats, IntegrityAlert } from "@/lib/types";
 import type { LobbyInterventionRow } from "@/lib/lobby/types";
@@ -42,7 +44,10 @@ import {
   getLobbyTraceabilityCapabilities,
 } from "@/app/actions/lobbyist-traceability";
 import { LobbyistBattleground } from "@/components/lobby/LobbyistBattleground";
+import { LobbyInfluenceDrawer } from "@/components/lobby/LobbyInfluenceDrawer";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { getBillLobbySurfaceSignals } from "@/lib/feed/lobby-feed-metadata";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -71,6 +76,11 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
     expert_impact_assessment?: string | null;
     deep_analysis?: string | null;
   } | null>(null);
+  const [lobbySurface, setLobbySurface] = useState<{
+    lobbyInterventionCount: number;
+    interestSectorConflict: boolean;
+  } | null>(null);
+  const [influenceDrawerOpen, setInfluenceDrawerOpen] = useState(false);
 
   const handleConfirmAlert = async (alertId: string) => {
     if (confirmedAlerts.has(alertId)) return;
@@ -107,13 +117,15 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
     (async () => {
       setLobbyLoading(true);
       try {
-        const [rows, cap] = await Promise.all([
+        const [rows, cap, surface] = await Promise.all([
           getLobbyistInterventionsForBill(bill.id),
           getLobbyTraceabilityCapabilities(),
+          getBillLobbySurfaceSignals(bill.id),
         ]);
         if (!cancelled) {
           setLobbyRows(rows);
           setCanLobbySync(cap.canSync);
+          setLobbySurface(surface);
         }
       } finally {
         if (!cancelled) setLobbyLoading(false);
@@ -232,7 +244,8 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
   const forSeats = bill.politicalReality
     .filter((p) => p.position === "for")
     .reduce((sum, p) => sum + p.seats, 0);
-  const politicalForPercent = Math.round((forSeats / totalSeats) * 100);
+  const politicalForPercent =
+    totalSeats > 0 ? Math.round((forSeats / totalSeats) * 100) : 0;
 
   const frictionIndex =
     enhancedData?.forecast_metrics?.friction_index ||
@@ -277,6 +290,40 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                   Eduskuntavahti
                 </p>
               </div>
+              {lobbySurface ? (
+                <div className="mt-3 flex max-w-2xl flex-wrap items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className="inline-flex items-center gap-1 border-white/20 bg-white/5 text-[10px] font-medium normal-case tracking-normal text-slate-200"
+                  >
+                    <Users className="h-3 w-3 shrink-0" aria-hidden />
+                    Lobbauksen intensiteetti:{" "}
+                    {lobbySurface.lobbyInterventionCount <= 0
+                      ? "Ei lausuntoja"
+                      : lobbySurface.lobbyInterventionCount <= 2
+                        ? `Matala · ${lobbySurface.lobbyInterventionCount}`
+                        : lobbySurface.lobbyInterventionCount <= 6
+                          ? `Kohtuullinen · ${lobbySurface.lobbyInterventionCount}`
+                          : `Korkea · ${lobbySurface.lobbyInterventionCount}`}
+                  </Badge>
+                  {lobbySurface.interestSectorConflict ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400">
+                      <AlertTriangle
+                        className="h-3.5 w-3.5 shrink-0"
+                        aria-hidden
+                      />
+                      Mahdollinen sidonnaisuus
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setInfluenceDrawerOpen(true)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-200 transition-colors hover:bg-white/10"
+                  >
+                    Analysoi vaikuttajat
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -502,22 +549,32 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
                   palveluista ja analysoi ne tekoälyllä.
                 </p>
               </div>
-              {canLobbySync ? (
+              <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="border-amber-600/50 text-amber-200 hover:bg-amber-500/10"
-                  disabled={lobbySyncing}
-                  onClick={handleLobbySync}
+                  className="border-slate-500/50 text-slate-200 hover:bg-white/5"
+                  onClick={() => setInfluenceDrawerOpen(true)}
                 >
-                  {lobbySyncing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                  Päivitä lobbausdata
+                  Analysoi vaikuttajat
                 </Button>
-              ) : null}
+                {canLobbySync ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-amber-600/50 text-amber-200 hover:bg-amber-500/10"
+                    disabled={lobbySyncing}
+                    onClick={handleLobbySync}
+                  >
+                    {lobbySyncing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Päivitä lobbausdata
+                  </Button>
+                ) : null}
+              </div>
             </div>
             {lobbyLoading ? (
               <div className="flex items-center gap-2 text-xs text-slate-500 py-6">
@@ -982,6 +1039,12 @@ export default function BillDetail({ bill, onClose }: BillDetailProps) {
           )}
         </div>
       </motion.div>
+      <LobbyInfluenceDrawer
+        billId={bill.id}
+        open={influenceDrawerOpen}
+        onOpenChange={setInfluenceDrawerOpen}
+        headline={bill.title}
+      />
     </motion.div>
   );
 }

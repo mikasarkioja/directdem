@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getMunicipalAPI } from "@/lib/municipal-api";
-import { generateMockCitizenPulse } from "@/lib/bill-helpers";
 import type { MunicipalCase, SupabaseMunicipalCase } from "@/lib/types";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
@@ -48,10 +47,7 @@ export async function fetchMunicipalCases(
       costEstimate: c.cost_estimate || undefined,
       category: c.category || undefined,
       url: c.url || undefined,
-      citizenPulse: generateMockCitizenPulse({
-        title: c.title,
-        abstract: c.summary || "",
-      }),
+      citizenPulse: { for: 0, against: 0 },
     }));
   }
 
@@ -115,10 +111,7 @@ export async function fetchMunicipalCases(
           costEstimate: c.cost_estimate || undefined,
           category: c.category || undefined,
           url: c.url || undefined,
-          citizenPulse: generateMockCitizenPulse({
-            title: c.title,
-            abstract: c.summary || "",
-          }),
+          citizenPulse: { for: 0, against: 0 },
         }));
       }
     }

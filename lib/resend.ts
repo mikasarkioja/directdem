@@ -35,7 +35,7 @@ export function getResendFromEmail(): string {
     process.env.RESEND_FORCE_SANDBOX === "true";
 
   if (forceSandbox) {
-    return "DirectDem <onboarding@resend.dev>";
+    return "Omatase <onboarding@resend.dev>";
   }
 
   const explicit = process.env.RESEND_FROM_EMAIL?.trim();
@@ -45,7 +45,7 @@ export function getResendFromEmail(): string {
     return "noreply@eduskuntavahti.fi";
   }
 
-  return "DirectDem <onboarding@resend.dev>";
+  return "Omatase <onboarding@resend.dev>";
 }
 
 /**

@@ -1,51 +1,74 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import { recordSyncAttempt, recordSyncSuccess } from "@/lib/ops/sync-logs";
 import { syncExpertImpactToBillAiProfile } from "@/lib/bills/sync-expert-to-ai-profile";
 import { getLatestBills } from "@/lib/eduskunta-api";
 import { getBillContent } from "@/lib/eduskunta-api";
 import { prepareBillTextForAI } from "@/lib/text-cleaner";
+import { upsertLegislativeProjectForBill } from "@/lib/lobby/sync-legislative-projects-from-bills";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 
 export const maxDuration = 300; // 5 minutes for processing multiple bills
 
 /**
- * Cron job endpoint that runs daily at 06:00
- * Fetches the 5 latest bills, processes them through AI, and stores them
- *
- * Protected by CRON_SECRET environment variable
+ * Cron: Vaski (Hallituksen esitys) → bills + legislative_projects (+ AI-yhteenveto).
+ * dryRun=1: tulosta 5 ensimmäistä, ei DB-kirjoituksia (paitsi sync_logs dry_run).
  */
 export async function GET(request: NextRequest) {
+  let supabaseForLog: Awaited<ReturnType<typeof createAdminClient>> | null =
+    null;
+
   try {
-    // Verify this is a legitimate cron request
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
 
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      // In production, Vercel automatically adds the authorization header
-      // For local testing, you can bypass this check
       if (process.env.NODE_ENV === "production") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     }
 
-    const supabase = await createClient();
+    const { searchParams } = request.nextUrl;
+    const dryRun =
+      searchParams.get("dryRun") === "1" || searchParams.get("dry_run") === "1";
+    const debug =
+      searchParams.get("debug") === "1" ||
+      process.env.PROCESS_BILLS_DEBUG === "1";
+
+    supabaseForLog = await createAdminClient();
+
     const results = {
       billsFetched: 0,
       billsProcessed: 0,
       billsSkipped: 0,
+      legislativeProjectsUpserted: 0,
+      legislativeProjectErrors: [] as string[],
       errors: [] as string[],
       startTime: new Date().toISOString(),
     };
 
-    console.log("[Cron] Starting daily bill processing at", results.startTime);
+    console.log("[Cron] process-bills start", results.startTime, {
+      dryRun,
+      debug,
+    });
 
-    // 1. Fetch latest 5 bills from Eduskunta API
-    console.log("[Cron] Fetching latest bills from Eduskunta API...");
-    const eduskuntaIssues = await getLatestBills(5);
+    const fetchLimit = dryRun ? 5 : 5;
+    const eduskuntaIssues = await getLatestBills(fetchLimit, {
+      debug: !!debug,
+      page: 0,
+    });
+
+    results.billsFetched = eduskuntaIssues.length;
+    console.log(
+      `[Cron] Vaski → mapped HE-esityksiä: ${eduskuntaIssues.length}`,
+    );
 
     if (eduskuntaIssues.length === 0) {
-      console.log("[Cron] No bills found from Eduskunta API");
+      console.warn(
+        "[Cron] Ei rivejä getLatestBills → tarkista Vaski-suodin / verkko",
+      );
+      await recordSyncSuccess(supabaseForLog, "process-bills");
       return NextResponse.json({
         success: true,
         message: "No new bills found",
@@ -53,11 +76,25 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    results.billsFetched = eduskuntaIssues.length;
-    console.log(`[Cron] Found ${eduskuntaIssues.length} bills to process`);
+    if (dryRun) {
+      const sample = eduskuntaIssues.slice(0, 5);
+      console.log(
+        "[Cron] DRY RUN — first 5 mapped issues:",
+        JSON.stringify(sample, null, 2),
+      );
+      await recordSyncAttempt(supabaseForLog, "process-bills", "dry_run");
+      return NextResponse.json({
+        success: true,
+        dryRun: true,
+        message: "Dry run: no database writes for bills/AI",
+        sample,
+        ...results,
+      });
+    }
 
-    // 2. Sync bills to database (upsert)
-    const billsMap = new Map<string, any>();
+    const supabase = supabaseForLog;
+
+    const billsMap = new Map<string, Record<string, unknown>>();
 
     for (const issue of eduskuntaIssues) {
       const cleanParliamentId = issue.parliamentId.split(",")[0].trim();
@@ -84,8 +121,8 @@ export async function GET(request: NextRequest) {
     const billsToInsert = Array.from(billsMap.values());
     const insertedBillIds: string[] = [];
 
-    // Insert/update bills in database
     for (const bill of billsToInsert) {
+      const pid = String(bill.parliament_id ?? "");
       const { data, error } = await supabase
         .from("bills")
         .upsert(bill, {
@@ -96,22 +133,34 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (error) {
-        results.errors.push(
-          `Failed to upsert ${bill.parliament_id}: ${error.message}`,
-        );
-        console.error(
-          `[Cron] Error upserting bill ${bill.parliament_id}:`,
-          error,
-        );
-      } else if (data) {
+        const msg = `Failed to upsert ${pid}: ${error.message}`;
+        results.errors.push(msg);
+        console.error("[Cron] bills upsert error:", pid, error.message);
+      } else if (data?.id) {
         insertedBillIds.push(data.id);
-        console.log(
-          `[Cron] Upserted bill: ${bill.parliament_id} (ID: ${data.id})`,
+        console.log(`[Cron] bills upsert OK: ${pid} → ${data.id}`);
+
+        const lpRes = await upsertLegislativeProjectForBill(
+          supabase,
+          data.id,
+          data.parliament_id ?? pid,
+          bill.title != null ? String(bill.title) : null,
         );
+        if (lpRes.ok) {
+          results.legislativeProjectsUpserted++;
+          console.log(
+            `[Cron] legislative_projects OK: ${lpRes.heTunnus} (bill ${data.id})`,
+          );
+        } else {
+          const em = lpRes.error ?? "unknown";
+          results.legislativeProjectErrors.push(`${pid}: ${em}`);
+          console.warn(`[Cron] legislative_projects skip: ${em}`);
+        }
       }
     }
 
     if (insertedBillIds.length === 0) {
+      await recordSyncAttempt(supabase, "process-bills", "failed");
       return NextResponse.json({
         success: false,
         message: "Failed to insert any bills into database",
@@ -119,14 +168,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 3. Process each bill through AI (if summary doesn't exist or is too short)
-    console.log(
-      `[Cron] Processing ${insertedBillIds.length} bills through AI...`,
-    );
+    console.log(`[Cron] AI phase for ${insertedBillIds.length} bill id(s)…`);
 
     for (const billId of insertedBillIds) {
       try {
-        // Check if bill already has a good summary
         const { data: bill, error: billError } = await supabase
           .from("bills")
           .select("id, parliament_id, raw_text, summary")
@@ -140,7 +185,6 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Skip if summary already exists and is substantial
         if (bill.summary && bill.summary.length > 200) {
           console.log(
             `[Cron] Skipping ${bill.parliament_id} - summary already exists`,
@@ -149,7 +193,6 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Fetch full bill content if needed
         let billText = bill.raw_text;
 
         if (!billText || billText.length < 500) {
@@ -160,7 +203,6 @@ export async function GET(request: NextRequest) {
 
           if (content) {
             billText = content;
-            // Update raw_text in database
             await supabase
               .from("bills")
               .update({ raw_text: billText })
@@ -169,7 +211,6 @@ export async function GET(request: NextRequest) {
             console.warn(
               `[Cron] Could not fetch full content for ${bill.parliament_id}`,
             );
-            // Use abstract as fallback
             if (!billText) {
               results.errors.push(
                 `No content available for ${bill.parliament_id}`,
@@ -179,7 +220,6 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Prepare text for AI
         const preparedText = prepareBillTextForAI(billText);
 
         if (preparedText.length < 100) {
@@ -189,7 +229,6 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Generate AI summary using OpenAI
         console.log(
           `[Cron] Generating AI summary for ${bill.parliament_id}...`,
         );
@@ -220,16 +259,18 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
         let summary: string;
         try {
           const { text } = await generateText({
-            model: openai("gpt-4o-mini"), // Type workaround for version conflict
+            model: openai("gpt-4o-mini"),
             system: systemPrompt,
             prompt: `Tiivistä tämä lakiteksti selkokielelle:\n\n${preparedText}`,
             maxTokens: 1500,
             temperature: 0.7,
           } as any);
           summary = text;
-        } catch (aiError: any) {
+        } catch (aiError: unknown) {
+          const msg =
+            aiError instanceof Error ? aiError.message : String(aiError);
           results.errors.push(
-            `AI generation failed for ${bill.parliament_id}: ${aiError.message}`,
+            `AI generation failed for ${bill.parliament_id}: ${msg}`,
           );
           console.error(`[Cron] AI generation error:`, aiError);
           continue;
@@ -242,7 +283,6 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
           continue;
         }
 
-        // Save summary to database
         const { error: updateError } = await supabase
           .from("bills")
           .update({
@@ -260,17 +300,15 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
           results.billsProcessed++;
           console.log(`[Cron] Successfully processed ${bill.parliament_id}`);
           try {
-            const admin = await createAdminClient();
-            await syncExpertImpactToBillAiProfile(admin, billId, summary);
+            await syncExpertImpactToBillAiProfile(supabase, billId, summary);
           } catch (syncErr) {
             console.warn(`[Cron] bill_ai_profiles expert sync:`, syncErr);
           }
         }
 
-        // Small delay between AI calls to avoid rate limiting
         await new Promise((resolve) => setTimeout(resolve, 1000));
-      } catch (error: any) {
-        const errorMsg = `Error processing bill ${billId}: ${error.message}`;
+      } catch (error: unknown) {
+        const errorMsg = `Error processing bill ${billId}: ${error instanceof Error ? error.message : error}`;
         results.errors.push(errorMsg);
         console.error(`[Cron] ${errorMsg}`, error);
       }
@@ -283,6 +321,8 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
     console.log(`[Cron] Completed in ${duration}ms`);
     console.log(`[Cron] Results:`, results);
 
+    await recordSyncSuccess(supabase, "process-bills");
+
     return NextResponse.json({
       success: true,
       message: `Processed ${results.billsProcessed} bills, skipped ${results.billsSkipped}`,
@@ -290,12 +330,19 @@ Tavoite: 8-vuotiaan tai kiireisen aikuisen pitäisi ymmärtää ydinasiat 20 sek
       endTime,
       durationMs: duration,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Cron] Fatal error:", error);
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    try {
+      const admin = supabaseForLog ?? (await createAdminClient());
+      await recordSyncAttempt(admin, "process-bills", "failed");
+    } catch {
+      /* ignore */
+    }
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Unknown error",
+        error: msg,
         timestamp: new Date().toISOString(),
       },
       { status: 500 },

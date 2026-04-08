@@ -64,6 +64,8 @@ interface DashboardClientProps {
   prefetchedBills?: Bill[];
   prefetchedMunicipalTasks?: any[];
   prefetchedStats?: any;
+  /** `researcher` = vain DNA / tutkija-työtila (erillinen reitti) */
+  pageVariant?: "dashboard" | "researcher";
 }
 
 export default function DashboardClient({
@@ -71,6 +73,7 @@ export default function DashboardClient({
   prefetchedBills = [],
   prefetchedMunicipalTasks = [],
   prefetchedStats = null,
+  pageVariant = "dashboard",
 }: DashboardClientProps) {
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<any>(
@@ -98,7 +101,7 @@ export default function DashboardClient({
   /** Kansalainen = kevyt selaus; committee = edustajan työtila (analyysit, media, talous). */
   const [workspace, setWorkspace] = useState<
     "citizen" | "committee" | "researcher"
-  >("citizen");
+  >(() => (pageVariant === "researcher" ? "researcher" : "citizen"));
   const [citizenRealm, setCitizenRealm] = useState<"parliament" | "municipal">(
     "parliament",
   );
@@ -161,11 +164,10 @@ export default function DashboardClient({
   }, [initialUser, profile]);
 
   useEffect(() => {
-    const view = searchParams.get("view");
-    if (view === "researcher") {
-      setWorkspace("researcher");
+    if (pageVariant === "researcher") {
       return;
     }
+    const view = searchParams.get("view");
     if (view === "kuntavahti") {
       setWorkspace("citizen");
       setCitizenRealm("municipal");
@@ -188,7 +190,7 @@ export default function DashboardClient({
     }
     setWorkspace("citizen");
     setCitizenRealm("parliament");
-  }, [searchParams]);
+  }, [searchParams, pageVariant]);
   const [news, setNews] = useState<NewsItem[]>([]);
 
   useEffect(() => {
@@ -403,8 +405,12 @@ export default function DashboardClient({
     if ((next === "committee" || next === "researcher") && !initialUser) {
       toast.error("Tämä toiminto vaatii kirjautumisen.");
       window.location.href =
-        "/login?callback=/dashboard?view=" +
-        (next === "committee" ? "committee" : "researcher");
+        "/login?callback=" +
+        encodeURIComponent(
+          next === "committee"
+            ? "/dashboard?view=committee"
+            : "/dashboard/researcher",
+        );
       return;
     }
     setWorkspace(next);
@@ -559,6 +565,14 @@ export default function DashboardClient({
       {/* Työhuoneen navigointi: ensin kansalainen vs edustaja, sitten edustajan alipaneelit */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between bg-slate-900/50 border border-white/5 p-2 rounded-2xl backdrop-blur-sm">
         <div className="flex items-center gap-1 shrink-0">
+          {pageVariant === "researcher" ? (
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-cyan-300 hover:text-white hover:bg-cyan-900/30 rounded-xl transition-all"
+            >
+              ← Kansalaissyöte
+            </Link>
+          ) : null}
           <Link
             href="/"
             className="px-4 py-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
@@ -577,8 +591,15 @@ export default function DashboardClient({
         </div>
 
         <div className="flex flex-col items-stretch gap-2 flex-1 min-w-0 max-w-3xl mx-auto">
-          <div className="flex flex-wrap justify-center bg-white/5 rounded-xl p-1 gap-1">
-            {workspace !== "researcher" && (
+          {pageVariant === "researcher" ? (
+            <div className="flex flex-wrap justify-center items-center gap-2 py-2">
+              <Terminal size={16} className="text-cyan-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                Tutkijatila — syväanalyysi ja käytöspoikkeamat
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-center bg-white/5 rounded-xl p-1 gap-1">
               <>
                 <button
                   type="button"
@@ -626,26 +647,28 @@ export default function DashboardClient({
                   </div>
                 )}
               </>
-            )}
-            {isFeatureEnabled("RESEARCHER_ENABLED") && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (!initialUser) {
-                    toast.error("Tutkijatila vaatii kirjautumisen.");
-                    window.location.href =
-                      "/login?callback=/dashboard?view=researcher";
-                    return;
-                  }
-                  setWorkspace("researcher");
-                }}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspace === "researcher" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"}`}
-              >
-                Tutkija
-              </button>
-            )}
-          </div>
-          {workspace === "committee" && (
+              {isFeatureEnabled("RESEARCHER_ENABLED") &&
+                (initialUser ? (
+                  <Link
+                    href="/dashboard/researcher"
+                    className="px-3 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center text-slate-400 hover:text-white"
+                  >
+                    Tutkija
+                  </Link>
+                ) : (
+                  <Link
+                    href={
+                      "/login?callback=" +
+                      encodeURIComponent("/dashboard/researcher")
+                    }
+                    className="px-3 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all text-slate-400 hover:text-white flex items-center justify-center"
+                  >
+                    Tutkija
+                  </Link>
+                ))}
+            </div>
+          )}
+          {pageVariant !== "researcher" && workspace === "committee" && (
             <div className="flex sm:hidden flex-wrap justify-center gap-1 px-1">
               <button
                 type="button"
@@ -715,7 +738,14 @@ export default function DashboardClient({
                 <p className="text-sm font-medium text-slate-200 leading-relaxed">
                   Uusimmat lakiluonnokset ja uutisnostot. Syvälliset työkalut
                   (media vs. päätös, varjoäänestys, lobbausindeksi) ovat
-                  edustajan työhuoneessa.
+                  edustajan työhuoneessa. Palaute ja kansalaiskanava:{" "}
+                  <Link
+                    href="/ranking"
+                    className="text-purple-300 underline-offset-2 hover:underline"
+                  >
+                    edustajaprofiilit
+                  </Link>
+                  .
                 </p>
                 {initialUser ? (
                   <button
@@ -1038,8 +1068,11 @@ export default function DashboardClient({
                                 return (
                                   <>
                                     <div className="bg-slate-950/50 border border-emerald-500/20 rounded-2xl p-5 space-y-3">
-                                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300 flex flex-wrap items-center gap-2">
                                         Predictive influence
+                                        <span className="rounded-md border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-amber-200">
+                                          Arvio
+                                        </span>
                                       </p>
                                       <div className="h-2.5 w-full rounded-full bg-slate-800 overflow-hidden">
                                         <div
@@ -1055,8 +1088,11 @@ export default function DashboardClient({
                                       </p>
                                     </div>
                                     <div className="bg-slate-950/50 border border-amber-500/20 rounded-2xl p-5 space-y-3">
-                                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-300 flex flex-wrap items-center gap-2">
                                         Lobbyist traceability
+                                        <span className="rounded-md border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-amber-200">
+                                          Arvio
+                                        </span>
                                       </p>
                                       <div className="h-2.5 w-full rounded-full bg-slate-800 overflow-hidden">
                                         <div

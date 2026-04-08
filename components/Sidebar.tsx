@@ -135,7 +135,7 @@ export default function Sidebar({
       id: "researcher",
       label: "Tutkimus-terminaali",
       icon: Terminal,
-      href: "/dashboard?view=researcher",
+      href: "/dashboard/researcher",
       feature: "RESEARCHER_ENABLED",
     },
     {

@@ -131,7 +131,7 @@ async function main() {
   const { id } = await sendResendEmail({
     from: fromEmail,
     to,
-    subject: `[TESTI] DirectDem viikkobulletiini - ${issueDate}`,
+    subject: `[TESTI] Omatase viikkolehti – ${issueDate}`,
     html,
   });
 

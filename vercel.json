@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/sync-news",
       "schedule": "25 8 * * *"
+    },
+    {
+      "path": "/api/cron/citizen-pulse",
+      "schedule": "5 * * * *"
     }
   ]
 }

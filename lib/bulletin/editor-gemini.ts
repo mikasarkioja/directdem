@@ -84,7 +84,17 @@ KRIITTINEN JSON-MUOTO — palauta VAIN yksi JSON-objekti (ei markdown-sulkuja):
     "summary": string,
     "highlights": [{ "municipalTitle": string, "nationalTieIn": string }]
   },
-  "sources": [{ "title": string, "url": string }]
+  "sources": [{ "title": string, "url": string }],
+  "potentialInterestConflicts": [{
+    "headline": string,
+    "dek": string,
+    "body": string,
+    "personLabel": string,
+    "heOrBillLabel": string,
+    "organizationsInvolved": string[],
+    "evidenceSummary": string,
+    "officialDataNote": string (optional)
+  }]
 }
 
 Viitejärjestelmä (pakollinen ammattimaiselle uskottavuudelle):
@@ -92,7 +102,12 @@ Viitejärjestelmä (pakollinen ammattimaiselle uskottavuudelle):
 - Älä keksi URL-osoitteita. sources-taulukon url-kentät vain osoitteet, jotka löytyvät Grounding-hausta tai annetun datan source_url-kentistä.
 - Jos lähdettä ei ole, käytä varovaista ilmaisua ilman numeroitua viitettä.
 
-impactScores: arvioi taloudellinen merkitys, yleinen mielenkiinto ja lobbyn intensiteetti yhdessä.`;
+impactScores: arvioi taloudellinen merkitys, yleinen mielenkiinto ja lobbyn intensiteetti yhdessä.
+
+ETURIISTIRIITA-OHJE (pakollinen):
+- Käytä AINA muotoa "Mahdollinen eturistiriita" tai "mahdollinen sidonnaisuus"; älä väitä korruptiosta tai vahvistetusta väärinkäytöksestä.
+- potentialInterestConflicts: rakenna inputissa annetuista potentialInterestConflicts-, committeeExpertInvites- ja lobbyStatementMetadataFlags-kentistä uutismainen tiivis lista (max 12).
+- Jos signaaleja ei ole tai ne ovat heikkoja, palauta tyhjä taulukko.`;
 
   const userPayload = {
     reportingPeriod: periodLabel,
@@ -100,6 +115,9 @@ impactScores: arvioi taloudellinen merkitys, yleinen mielenkiinto ja lobbyn inte
     mediaWatchMatches: input.newsMatches,
     lobbyistInterventionsAvoimuusJaLausunnot: input.lobbyInterventions,
     espooMunicipalDecisions: input.municipalEspoo,
+    potentialInterestConflicts: input.potentialInterestConflicts,
+    committeeExpertInvites: input.committeeExpertInvites,
+    lobbyStatementMetadataFlags: input.lobbyStatementMetadataFlags,
   };
 
   const user = `Alla raakadata JSON-muodossa. Tuota bulletiini.\n\n${JSON.stringify(userPayload).slice(0, 120000)}`;

@@ -14,6 +14,8 @@ const envSchema = z.object({
   GEMINI_MEDIA_WATCH_MODEL: z.string().optional(),
   /** Viikkobulletiinin editor (generateWeeklyBulletin); oletus koodissa gemini-3-flash-preview */
   GEMINI_BULLETIN_MODEL: z.string().optional(),
+  /** Kansalaissyötteen päiväyhteenveto (dashboard); oletus gemini-3-flash-preview */
+  GEMINI_CITIZEN_PULSE_MODEL: z.string().optional(),
 
   /** Cron-reitit (Authorization: Bearer …) */
   CRON_SECRET: z.string().optional(),

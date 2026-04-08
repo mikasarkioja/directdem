@@ -3,15 +3,71 @@
 import { createClient } from "@/lib/supabase/server";
 import { getLatestBills } from "@/lib/eduskunta-api";
 import { performSyncWithClient } from "./sync-bills";
-import {
-  generateMockCitizenPulse,
-  generateMockPoliticalReality,
-} from "@/lib/bill-helpers";
+import { emptyPoliticalReality } from "@/lib/bill-helpers";
+import { rowsToAggregate } from "@/lib/citizen-reactions/aggregate";
 import type { Bill, SupabaseBill } from "@/lib/types";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+async function fetchCitizenPulsePercentMap(
+  supabase: SupabaseClient,
+  billIds: string[],
+): Promise<Map<string, { forP: number; againstP: number }>> {
+  const map = new Map<string, { forP: number; againstP: number }>();
+  if (!billIds.length) return map;
+  try {
+    const { data, error } = await supabase
+      .from("citizen_reactions")
+      .select("bill_id, reaction_type")
+      .in("bill_id", billIds);
+    if (error || !data?.length) return map;
+    const byBill = new Map<string, { reaction_type: string }[]>();
+    for (const row of data as { bill_id: string; reaction_type: string }[]) {
+      const bid = row.bill_id;
+      if (!byBill.has(bid)) byBill.set(bid, []);
+      byBill.get(bid)!.push(row);
+    }
+    for (const [bid, rows] of byBill) {
+      const agg = rowsToAggregate(rows);
+      if (agg.forPercent == null) continue;
+      const forP = Math.min(100, Math.max(0, Math.round(agg.forPercent)));
+      map.set(bid, { forP, againstP: 100 - forP });
+    }
+  } catch {
+    /* taulu puuttuu tai RLS */
+  }
+  return map;
+}
+
+function mapBillRow(
+  bill: any,
+  pulseMap: Map<string, { forP: number; againstP: number }>,
+): Bill {
+  const dbPulse = pulseMap.get(bill.id);
+  const citizenPulse = dbPulse
+    ? { for: dbPulse.forP, against: dbPulse.againstP }
+    : null;
+  const citizenPulseSource = dbPulse ? "community" : "none";
+
+  return {
+    id: bill.id,
+    title: bill.title,
+    summary: bill.summary || "",
+    rawText: bill.raw_text || undefined,
+    parliamentId: bill.parliament_id || undefined,
+    status: bill.status as Bill["status"],
+    citizenPulse,
+    citizenPulseSource,
+    politicalReality: emptyPoliticalReality(),
+    category: bill.category || undefined,
+    publishedDate: bill.published_date || undefined,
+    processingDate: bill.processing_date || undefined,
+    url: bill.url || undefined,
+  };
+}
 
 /**
  * Fetches bills from Supabase, or syncs from Eduskunta API if needed.
@@ -51,23 +107,9 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
 
       // If we have bills in Supabase, use them
       if (billsData && billsData.length > 0 && !error) {
-        return billsData.map((bill: any) => ({
-          id: bill.id,
-          title: bill.title,
-          summary: bill.summary || "",
-          rawText: bill.raw_text || undefined,
-          parliamentId: bill.parliament_id || undefined,
-          status: bill.status as Bill["status"],
-          citizenPulse: generateMockCitizenPulse({
-            title: bill.title,
-            abstract: bill.summary || "",
-          }),
-          politicalReality: generateMockPoliticalReality({ title: bill.title }),
-          category: bill.category || undefined,
-          publishedDate: bill.published_date || undefined,
-          processingDate: (bill as any).processing_date || undefined,
-          url: bill.url || undefined,
-        }));
+        const ids = (billsData as { id: string }[]).map((b) => b.id);
+        const pulseMap = await fetchCitizenPulsePercentMap(supabase, ids);
+        return (billsData as any[]).map((bill) => mapBillRow(bill, pulseMap));
       }
 
       // If no bills in Supabase, try to fetch from Eduskunta API and sync
@@ -100,25 +142,11 @@ export async function fetchBillsFromSupabase(): Promise<Bill[]> {
             .select();
 
           if (insertedBills && !insertError) {
-            return insertedBills.map((bill: any) => ({
-              id: bill.id,
-              title: bill.title,
-              summary: bill.summary || "",
-              rawText: bill.raw_text || undefined,
-              parliamentId: bill.parliament_id || undefined,
-              status: bill.status as Bill["status"],
-              citizenPulse: generateMockCitizenPulse({
-                title: bill.title,
-                abstract: bill.summary || "",
-              }),
-              politicalReality: generateMockPoliticalReality({
-                title: bill.title,
-              }),
-              category: bill.category || undefined,
-              publishedDate: bill.published_date || undefined,
-              processingDate: (bill as any).processing_date || undefined,
-              url: bill.url || undefined,
-            }));
+            const ids = (insertedBills as { id: string }[]).map((b) => b.id);
+            const pulseMap = await fetchCitizenPulsePercentMap(supabase, ids);
+            return (insertedBills as any[]).map((bill) =>
+              mapBillRow(bill, pulseMap),
+            );
           }
         }
       } catch (error) {

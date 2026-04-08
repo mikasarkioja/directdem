@@ -3,14 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --background: #F8FAFC;
-  --foreground: #1E293B;
+  --background: #f8fafc;
+  --foreground: #1e293b;
+}
+
+/* Kansalaissyöte / uutismainen osio: korkea kontrasti, ilmava */
+.feed-news-theme {
+  background-color: #fafafa;
+  color: #0a0a0a;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    var(--font-inter),
+    system-ui,
+    -apple-system,
+    sans-serif;
   -webkit-tap-highlight-color: transparent;
   letter-spacing: -0.011em;
   /* Pakotettu päivitys grafiikoiden palauttamiseksi - v2 */
@@ -27,7 +37,7 @@ body {
 }
 
 .cyber-card {
-  background: #1E293B;
+  background: #1e293b;
   border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
@@ -47,9 +57,11 @@ body {
 
 /* Professional Nordic Utilities */
 .nordic-card {
-  background: #FFFFFF;
+  background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .nordic-blue-glow {
@@ -65,12 +77,12 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #E2E8F0;
+  background: #e2e8f0;
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #CBD5E1;
+  background: #cbd5e1;
 }
 
 /* Touch-friendly button styles */
@@ -99,7 +111,7 @@ a[role="button"],
   .safe-area-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
-  
+
   .safe-area-top {
     padding-top: max(1rem, env(safe-area-inset-top));
   }
@@ -121,12 +133,12 @@ html {
   body {
     padding-bottom: 64px;
   }
-  
+
   /* Prevent text selection on mobile for better UX */
   * {
     -webkit-touch-callout: none;
   }
-  
+
   /* Allow text selection in input fields */
   input,
   textarea {
@@ -135,5 +147,3 @@ html {
     -webkit-user-select: text;
   }
 }
-
-

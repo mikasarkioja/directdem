@@ -24,7 +24,7 @@ interface DistrictStats {
 // For now, we'll use the bill's overall stats with some variation
 function generateDistrictStats(
   bill: Bill | null,
-  districtName: string
+  districtName: string,
 ): DistrictStats {
   if (!bill) {
     return {
@@ -38,16 +38,21 @@ function generateDistrictStats(
 
   // Use bill's overall stats with some random variation per district
   // In production, this would come from actual district-level voting data
-  const baseCitizen = bill.citizenPulse.for;
-  const baseParliament = bill.politicalReality
-    .filter((p) => p.position === "for")
-    .reduce((sum, p) => sum + p.seats, 0) /
-    bill.politicalReality.reduce((sum, p) => sum + p.seats, 0) * 100;
+  const baseCitizen = bill.citizenPulse?.for ?? 50;
+  const baseParliament =
+    (bill.politicalReality
+      .filter((p) => p.position === "for")
+      .reduce((sum, p) => sum + p.seats, 0) /
+      bill.politicalReality.reduce((sum, p) => sum + p.seats, 0)) *
+    100;
 
   // Add some variation based on district (mock)
   const variation = (districtName.charCodeAt(0) % 20) - 10; // -10 to +10 variation
   const citizenVote = Math.max(0, Math.min(100, baseCitizen + variation));
-  const parliamentVote = Math.max(0, Math.min(100, baseParliament + variation * 0.5));
+  const parliamentVote = Math.max(
+    0,
+    Math.min(100, baseParliament + variation * 0.5),
+  );
 
   const gap = Math.abs(citizenVote - parliamentVote);
   const agreement = 100 - gap; // Higher agreement = lower gap
@@ -97,7 +102,10 @@ export default function ConstituencyMap({
     const stats: Record<string, DistrictStats> = {};
     geoData.features.forEach((feature) => {
       const districtName = feature.properties.name;
-      stats[districtName] = generateDistrictStats(selectedBill || null, districtName);
+      stats[districtName] = generateDistrictStats(
+        selectedBill || null,
+        districtName,
+      );
     });
     return stats;
   }, [selectedBill]);
@@ -187,7 +195,7 @@ export default function ConstituencyMap({
               const touch2 = e.touches[1];
               const distance = Math.hypot(
                 touch2.clientX - touch1.clientX,
-                touch2.clientY - touch1.clientY
+                touch2.clientY - touch1.clientY,
               );
               // Simple pinch zoom - in production, use a library like react-zoom-pan-pinch
             }
@@ -204,61 +212,61 @@ export default function ConstituencyMap({
             height={600}
             style={{ width: "100%", height: "100%" }}
           >
-          <Geographies geography={geoData}>
-            {({ geographies }) =>
-              geographies.map((geo) => {
-                const districtName = geo.properties.name;
-                const stats = districtStatsMap[districtName];
-                const agreement = stats?.agreement || 50;
-                const fillColor = getDistrictColor(agreement);
-                const isUserDistrict = userDistrict === districtName;
+            <Geographies geography={geoData}>
+              {({ geographies }) =>
+                geographies.map((geo) => {
+                  const districtName = geo.properties.name;
+                  const stats = districtStatsMap[districtName];
+                  const agreement = stats?.agreement || 50;
+                  const fillColor = getDistrictColor(agreement);
+                  const isUserDistrict = userDistrict === districtName;
 
-                return (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill={fillColor}
-                    stroke={isUserDistrict ? "#0066CC" : "#E5E7EB"}
-                    strokeWidth={isUserDistrict ? 3 : 1}
-                    style={{
-                      default: {
-                        fill: fillColor,
-                        outline: "none",
-                        cursor: "pointer",
-                      },
-                      hover: {
-                        fill: fillColor,
-                        outline: "none",
-                        stroke: "#0066CC",
-                        strokeWidth: 2,
-                      },
-                      pressed: {
-                        fill: fillColor,
-                        outline: "none",
-                      },
-                    }}
-                    onMouseEnter={(event) => {
-                      if (stats) {
-                        const rect = (event.currentTarget as SVGElement)
-                          .closest("svg")
-                          ?.getBoundingClientRect();
-                        if (rect) {
-                          setTooltip({
-                            district: districtName,
-                            stats,
-                            x: event.clientX - rect.left,
-                            y: event.clientY - rect.top,
-                          });
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      fill={fillColor}
+                      stroke={isUserDistrict ? "#0066CC" : "#E5E7EB"}
+                      strokeWidth={isUserDistrict ? 3 : 1}
+                      style={{
+                        default: {
+                          fill: fillColor,
+                          outline: "none",
+                          cursor: "pointer",
+                        },
+                        hover: {
+                          fill: fillColor,
+                          outline: "none",
+                          stroke: "#0066CC",
+                          strokeWidth: 2,
+                        },
+                        pressed: {
+                          fill: fillColor,
+                          outline: "none",
+                        },
+                      }}
+                      onMouseEnter={(event) => {
+                        if (stats) {
+                          const rect = (event.currentTarget as SVGElement)
+                            .closest("svg")
+                            ?.getBoundingClientRect();
+                          if (rect) {
+                            setTooltip({
+                              district: districtName,
+                              stats,
+                              x: event.clientX - rect.left,
+                              y: event.clientY - rect.top,
+                            });
+                          }
                         }
-                      }
-                    }}
-                    onMouseLeave={() => setTooltip(null)}
-                  />
-                );
-              })
-            }
-          </Geographies>
-        </ComposableMap>
+                      }}
+                      onMouseLeave={() => setTooltip(null)}
+                    />
+                  );
+                })
+              }
+            </Geographies>
+          </ComposableMap>
         </div>
 
         {/* Tooltip */}
@@ -297,8 +305,8 @@ export default function ConstituencyMap({
                     tooltip.stats.gap > 30
                       ? "text-red-600"
                       : tooltip.stats.gap > 15
-                      ? "text-amber-600"
-                      : "text-green-600"
+                        ? "text-amber-600"
+                        : "text-green-600"
                   }`}
                 >
                   {tooltip.stats.gap}%
@@ -346,9 +354,7 @@ export default function ConstituencyMap({
                 className="w-4 h-4 rounded border border-nordic-gray"
                 style={{ backgroundColor: "#EF4444" }}
               />
-              <span className="text-nordic-dark">
-                Vaaravyöhyke (&lt;40%)
-              </span>
+              <span className="text-nordic-dark">Vaaravyöhyke (&lt;40%)</span>
             </div>
             {userDistrict && (
               <div className="mt-2 pt-2 border-t border-nordic-gray flex items-center gap-2">
@@ -370,4 +376,3 @@ export default function ConstituencyMap({
     </div>
   );
 }
-

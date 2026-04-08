@@ -3,7 +3,12 @@
  */
 
 // Bill types
-export type BillStatus = "draft" | "in_progress" | "voting" | "passed" | "rejected";
+export type BillStatus =
+  | "draft"
+  | "in_progress"
+  | "voting"
+  | "passed"
+  | "rejected";
 
 export interface Bill {
   id: string;
@@ -12,10 +17,13 @@ export interface Bill {
   rawText?: string;
   parliamentId?: string;
   status: BillStatus;
+  /** null = ei yhteisödataa (ei keinotekoisia prosentteja) */
   citizenPulse: {
     for: number;
     against: number;
-  };
+  } | null;
+  /** community = citizen_reactions; none = ei riittävästi ääniä */
+  citizenPulseSource?: "community" | "none";
   politicalReality: {
     party: string;
     position: "for" | "against" | "abstain";
@@ -28,7 +36,11 @@ export interface Bill {
 }
 
 // Municipal Case types
-export type MunicipalCaseStatus = "agenda" | "decided" | "appealed" | "cancelled";
+export type MunicipalCaseStatus =
+  | "agenda"
+  | "decided"
+  | "appealed"
+  | "cancelled";
 
 export interface MunicipalCase {
   id: string;
@@ -87,16 +99,16 @@ export interface UserProfile {
   join_report_list?: boolean;
   is_admin?: boolean;
   is_guest?: boolean;
-  active_role?: 'citizen' | 'shadow_mp' | 'researcher';
-  researcher_type?: 'academic' | 'journalist' | 'policy_expert' | 'strategist';
+  active_role?: "citizen" | "shadow_mp" | "researcher";
+  researcher_type?: "academic" | "journalist" | "policy_expert" | "strategist";
   researcher_focus?: string[];
   researcher_initialized?: boolean;
   current_archetype?: string;
   dna_level?: number;
   impact_points?: number;
   credits?: number;
-  subscription_status?: 'active' | 'inactive' | 'past_due' | 'canceled';
-  plan_type?: 'free' | 'premium' | 'enterprise';
+  subscription_status?: "active" | "inactive" | "past_due" | "canceled";
+  plan_type?: "free" | "premium" | "enterprise";
   stripe_customer_id?: string;
   xp?: number;
   level?: number;
@@ -238,7 +250,7 @@ export interface VirtualParty {
 export interface PartyMember {
   party_id: string;
   user_id: string;
-  role: 'founder' | 'member';
+  role: "founder" | "member";
   joined_at: string;
 }
 
@@ -248,7 +260,20 @@ export interface DebateParticipant {
 }
 
 // Dashboard view types
-export type DashboardView = "overview" | "bills" | "municipal" | "consensus" | "profile" | "parties" | "debate" | "ranking" | "analysis" | "workspace" | "arena" | "kuntavahti" | "researcher";
+export type DashboardView =
+  | "overview"
+  | "bills"
+  | "municipal"
+  | "consensus"
+  | "profile"
+  | "parties"
+  | "debate"
+  | "ranking"
+  | "analysis"
+  | "workspace"
+  | "arena"
+  | "kuntavahti"
+  | "researcher";
 
 // API Test types
 export interface TestResult {
@@ -270,7 +295,7 @@ export interface IntegrityAlert {
   promise_value: number;
   vote_type: string;
   deviation_score: number;
-  severity: 'low' | 'medium' | 'high';
+  severity: "low" | "medium" | "high";
   reasoning?: string;
   created_at: string;
 }
@@ -290,7 +315,7 @@ export interface BillTask {
   bill_id: string;
   title: string;
   description: string;
-  status: 'todo' | 'in_progress' | 'completed';
+  status: "todo" | "in_progress" | "completed";
   assigned_to?: string;
   created_at: string;
 }
@@ -317,7 +342,7 @@ export interface BillAmendment {
   author_id: string;
   votes_for: number;
   votes_against: number;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: "pending" | "accepted" | "rejected";
   created_at: string;
 }
 
@@ -336,7 +361,13 @@ export interface PulseQuestion {
   id: string;
   question: string;
   municipality?: string;
-  category: "Talous" | "Arvot" | "Ympäristö" | "Aluepolitiikka" | "Kansainvälisyys" | "Turvallisuus";
+  category:
+    | "Talous"
+    | "Arvot"
+    | "Ympäristö"
+    | "Aluepolitiikka"
+    | "Kansainvälisyys"
+    | "Turvallisuus";
   context: "national" | "municipal";
   impact_vector: Record<string, number>; // e.g. { economic_score: 0.1 }
 }
@@ -348,5 +379,3 @@ export interface LobbyistStats {
   direct_contacts: number;
   main_committee: string;
 }
-
-

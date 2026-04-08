@@ -3,6 +3,8 @@
 **Tarkoitus:** priorisoida kehitystä, rajata MVP ja nähdä missä käytetään oikeaa dataa vs. mock-/fallback-dataa.  
 **Konteksti:** koodi- ja konfiguraatiokatselmus (DirectDem-repositorio). Päivitä tämä tiedosto kun suuria polkuja muutetaan.
 
+**Täydellinen ominaisuuskatalogi (PM):** [FEATURE-CATALOG-PRODUCT-MANAGEMENT.md](./FEATURE-CATALOG-PRODUCT-MANAGEMENT.md) — kaikki päämoduulit, valmiusasteet, flagit ja cronit.
+
 ---
 
 ## 1. Tuoteidea tiiviisti

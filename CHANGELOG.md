@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file. The format is i
 
 ### Added
 
+- **Documentation:** `DOCS/FEATURE-CATALOG-PRODUCT-MANAGEMENT.md` — full feature inventory and completeness levels for product management (routes, flags, crons, mock caveats).
 - **Lobbyist interventions ingestion:** Vaski committee experts (Asiantuntijalausunto) sync writes to `lobbyist_interventions` with `source_type: expert_hearing`, optional `bill_id`, `source_external_id`, and `dedupe_key` for idempotent PostgREST upserts (`lib/lobby/sync-committee-experts-db.ts`, `lib/lobby/upsert-expert-interventions.ts`, `lib/lobby/he-from-finnish-doc.ts`).
 - **Lausuntopalvelu batch:** `lib/lobby/sync-lausunto-statements-to-db.ts` upserts `source_type: statement`; `scripts/sync-committee-experts-vaski.ts` sets `LOBBY_TRACE_USE_MOCK=false`, runs expert + lausunto sync, and records `sync_logs` entries including `sync-lobbyist-interventions-ingest`.
 - **Migrations:** `20260415120000_lobbyist_interventions_expert_statement.sql` (columns + extended `source_type` check), `20260415130000_lobbyist_dedupe_key_postgrest.sql` (non-partial unique on `dedupe_key` for PostgREST), `20260415140000_bulletin_upsert_indexes_postgrest.sql` (full unique indexes for bulletin feed upserts).

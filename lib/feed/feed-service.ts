@@ -5,6 +5,7 @@ import { isFeatureEnabled } from "@/lib/config/features";
 import { fetchMediaWatchFeed } from "@/app/actions/media-watch";
 import { resolveConstituencyMpId } from "@/lib/feed/resolve-constituency-mp";
 import { enrichBillsWithLobbyMetadata } from "@/lib/feed/lobby-feed-metadata";
+import { computeBillInsightSignals } from "@/lib/feed/bill-insight-signals";
 import type { Bill } from "@/lib/types";
 
 const YLE_POLITICS_RSS =
@@ -37,6 +38,10 @@ export interface FeedItem {
   lobbyInterventionCount?: number;
   /** Heuristiikka: sidonnaisuusrekisteri osuu aiheeseen */
   interestSectorConflict?: boolean;
+  /** Varjo-/istumapohjainen läpimenon todennäköisyys (%) — vain bill */
+  passageProbabilityPercent?: number;
+  /** Vaikutusindeksi 0–100 (heuristiikka) — vain bill */
+  lobbyInfluenceIndex?: number;
 }
 
 export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
@@ -112,6 +117,8 @@ export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
           : "https://www.eduskunta.fi");
       const meta = lobbyMeta.get(item.id);
       const interventionCount = meta?.lobbyInterventionCount ?? 0;
+      const { passageProbabilityPercent, lobbyInfluenceIndex } =
+        computeBillInsightSignals(item);
       return {
         id: `bill-${item.id}`,
         billUuid: item.id,
@@ -131,6 +138,8 @@ export async function getIntelligenceFeed(userDna?: any): Promise<FeedItem[]> {
         verifiedOfficial: true,
         lobbyInterventionCount: interventionCount,
         interestSectorConflict: meta?.interestSectorConflict ?? false,
+        passageProbabilityPercent,
+        lobbyInfluenceIndex,
         groundingSources: [
           { label: "Eduskunta / palvelun lakiaineisto", url: eduskuntaUrl },
           ...(interventionCount > 0

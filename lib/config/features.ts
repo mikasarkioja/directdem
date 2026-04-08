@@ -1,3 +1,14 @@
+/**
+ * Kaikki liput lukevat `process.env.NEXT_PUBLIC_*` (build-aika clientissa).
+ *
+ * **Citizen-First MVP -oletukset (koodi):**
+ * - `PREDICTIVE_MODELS_ENABLED` → **false**
+ * - `MP_DNA_ANALYTICS_ENABLED` → **false**
+ * - `WEEKLY_BULLETIN_ENABLED` → **true**
+ * - `ESPOO_DYNASTY_ENABLED` → **true**
+ *
+ * Muuta oletuksia vain harkitusti; dokumentoi `DOCS/TUOTE-FEATURE-KUVAUS-JA-MVP.md`.
+ */
 export interface FeatureFlags {
   ARENA_ENABLED: boolean;
   ECONOMY_ENABLED: boolean;

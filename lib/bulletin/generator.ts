@@ -107,6 +107,23 @@ export type WeeklyReportEmailPayload = {
   variant?: "magazine" | "legacy";
 };
 
+/** Legacy JSON-polun fallback yksittäisen rikkinäisen rivin / OpenAI-vian varalle. */
+export function fallbackWeeklyReportData(): WeeklyReportData {
+  return {
+    parliamentData: {
+      summary:
+        "Automaattista viikkoyhteenvetoa ei saatu luotua (data- tai AI-virhe). Seuraavassa lähteinä viikon lainsäädäntö- ja kuntaindeksi.",
+      predictions: [],
+      lobbyistHits: [],
+    },
+    espooData: {
+      summary:
+        "Espoo-osuuden tiivistelmää ei voitu tuottaa. Katso alla olevat viralliset esitysrivit.",
+      updates: [],
+    },
+  };
+}
+
 const LEGISLATIVE_HEADER_LIMIT = 200;
 
 function weeklyEmailBaseUrl(): string {
@@ -309,30 +326,28 @@ export async function generateWeeklyReport(): Promise<WeeklyReportData> {
       .limit(3);
 
     if (decisionsResult.error) {
-      throw new Error(
-        `decisions query failed: ${decisionsResult.error.message}`,
-      );
+      logger.warn("decisions query:", decisionsResult.error.message);
     }
     if (tracesResult.error) {
-      throw new Error(
-        `lobbyist_traces query failed: ${tracesResult.error.message}`,
-      );
+      logger.warn("lobbyist_traces query:", tracesResult.error.message);
     }
     if (espooResult.error) {
-      throw new Error(
-        `espoo_decisions query failed: ${espooResult.error.message}`,
-      );
+      logger.warn("espoo_decisions query:", espooResult.error.message);
     }
     if (espooLobbyError) {
-      throw new Error(
-        `espoo_lobby_traces query failed: ${espooLobbyError.message}`,
-      );
+      logger.warn("espoo_lobby_traces query:", espooLobbyError.message);
     }
 
     const decisions = (decisionsResult.data ?? []) as DecisionRow[];
-    const traces = (tracesResult.data ?? []) as TraceRow[];
-    const espooDecisions = (espooResult.data ?? []) as EspooDecisionRow[];
-    const espooLobby = (espooLobbyTraces ?? []) as EspooLobbyTraceRow[];
+    const traces = tracesResult.error
+      ? []
+      : ((tracesResult.data ?? []) as TraceRow[]);
+    const espooDecisions = espooResult.error
+      ? []
+      : ((espooResult.data ?? []) as EspooDecisionRow[]);
+    const espooLobby = espooLobbyError
+      ? []
+      : ((espooLobbyTraces ?? []) as EspooLobbyTraceRow[]);
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -413,10 +428,22 @@ export async function generateWeeklyReport(): Promise<WeeklyReportData> {
       throw new Error("OpenAI response missing message.content");
     }
 
-    return WeeklyReportSchema.parse(JSON.parse(content));
-  } catch (error: any) {
-    logger.error("generateWeeklyReport failed:", error?.message ?? error);
-    throw error;
+    const parsedJson: unknown = JSON.parse(content);
+    const validated = WeeklyReportSchema.safeParse(parsedJson);
+    if (!validated.success) {
+      logger.warn(
+        "generateWeeklyReport schema mismatch, using fallback:",
+        validated.error.message,
+      );
+      return fallbackWeeklyReportData();
+    }
+    return validated.data;
+  } catch (error: unknown) {
+    logger.error(
+      "generateWeeklyReport failed:",
+      error instanceof Error ? error.message : error,
+    );
+    return fallbackWeeklyReportData();
   }
 }
 
@@ -494,20 +521,54 @@ export async function generateWeeklyReportEmailPayload(): Promise<WeeklyReportEm
       }
     }
 
-    const report = await generateWeeklyReport();
-    const html = await render(
-      WeeklyBulletin({
-        issueDate: issueDateNow,
-        parliamentData: {
-          ...report.parliamentData,
-          weeklyBillHeaders: parliamentBillHeaders,
-        },
-        espooData: {
-          ...report.espooData,
-          weeklyCaseHeaders: espooCaseHeaders,
-        },
-      }),
-    );
+    let report: WeeklyReportData;
+    try {
+      report = await generateWeeklyReport();
+    } catch (e) {
+      logger.warn(
+        "generateWeeklyReport threw, fallback:",
+        e instanceof Error ? e.message : e,
+      );
+      report = fallbackWeeklyReportData();
+    }
+
+    let html: string;
+    try {
+      html = await render(
+        WeeklyBulletin({
+          issueDate: issueDateNow,
+          parliamentData: {
+            ...report.parliamentData,
+            weeklyBillHeaders: parliamentBillHeaders,
+          },
+          espooData: {
+            ...report.espooData,
+            weeklyCaseHeaders: espooCaseHeaders,
+          },
+        }),
+      );
+    } catch (renderErr) {
+      logger.error(
+        "WeeklyBulletin render failed:",
+        renderErr instanceof Error ? renderErr.message : renderErr,
+      );
+      const safe = fallbackWeeklyReportData();
+      html = await render(
+        WeeklyBulletin({
+          issueDate: issueDateNow,
+          parliamentData: {
+            ...safe.parliamentData,
+            weeklyBillHeaders: parliamentBillHeaders,
+          },
+          espooData: {
+            ...safe.espooData,
+            weeklyCaseHeaders: espooCaseHeaders,
+          },
+        }),
+      );
+      report = safe;
+    }
+
     return {
       issueDate: issueDateNow,
       report,

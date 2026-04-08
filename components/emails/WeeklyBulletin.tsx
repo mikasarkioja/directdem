@@ -87,23 +87,23 @@ export default function WeeklyBulletin({
   return (
     <Html>
       <Head />
-      <Preview>DirectDem Viikkobulletiini - Issue 1</Preview>
+      <Preview>Omatase — viikkolehti (Eduskunta &amp; Espoo)</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Section style={styles.header}>
             <Heading as="h1" style={styles.headerTitle}>
-              DirectDem - Viikkobulletiini
+              Omatase — Viikkolehti
             </Heading>
             <Text style={styles.headerDate}>{issueDate}</Text>
           </Section>
 
-          <Section style={styles.contentWrap}>
-            <Heading as="h2" style={styles.sectionTitle}>
-              🏛️ Eduskunta
+          <Section style={styles.parliamentPanel}>
+            <Heading as="h2" style={styles.sectionTitleParliament}>
+              Eduskunta
             </Heading>
             <Text style={styles.paragraph}>{parliamentData.summary}</Text>
 
-            <Heading as="h3" style={styles.subSectionTitle}>
+            <Heading as="h3" style={styles.subSectionTitleParliament}>
               Viikon lainsäädännölliset esitykset (Eduskunta)
             </Heading>
             {parliamentHeaders.length === 0 ? (
@@ -143,7 +143,7 @@ export default function WeeklyBulletin({
               </Section>
             )}
 
-            <Heading as="h3" style={styles.subSectionTitle}>
+            <Heading as="h3" style={styles.subSectionTitleParliament}>
               Viikon ennusteet
             </Heading>
             {parliamentData.predictions.length === 0 ? (
@@ -177,7 +177,7 @@ export default function WeeklyBulletin({
 
             <Hr style={styles.hr} />
 
-            <Heading as="h2" style={styles.sectionTitle}>
+            <Heading as="h2" style={styles.sectionTitleParliament}>
               Lobbaus-tutka
             </Heading>
             {parliamentData.lobbyistHits.length === 0 ? (
@@ -213,12 +213,12 @@ export default function WeeklyBulletin({
           </Section>
 
           <Section style={styles.espooWrap}>
-            <Heading as="h2" style={styles.sectionTitle}>
-              📍 Espoo
+            <Heading as="h2" style={styles.sectionTitleEspoo}>
+              Espoo &amp; paikallinen päätöksenteko
             </Heading>
-            <Text style={styles.paragraph}>{espooData.summary}</Text>
+            <Text style={styles.paragraphEspoo}>{espooData.summary}</Text>
 
-            <Heading as="h3" style={styles.subSectionTitle}>
+            <Heading as="h3" style={styles.subSectionTitleEspoo}>
               Viikon esitykset (Espoo)
             </Heading>
             {espooHeaders.length === 0 ? (
@@ -247,7 +247,7 @@ export default function WeeklyBulletin({
               </Section>
             )}
 
-            <Heading as="h3" style={styles.subSectionTitle}>
+            <Heading as="h3" style={styles.subSectionTitleEspoo}>
               Espoo-vahti
             </Heading>
             {espooData.updates.length === 0 ? (
@@ -327,25 +327,47 @@ const styles = {
     color: "#dbeafe",
     fontSize: "14px",
   },
-  contentWrap: {
+  parliamentPanel: {
     padding: "24px 28px",
+    backgroundColor: "#eff6ff",
+    borderLeft: "6px solid #1d4ed8",
+    borderBottom: "1px solid #bfdbfe",
   },
   espooWrap: {
     padding: "24px 28px",
     backgroundColor: "#f0fdf4",
     borderTop: "1px solid #dcfce7",
+    borderLeft: "6px solid #15803d",
   },
-  sectionTitle: {
+  sectionTitleParliament: {
     margin: "0 0 12px",
-    color: "#1d4ed8",
+    color: "#1e3a8a",
     fontSize: "20px",
     lineHeight: "1.3",
   },
-  subSectionTitle: {
+  sectionTitleEspoo: {
+    margin: "0 0 12px",
+    color: "#14532d",
+    fontSize: "20px",
+    lineHeight: "1.3",
+  },
+  subSectionTitleParliament: {
     margin: "0 0 10px",
     color: "#1d4ed8",
     fontSize: "16px",
     lineHeight: "1.3",
+  },
+  subSectionTitleEspoo: {
+    margin: "0 0 10px",
+    color: "#15803d",
+    fontSize: "16px",
+    lineHeight: "1.3",
+  },
+  paragraphEspoo: {
+    margin: "0 0 10px",
+    color: "#14532d",
+    fontSize: "14px",
+    lineHeight: "1.6",
   },
   listItem: {
     marginBottom: "14px",

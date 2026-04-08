@@ -3,7 +3,9 @@
 import React, { useState, useMemo } from "react";
 import { IntelligenceFeed } from "./IntelligenceFeed";
 import { Filter, Sparkles } from "lucide-react";
+import Link from "next/link";
 import type { FeedItem } from "@/lib/feed/feed-service";
+import { isResearcherWorkbenchEnabled } from "@/lib/config/features";
 
 export default function IntelligenceFeedWrapper({
   initialItems,
@@ -42,22 +44,37 @@ export default function IntelligenceFeedWrapper({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowOnlyRelevant(!showOnlyRelevant)}
-          className={`inline-flex min-h-[44px] items-center justify-center gap-2 self-start rounded-lg border px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200 md:self-auto ${
-            showOnlyRelevant
-              ? "border-neutral-900 bg-neutral-900 text-white shadow-sm"
-              : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400"
-          }`}
-        >
-          {showOnlyRelevant ? (
-            <Sparkles size={16} aria-hidden />
-          ) : (
-            <Filter size={16} aria-hidden />
-          )}
-          {showOnlyRelevant ? "Vain relevanteimmat" : "Kaikki"}
-        </button>
+        <details className="group w-full md:w-auto">
+          <summary className="cursor-pointer list-none rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-neutral-600 transition-colors hover:border-neutral-300 [&::-webkit-details-marker]:hidden">
+            Näytä lisää — suodatus &amp; tutkija
+          </summary>
+          <div className="mt-3 flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 md:flex-row md:flex-wrap md:items-center">
+            <button
+              type="button"
+              onClick={() => setShowOnlyRelevant(!showOnlyRelevant)}
+              className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
+                showOnlyRelevant
+                  ? "border-neutral-900 bg-neutral-900 text-white shadow-sm"
+                  : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400"
+              }`}
+            >
+              {showOnlyRelevant ? (
+                <Sparkles size={16} aria-hidden />
+              ) : (
+                <Filter size={16} aria-hidden />
+              )}
+              {showOnlyRelevant ? "Vain relevanteimmat" : "Kaikki"}
+            </button>
+            {isResearcherWorkbenchEnabled() ? (
+              <Link
+                href="/dashboard/researcher"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-100"
+              >
+                Tutkijan työpöytä →
+              </Link>
+            ) : null}
+          </div>
+        </details>
       </div>
 
       <IntelligenceFeed items={filteredItems} userDna={userDna} />

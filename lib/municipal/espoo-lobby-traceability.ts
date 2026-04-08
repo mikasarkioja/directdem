@@ -1,6 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { createAdminClient } from "@/lib/supabase/server";
+import { extractTextFromPdf } from "@/lib/scrapers/pdf-utils";
 
 type EspooDecision = {
   id: string;
@@ -81,9 +82,17 @@ async function fetchAttachmentText(
   fallbackTitle: string,
 ): Promise<string> {
   try {
-    if (url.toLowerCase().endsWith(".pdf")) {
-      // Keep this lightweight for cron stability: use title/url when PDF text extraction is unavailable.
-      return `${fallbackTitle} ${url}`;
+    if (url.toLowerCase().includes(".pdf")) {
+      const pdfText = await extractTextFromPdf(url);
+      const combined = `${fallbackTitle}\n${pdfText}`.trim();
+      if (
+        combined.length > 80 &&
+        !pdfText.startsWith("Virhe") &&
+        !pdfText.startsWith("Skannattu PDF")
+      ) {
+        return combined.slice(0, 12000);
+      }
+      return combined.slice(0, 12000) || `${fallbackTitle} ${url}`;
     }
     const { data } = await axios.get(url, { timeout: 20000 });
     const $ = cheerio.load(data);
@@ -188,43 +197,62 @@ export async function scanEspooLobbyTraceability(): Promise<{
   let highInfluenceCount = 0;
 
   for (const decision of (decisions ?? []) as EspooDecision[]) {
-    if (!decision.url) continue;
-    const decisionText =
-      `${decision.title ?? ""}\n${decision.summary ?? ""}`.trim();
-    if (!decisionText) continue;
+    try {
+      if (!decision.url) continue;
+      const decisionText =
+        `${decision.title ?? ""}\n${decision.summary ?? ""}`.trim();
+      if (!decisionText) continue;
 
-    const attachments = await fetchAttachmentCandidates(decision.url);
-    for (const attachment of attachments) {
-      const attachmentText = await fetchAttachmentText(
-        attachment.url,
-        attachment.title,
-      );
-      const similarity = tokenSimilarityPercent(attachmentText, decisionText);
-      const highInfluence = similarity >= 70;
+      const attachments = await fetchAttachmentCandidates(decision.url);
+      for (const attachment of attachments) {
+        try {
+          const attachmentText = await fetchAttachmentText(
+            attachment.url,
+            attachment.title,
+          );
+          const similarity = tokenSimilarityPercent(
+            attachmentText,
+            decisionText,
+          );
+          const highInfluence = similarity >= 70;
 
-      const ai = await inferActorAndImpact(attachmentText, decisionText);
-      const { error: upsertError } = await supabase
-        .from("espoo_lobby_traces")
-        .upsert(
-          {
-            decision_id: decision.id,
-            actor_name: ai.actor_name,
-            similarity_score: similarity,
-            impact_summary: ai.impact_summary,
-            high_influence: highInfluence,
-            source_url: attachment.url,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "decision_id,source_url" },
-        );
+          const ai = await inferActorAndImpact(attachmentText, decisionText);
+          const { error: upsertError } = await supabase
+            .from("espoo_lobby_traces")
+            .upsert(
+              {
+                decision_id: decision.id,
+                actor_name: ai.actor_name,
+                similarity_score: similarity,
+                impact_summary: ai.impact_summary,
+                high_influence: highInfluence,
+                source_url: attachment.url,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "decision_id,source_url" },
+            );
 
-      if (upsertError) {
-        console.error("[EspooTrace] Upsert failed:", upsertError.message);
-        continue;
+          if (upsertError) {
+            console.error("[EspooTrace] Upsert failed:", upsertError.message);
+            continue;
+          }
+
+          storedFindings += 1;
+          if (highInfluence) highInfluenceCount += 1;
+        } catch (rowErr) {
+          console.warn(
+            "[EspooTrace] Row skipped:",
+            decision.id,
+            rowErr instanceof Error ? rowErr.message : rowErr,
+          );
+        }
       }
-
-      storedFindings += 1;
-      if (highInfluence) highInfluenceCount += 1;
+    } catch (decErr) {
+      console.warn(
+        "[EspooTrace] Decision skipped:",
+        decision.id,
+        decErr instanceof Error ? decErr.message : decErr,
+      );
     }
   }
 

@@ -5,7 +5,7 @@
 Projektissa on laaja ominaisuuspinta ja vahva tekninen perusta (Next.js 15, Supabase, AI-putket, cron-ajot, admin-UI), mutta kokonaisuus on tällä hetkellä **pääosin Beta-vaiheessa**.  
 Suurimmat riskit ennen julkaisua liittyvät:
 
-- kahteen rinnakkaiseen viikkokatsausgeneraattoriin (`lib/bulletin/generate.ts` vs `lib/bulletin/generator.ts`)
+- ~~kahteen rinnakkaiseen viikkokatsausgeneraattoriin~~ → **korjattu:** yksi lähde `lib/bulletin/generator.ts` (+ testilähetys ja cron käyttävät `generateWeeklyReportEmailPayload`)
 - feature flag -hajautumiseen (env-flagit määritelty, mutta eivät ohjaa keskitetysti näkyvyyttä)
 - Espoo traceability -putken PDF/tekstitason robustiuteen (OCR/parsinta fallbackit)
 - cron-ajastuksen puutteeseen (`weekly-bulletin` ei näy `vercel.json` cron-listassa)
@@ -65,8 +65,8 @@ Suurimmat riskit ennen julkaisua liittyvät:
 ### 2.9 Viikkokirjeautomaatio (generate + cron + resend + archive)
 
 - **Status: Beta**
-- **Keskeiset tiedostot:** `app/api/cron/weekly-bulletin/route.ts`, `components/emails/WeeklyBulletin.tsx`, `app/actions/newsletter-subscribers.ts`, `lib/bulletin/generator.ts`, `lib/bulletin/generate.ts`
-- **Arvio:** Toimiva automaatioketju on olemassa, mutta generaattorilogiikka on nyt **duplikoitunut kahteen tiedostoon**.
+- **Keskeiset tiedostot:** `app/api/cron/weekly-bulletin/route.ts`, `components/emails/WeeklyBulletin.tsx`, `app/actions/newsletter-subscribers.ts`, `lib/bulletin/generator.ts`
+- **Arvio:** Yksi generaattori; legacy JSON-polku käyttää `fallbackWeeklyReportData()` virheissä. `weekly-bulletin` voidaan lisätä `vercel.json`iin erikseen (Hobby-cronrajat).
 
 ### 2.10 Admin-hallinta (tilaajat + testilähetys)
 
@@ -78,19 +78,15 @@ Suurimmat riskit ennen julkaisua liittyvät:
 
 ## 3) Erityistarkastukset
 
-### 3.1 `lib/scrapers/pdf-utils.ts` ja `lib/bulletin/generator.ts` integraatio
+### 3.1 `lib/scrapers/pdf-utils.ts` ja Espoo lobby -traceability
 
-- **Havainto:** Ei suoraa integraatiota.
-- `pdf-utils.ts` on hyödyllinen, mutta Espoo traceability (`lib/municipal/espoo-lobby-traceability.ts`) ei käytä sitä PDF-linkkien purkuun.
-- **Vaikutus:** PDF-liitteet voivat jäädä analyysissä heikolle tarkkuudelle (fallback-teksti).
-- **Suositus:** Kytke `extractTextFromPdf()` traceability-putkeen, kun liitelinkki on `.pdf`.
+- **Päivitys:** `espoo-lobby-traceability.ts` kutsuu `extractTextFromPdf()` PDF-liitteille (similarity + AI edelleen).
+- **Huom:** Skannatut PDF:t voivat palauttaa OCR-varoituksen — similarity voi jäädä matalaksi.
 
 ### 3.2 `WeeklyBulletin.tsx` ja API-reitin yhteensopivuus
 
 - **Havainto:** `app/api/cron/weekly-bulletin/route.ts` käyttää `generateWeeklyReport()` + `WeeklyBulletin`-props-rakennetta (`parliamentData`, `espooData`) oikein.
-- **Lisähavainto:** `sendTestBulletin` käyttää edelleen `lib/bulletin/generate.ts`-moduulia, kun cron käyttää `lib/bulletin/generator.ts`.
-- **Vaikutus:** Testi- ja tuotantolähetys voivat tuottaa eri sisältöä tai käyttäytyä eri tavalla.
-- **Suositus:** Yhdistä yhteen generaattoriin (esim. `lib/bulletin/generator.ts`) ja poista toinen.
+- **Päivitys:** `sendTestBulletin` ja cron käyttävät molemmat `generateWeeklyReportEmailPayload()` (`lib/bulletin/generator.ts`).
 
 ### 3.3 Admin-paneelin testilähetys-painikkeen suojaus
 

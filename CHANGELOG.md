@@ -14,6 +14,7 @@ All notable changes to this project are documented in this file. The format is i
 
 ### Changed
 
+- **Citizen-first MVP polish:** Feed bill cards emphasize selkokielitiivistelmät (larger type), show passage probability + lobby traceability meters; secondary actions demoted; researcher tools under “Näytä lisää”. Espoo lobby scan uses `extractTextFromPdf` for PDF attachments; per-row error isolation. Weekly legacy report uses `fallbackWeeklyReportData` + softer DB errors + safe render retry. `WeeklyBulletin` email: parliament (blue) vs Espoo (green) panels. Feature flags documented for MVP defaults.
 - **`supabase/bulletin-feed-sync-support.sql`:** Unique indexes for `lobbyist_traces`, `decisions`, and `municipal_decisions` are full (not partial `WHERE`) so `upsert` + `onConflict` works with PostgREST.
 - **Weekly bulletin editor fetch:** `person_interests` query limit increased to 5000 so large interest tables are included in conflict hints (`lib/bulletin/editor-fetch.ts`).
 - **Editorial Gemini prompt:** Explicit instruction when both `lobbyistInterventions` and `committeeExpertInvites` are empty for the period—state no reported expert hearings and empty `topLobbyists`; notes that MP interest linking only flows via `potentialInterestConflicts` when lobby rows exist (`lib/bulletin/editor-gemini.ts`).

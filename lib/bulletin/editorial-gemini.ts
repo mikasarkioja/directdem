@@ -75,7 +75,7 @@ export async function synthesizeEditorialBulletinWithGemini(
 
   const system = `Olet Eduskuntavahti/Omatase-palvelun päätoimittaja. Julkaiset käännettyä "uutislehteä" — ammattimaista, lukijaa kunnioittavaa poliittista journalismia selkokielellä.
 Toimitusohje: Kirjoita tämän viikon lehti ammattitoimittajan tavoin. Älä vain luettele tapahtumia. Selitä selvästi lobbaustoiminnan ja lopullisen lainsäädännön (tai menettelyn lopputuloksen) väliset yhteydet. Pyri nopeaan luettavuuteen ja selkeyteen.
-Tyyli: narratiivi, ei luettelomerkit-öisyyttä. Kolme pääosiota tulee erottua ääneltään toisistaan.
+Tyyli: narratiivi, ei luettelomerkit-öisyyttä. Osat: eduskunta-artikkeli, Espoo-artikkeli, lobbausanalyysi ja pähkinänkuori erottuvat toisistaan.
 
 KRIITTINEN JSON-MUOTO — palauta VAIN yksi JSON-objekti:
 {
@@ -85,11 +85,17 @@ KRIITTINEN JSON-MUOTO — palauta VAIN yksi JSON-objekti:
     "impactScore": integer 1–100,
     "label": string
   }],
-  "leadStory": {
-    "headline": string,
+  "parliamentArticle": {
+    "headline": string (eduskunta / valtakunnallinen taso),
     "dek": string,
     "body": string (2–4 kappaletta juoksevaa tekstiä),
-    "aggregateImpactScore": integer 1–100 (pääjutun painoarvo)
+    "aggregateImpactScore": integer 1–100
+  },
+  "espooArticle": {
+    "headline": string (Espoo / kunnallinen taso),
+    "dek": string,
+    "body": string (2–4 kappaletta juoksevaa tekstiä),
+    "aggregateImpactScore": integer 1–100
   },
   "lobbySpotlight": {
     "headline": string,
@@ -112,18 +118,20 @@ KRIITTINEN JSON-MUOTO — palauta VAIN yksi JSON-objekti:
 
 VAATIMUKSET:
 1) Impact scoring: Arvioi jokainen merkittävä päätös (parliament/Espoo), mediaosuus, lobbyist_intervention ja committee_expert_invite asteikolla 1–100. Kirjoita eventScores-taulukko ennen kuin kirjoitat tekstiosiot.
-2) Lead story ("Viikon polttopiste" -henki): Käytä **vain** tapahtumia joiden impactScoree on **vähintään 71**. Jos sellaisia ei ole, tee varovainen pääjuttu joka selittää hiljaisen viikon (ei keksi uutisia) ja pidä aggregateImpactScore maltillisena (<71).
-3) Lobby-analyysi ("Vaikuttajien jälki"): Ristiinviittaa lobbyistInterventions + committeeExpertInvites ja päätösten summary-kenttiin. Kerro, oliko organisaatioiden linja linjassa lopputuloksen tai menettelyn etenemisen kanssa. Käytä potentialInterestConflicts-tietoja conflictIndicator-kentässä — vain "mahdollinen eturistiriita / sidonnaisuus", ei korruptioväitteitä.
+2) **Kaksi erillistä pääartikkelia** — älä yhdistä samaan tekstiin:
+   - **parliamentArticle**: Käsittele **vain** valtakunnallista lainsäädäntöä ja kenttää \`decisions\` (ja media, joka koskee eduskuntaa tai lakeja). **Älä sisällytä** Espoon kunnallispäätösten sisältöä tähän artikkeliin. Jos korkeimmat eduskuntaan liittyvät tapahtumat ovat vähintään 71 pistettä, rakenna niistä ydin; jos ei ole merkittäviä, kirjoita lyhyt rehellinen "hiljainen viikko" -teksti (ei keksi uutisia) ja pidä aggregateImpactScore maltillisena.
+   - **espooArticle**: Käsittele **vain** \`espooMunicipalDecisions\` ja paikallista päätöksentekoa. **Älä toista** parliamentArticle-sisältöä äläkä kopioi eduskuntajuttua. Sama hiljainen-viikko -sääntö, jos kunta-data on niukkaa.
+3) Lobby-analyysi ("Lobbaus-tutka" / vaikuttajat): Ristiinviittaa lobbyistInterventions + committeeExpertInvites ja päätösten summary-kenttiin. Kerro, oliko organisaatioiden linja linjassa lopputuloksen tai menettelyn etenemisen kanssa. Käytä potentialInterestConflicts-tietoja conflictIndicator-kentässä — vain "mahdollinen eturistiriita / sidonnaisuus", ei korruptioväitteitä.
    Jos molemmat listat (lobbyistInterventions ja committeeExpertInvites) ovat tyhjiä tältä raportointijaksolta: kirjoita lobbySpotlight.body tähän tarkkaan muotoon (tai lähes): "Ei raportoituja asiantuntijakuulemisia tällä viikolla." Aseta topLobbyists: []. Älä keksi organisaatioita tai kuulemisia. Jos toinen lista on epätyhjä, älä käytä tuota lausetta sellaisenaan.
    Huom: person_interests tulee vain potentialInterestConflicts-kentän kautta (sidonnaisuus vs. lausunto); jos lobbyistInterventions on tyhjä, ristiinviittaus MPs:ään jää tyhjäksi.
-4) Pähkinänkuori: Pienemmät mutta relevantit tapahtumat (tyypillisesti impactScore 40–70 tai vähäisempiä), selkokielellä.
+4) Pähkinänkuori: Pienemmät mutta relevantit tapahtumat (tyypillisesti impactScore 40–70 tai vähäisempiä), sekä kansallinen että paikallinen selkokielellä tiiviissä katsauksessa.
 5) Lähteet: Jokainen faktaviittaus tekstissä muodossa [1], [2] ... viitaten sources-taulukkoon. Älä keksi URL:eja. Hyväksy vain http/https-URL:t joita löytyy annetusta JSON-datasta tai Google Grounding -hausta (malli lisää grounding-lähteet sources-listaan loppuun samassa järjestyksessä kuin niitä käytät).
 6) Kirjoita suomeksi. Vältä liikaa anglismiä; selitä lyhyesti vierasperäiset käsitteet.`;
 
   const userPayload = {
     reportingPeriod: periodLabel,
     scoringInstructions:
-      "Score events 1-100; only >=71 featured in lead narrative substance.",
+      "Score 1-100; parliamentArticle = national/decisions only; espooArticle = municipalEspoo only; keep tracks separate.",
     decisions: input.decisions,
     espooMunicipalDecisions: input.municipalEspoo,
     mediaWatchMatches: input.newsMatches,

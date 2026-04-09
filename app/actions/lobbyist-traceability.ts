@@ -108,25 +108,66 @@ export async function getLobbyistInterventionsForBill(
       .eq("id", billId)
       .maybeSingle();
 
-    if (billErr || !bill?.parliament_id) return [];
+    if (billErr) {
+      console.warn("[getLobbyistInterventionsForBill] bill:", billErr.message);
+      return [];
+    }
 
-    const he = bill.parliament_id.trim();
-    const { data: lp, error: lpErr } = await supabase
-      .from("legislative_projects")
-      .select("id")
-      .eq("he_tunnus", he)
-      .maybeSingle();
+    const he = bill?.parliament_id?.trim();
+    let lp: { id: string } | null = null;
+    if (he) {
+      const { data: lpRow, error: lpErr } = await supabase
+        .from("legislative_projects")
+        .select("id")
+        .eq("he_tunnus", he)
+        .maybeSingle();
+      if (lpErr && !/does not exist|Could not find/i.test(lpErr.message)) {
+        console.warn("[getLobbyistInterventionsForBill] lp:", lpErr.message);
+      }
+      lp = lpRow;
+    }
 
-    if (lpErr || !lp?.id) return [];
+    const { data: byProject, error: errProject } = lp?.id
+      ? await supabase
+          .from("lobbyist_interventions")
+          .select("*")
+          .eq("legislative_project_id", lp.id)
+          .order("created_at", { ascending: false })
+      : { data: [], error: null };
 
-    const { data, error } = await supabase
+    const { data: byBill, error: errBill } = await supabase
       .from("lobbyist_interventions")
       .select("*")
-      .eq("legislative_project_id", lp.id)
-      .order("sentiment_score", { ascending: false });
+      .eq("bill_id", billId)
+      .order("created_at", { ascending: false });
 
-    if (error) return [];
-    return (data as LobbyInterventionRow[]) ?? [];
+    if (
+      errProject &&
+      !/does not exist|Could not find/i.test(errProject.message)
+    ) {
+      console.warn(
+        "[getLobbyistInterventionsForBill] by project:",
+        errProject.message,
+      );
+    }
+    if (errBill && !/does not exist|Could not find/i.test(errBill.message)) {
+      console.warn(
+        "[getLobbyistInterventionsForBill] by bill:",
+        errBill.message,
+      );
+    }
+
+    const map = new Map<string, LobbyInterventionRow>();
+    for (const r of (byProject ?? []) as LobbyInterventionRow[]) {
+      map.set(r.id, r);
+    }
+    for (const r of (byBill ?? []) as LobbyInterventionRow[]) {
+      map.set(r.id, r);
+    }
+    return Array.from(map.values()).sort(
+      (a, b) =>
+        Number(b.sentiment_score ?? -999) - Number(a.sentiment_score ?? -999),
+    );
   } catch {
     return [];
   }

@@ -24,16 +24,20 @@ export const editorialLobbySpotlightEntrySchema = z.object({
   summary: z.string(),
 });
 
+/** Natiivi- tai kuntatasoinen pääartikkeli (viitteet [1], [2] → sources) */
+export const editorialArticleBlockSchema = z.object({
+  headline: z.string(),
+  dek: z.string(),
+  body: z.string(),
+  aggregateImpactScore: z.number().min(1).max(100),
+});
+
 export const editorialBulletinModelSchema = z.object({
   eventScores: z.array(editorialEventScoreSchema).max(40).default([]),
-  leadStory: z.object({
-    headline: z.string(),
-    dek: z.string(),
-    /** Narratiivinen leipäteksti; viitteet [1], [2] viittaavat sources-taulukkoon */
-    body: z.string(),
-    /** Johtolauseiden keskiarvo tai ylin ≥ 71 -tason tapahtuma */
-    aggregateImpactScore: z.number().min(1).max(100),
-  }),
+  /** Valtakunnallinen / eduskunta — vain `decisions` ja siihen liittyvä media */
+  parliamentArticle: editorialArticleBlockSchema,
+  /** Espoo — vain `espooMunicipalDecisions` */
+  espooArticle: editorialArticleBlockSchema,
   lobbySpotlight: z.object({
     headline: z.string(),
     /** Narratiivi vaikuttajista ja päätöskäänteestä */
@@ -62,6 +66,7 @@ export const editorialBulletinModelSchema = z.object({
 export type EditorialBulletinModel = z.infer<
   typeof editorialBulletinModelSchema
 >;
+export type EditorialArticleBlock = z.infer<typeof editorialArticleBlockSchema>;
 export type EditorialEventScore = z.infer<typeof editorialEventScoreSchema>;
 export type EditorialLobbySpotlightEntry = z.infer<
   typeof editorialLobbySpotlightEntrySchema

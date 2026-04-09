@@ -21,12 +21,18 @@ export function StanceMatrix({
           Puoltavat
         </p>
         {proLead ? (
-          <p className="mt-2 text-xs leading-relaxed text-neutral-800">
+          <p className="mt-2 text-xs leading-relaxed text-neutral-800 whitespace-pre-line">
             {proLead}
+          </p>
+        ) : proArguments.length > 0 ? (
+          <p className="mt-2 text-xs text-neutral-600">
+            Tiivistelmä muodostuu alla olevista kohdista; erillistä puoltavan
+            kantajoukon johtolausetta ei muodostettu.
           </p>
         ) : (
           <p className="mt-2 text-xs text-neutral-500">
-            Tiivistelmää ei voitu tuottaa (Gemini tai aineisto puuttuu).
+            Ei eroteltuja puoltavia perusteluja tai lausuntoaineistoa
+            näytettäväksi.
           </p>
         )}
         {proArguments.length > 0 ? (
@@ -47,12 +53,17 @@ export function StanceMatrix({
           Vastustavat
         </p>
         {conLead ? (
-          <p className="mt-2 text-xs leading-relaxed text-neutral-800">
+          <p className="mt-2 text-xs leading-relaxed text-neutral-800 whitespace-pre-line">
             {conLead}
+          </p>
+        ) : conArguments.length > 0 ? (
+          <p className="mt-2 text-xs text-neutral-600">
+            Katso vastustavat kohdat alla.
           </p>
         ) : (
           <p className="mt-2 text-xs text-neutral-500">
-            Tiivistelmää ei voitu tuottaa (Gemini tai aineisto puuttuu).
+            Ei eroteltuja vastustavia perusteluja — aineisto voi olla
+            yksipuolinen tai vain asiantuntijamuotoista.
           </p>
         )}
         {conArguments.length > 0 ? (

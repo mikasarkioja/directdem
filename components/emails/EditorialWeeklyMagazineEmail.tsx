@@ -4,6 +4,10 @@ import type {
   WeeklyParliamentBillHeader,
 } from "@/components/emails/WeeklyBulletin";
 import {
+  bulletinAbsoluteUrl,
+  normalizeBulletinBaseUrl,
+} from "@/lib/bulletin/site-url";
+import {
   Body,
   Container,
   Head,
@@ -127,11 +131,12 @@ export default function EditorialWeeklyMagazineEmail({
   espooCaseHeaders,
 }: EditorialWeeklyMagazineEmailProps) {
   const src = bulletin.citationSources;
-  const safeBase = baseUrl.replace(/\/$/, "");
+  const safeBase = normalizeBulletinBaseUrl(baseUrl);
 
-  const ctaMp = `${safeBase}/?view=workspace`;
-  const ctaResearcher = `${safeBase}/dashboard/researcher`;
-  const ctaArena = `${safeBase}/arena`;
+  const ctaApp = bulletinAbsoluteUrl(safeBase, "/");
+  const ctaMp = bulletinAbsoluteUrl(safeBase, "/?view=workspace");
+  const ctaResearcher = bulletinAbsoluteUrl(safeBase, "/dashboard/researcher");
+  const ctaArena = bulletinAbsoluteUrl(safeBase, "/arena");
 
   return (
     <Html>
@@ -143,7 +148,9 @@ export default function EditorialWeeklyMagazineEmail({
       </Head>
       <Preview>
         Omatase × Eduskuntavahti — viikkolehti {issueDate}.{" "}
-        {bulletin.leadStory.dek.slice(0, 120)}
+        {[bulletin.parliamentArticle.dek, bulletin.espooArticle.dek]
+          .join(" · ")
+          .slice(0, 120)}
       </Preview>
       <Body style={{ margin: 0, backgroundColor: colors.bg }}>
         <Container
@@ -239,7 +246,7 @@ export default function EditorialWeeklyMagazineEmail({
                 color: colors.accent,
               }}
             >
-              Pääjuttu
+              Eduskunta
             </Text>
             <Heading
               as="h2"
@@ -252,7 +259,7 @@ export default function EditorialWeeklyMagazineEmail({
                 color: colors.text,
               }}
             >
-              {bulletin.leadStory.headline}
+              {bulletin.parliamentArticle.headline}
             </Heading>
             <Text
               style={{
@@ -263,7 +270,7 @@ export default function EditorialWeeklyMagazineEmail({
                 fontStyle: "italic",
               }}
             >
-              {bulletin.leadStory.dek}
+              {bulletin.parliamentArticle.dek}
             </Text>
             <Text
               style={{
@@ -274,7 +281,7 @@ export default function EditorialWeeklyMagazineEmail({
                 whiteSpace: "pre-line" as const,
               }}
             >
-              {renderCitationInline(bulletin.leadStory.body, src)}
+              {renderCitationInline(bulletin.parliamentArticle.body, src)}
             </Text>
           </Section>
 
@@ -289,7 +296,57 @@ export default function EditorialWeeklyMagazineEmail({
                 color: colors.accent,
               }}
             >
-              Lobbarit valokeilassa
+              Espoo
+            </Text>
+            <Heading
+              as="h2"
+              style={{
+                margin: "0 0 10px",
+                fontFamily: fontSerif,
+                fontSize: "26px",
+                lineHeight: "1.2",
+                fontWeight: 700,
+                color: colors.text,
+              }}
+            >
+              {bulletin.espooArticle.headline}
+            </Heading>
+            <Text
+              style={{
+                margin: "0 0 16px",
+                fontSize: "16px",
+                lineHeight: "1.5",
+                color: colors.muted,
+                fontStyle: "italic",
+              }}
+            >
+              {bulletin.espooArticle.dek}
+            </Text>
+            <Text
+              style={{
+                margin: 0,
+                fontSize: "16px",
+                lineHeight: "1.65",
+                color: colors.text,
+                whiteSpace: "pre-line" as const,
+              }}
+            >
+              {renderCitationInline(bulletin.espooArticle.body, src)}
+            </Text>
+          </Section>
+
+          <Section style={cardStyle}>
+            <Text
+              style={{
+                margin: "0 0 8px",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase" as const,
+                color: colors.accent,
+              }}
+            >
+              Lobbaus-tutka
             </Text>
             <Heading
               as="h2"
@@ -312,7 +369,7 @@ export default function EditorialWeeklyMagazineEmail({
                 color: colors.text,
               }}
             >
-              {bulletin.lobbySpotlight.body}
+              {renderCitationInline(bulletin.lobbySpotlight.body, src)}
             </Text>
             {bulletin.lobbySpotlight.topLobbyists.map((row, idx) => (
               <Section
@@ -541,6 +598,24 @@ export default function EditorialWeeklyMagazineEmail({
             >
               Tutki palvelua
             </Heading>
+
+            <Text style={ctaDesc}>
+              <strong style={{ color: colors.text }}>
+                DirectDem (Eduskuntavahti)
+              </strong>{" "}
+              — Avaa koko sovellus: seuranta, dashboard ja työkalut yhdessä
+              osoitteessa.
+            </Text>
+            <Link href={ctaApp} style={ctaButton}>
+              Avaa DirectDem
+            </Link>
+
+            <Hr
+              style={{
+                borderColor: colors.cardBorder,
+                margin: "24px 0",
+              }}
+            />
 
             <Text style={ctaDesc}>
               <strong style={{ color: colors.text }}>MP DNA</strong> — Katso,

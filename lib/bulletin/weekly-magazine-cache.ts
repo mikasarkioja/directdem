@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 
-export const WEEKLY_MAGAZINE_CACHE_KEY = "weekly_editorial_magazine";
+/** Bumped when email template / bulletin JSON shape changes so stale HTML is not reused. */
+export const WEEKLY_MAGAZINE_CACHE_KEY = "weekly_editorial_magazine_v3";
 
 export type WeeklyMagazineCachePayload = {
   html: string;

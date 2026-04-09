@@ -8,6 +8,7 @@ import { synthesizeStanceMatrixLeads } from "@/lib/lobby/stance-matrix-gemini";
 type SummaryJson = {
   coreStance?: string;
   keyArguments?: string[];
+  plainLanguageSummary?: string;
 };
 
 function parseSummary(row: LobbyInterventionRow): SummaryJson {
@@ -18,12 +19,39 @@ function parseSummary(row: LobbyInterventionRow): SummaryJson {
   return {};
 }
 
+/** Poimi näytettävät argumenttirimpsut (LLM-lista tai selkokielitiivistelmä / asiantuntijarivi). */
+function extractArgumentLines(row: LobbyInterventionRow): string[] {
+  const j = parseSummary(row);
+  const fromLlm = (j.keyArguments || []).filter(
+    (a): a is string => typeof a === "string" && a.trim().length > 0,
+  );
+  if (fromLlm.length) return fromLlm.slice(0, 4);
+  const plain =
+    typeof j.plainLanguageSummary === "string"
+      ? j.plainLanguageSummary.trim()
+      : "";
+  if (plain) {
+    const org = row.organization_name?.trim();
+    return [`${org ? `${org}: ` : ""}${plain}`];
+  }
+  const raw = (row as { raw_excerpt?: string | null }).raw_excerpt;
+  if (raw && typeof raw === "string" && raw.trim().length > 10) {
+    const org = row.organization_name?.trim();
+    return [`${org ? `${org}: ` : ""}${raw.trim().slice(0, 500)}`];
+  }
+  return [];
+}
+
 function bucket(row: LobbyInterventionRow): "pro" | "con" | "neutral" {
   const j = parseSummary(row);
   const stance = j.coreStance;
   const s = row.sentiment_score ?? 0;
   if (stance === "oppose" || s < -0.08) return "con";
   if (stance === "support" || s > 0.08) return "pro";
+  if (stance === "conditional") return "neutral";
+  if (row.source_type === "expert_hearing" || row.source_type === "statement") {
+    return "neutral";
+  }
   return "neutral";
 }
 
@@ -55,15 +83,15 @@ export async function getLobbyInfluenceDrawerData(
 
   const proArgs: string[] = [];
   const conArgs: string[] = [];
+  const neutralArgs: string[] = [];
 
   for (const row of rows) {
-    const j = parseSummary(row);
-    const args = (j.keyArguments || []).filter(
-      (a): a is string => typeof a === "string" && a.trim().length > 0,
-    );
+    const lines = extractArgumentLines(row);
+    if (!lines.length) continue;
     const b = bucket(row);
-    if (b === "pro") proArgs.push(...args);
-    else if (b === "con") conArgs.push(...args);
+    if (b === "pro") proArgs.push(...lines);
+    else if (b === "con") conArgs.push(...lines);
+    else neutralArgs.push(...lines);
   }
 
   const uniq = (xs: string[]) => [...new Set(xs)].slice(0, 14);
@@ -81,14 +109,20 @@ export async function getLobbyInfluenceDrawerData(
 
   const uPro = uniq(proArgs);
   const uCon = uniq(conArgs);
+  const uNeutral = uniq(neutralArgs);
+
   const gemini = await synthesizeStanceMatrixLeads({
     billTitle,
-    proArgs: uPro,
-    conArgs: uCon,
+    proArgs: uPro.length || uCon.length ? uPro : uNeutral,
+    conArgs: uPro.length || uCon.length ? uCon : [],
   });
   if (gemini) {
     proLead = gemini.proLead;
     conLead = gemini.conLead;
+    if (!uPro.length && !uCon.length && uNeutral.length) {
+      conLead =
+        "Selkeitä vastustavia ryhmiä ei erotettu; alla neutraali asiantuntija-/lausuntoaineisto.";
+    }
   } else if (uPro.length || uCon.length) {
     proLead =
       uPro.slice(0, 3).join(" · ") ||
@@ -96,6 +130,10 @@ export async function getLobbyInfluenceDrawerData(
     conLead =
       uCon.slice(0, 3).join(" · ") ||
       "Vastustavia perusteluja ei erotettu aineistosta.";
+  } else if (uNeutral.length) {
+    proLead = uNeutral.slice(0, 4).join("\n\n");
+    conLead =
+      "Vastustavia perusteluja ei löytynyt erikseen — aineisto koostuu pääasiassa asiantuntija- ja lausuntoriveistä ilman selkeää vastakkainasettelua.";
   }
 
   const ids = rows.map((r) => r.id);
@@ -118,7 +156,9 @@ export async function getLobbyInfluenceDrawerData(
 
   return {
     interventions: rows,
-    proArguments: uniq(proArgs),
+    proArguments: uniq(
+      uPro.length || uCon.length ? proArgs : [...proArgs, ...neutralArgs],
+    ),
     conArguments: uniq(conArgs),
     proLead,
     conLead,

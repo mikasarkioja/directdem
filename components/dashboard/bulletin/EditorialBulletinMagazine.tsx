@@ -52,7 +52,8 @@ export default function EditorialBulletinMagazine({
   showDemoBanner: boolean;
 }) {
   const src = bulletin.citationSources;
-  const highImpact = bulletin.leadStory.aggregateImpactScore >= 71;
+  const parliamentHigh = bulletin.parliamentArticle.aggregateImpactScore >= 71;
+  const espooHigh = bulletin.espooArticle.aggregateImpactScore >= 71;
   const [email, setEmail] = useState("");
   const [subPending, setSubPending] = useState(false);
 
@@ -116,18 +117,18 @@ export default function EditorialBulletinMagazine({
         </p>
       </header>
 
-      {/* Hero / Lead */}
+      {/* Eduskunta */}
       <Card className="overflow-hidden border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 shadow-xl shadow-black/20">
         <CardHeader className="space-y-4 pb-2">
           <div className="flex flex-wrap items-center gap-2">
             <Sparkles className="h-5 w-5 text-amber-400" aria-hidden />
             <span className="text-[10px] font-black uppercase tracking-widest text-amber-200/90">
-              Viikon polttopiste
+              Eduskunta
             </span>
             <Badge
               variant="outline"
               className={
-                highImpact
+                parliamentHigh
                   ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200 gap-1"
                   : "border-slate-600 text-slate-300 gap-1"
               }
@@ -135,7 +136,7 @@ export default function EditorialBulletinMagazine({
               <Zap className="h-3.5 w-3.5" aria-hidden />
               Vaikutus{" "}
               <span className="tabular-nums">
-                {bulletin.leadStory.aggregateImpactScore}
+                {bulletin.parliamentArticle.aggregateImpactScore}
               </span>
               /100
             </Badge>
@@ -143,15 +144,18 @@ export default function EditorialBulletinMagazine({
           <CardTitle
             className={`${serifClassName} text-3xl font-bold leading-[1.15] tracking-tight text-white sm:text-4xl md:text-5xl`}
           >
-            {bulletin.leadStory.headline}
+            {bulletin.parliamentArticle.headline}
           </CardTitle>
           <CardDescription className="text-base text-slate-300 sm:text-lg">
-            {bulletin.leadStory.dek}
+            {bulletin.parliamentArticle.dek}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-lg leading-relaxed text-slate-200">
           <div className="whitespace-pre-wrap">
-            <ReferenceRichText text={bulletin.leadStory.body} sources={src} />
+            <ReferenceRichText
+              text={bulletin.parliamentArticle.body}
+              sources={src}
+            />
           </div>
           <p className="text-[10px] text-slate-500">
             <Link2 className="mb-0.5 mr-1 inline h-3 w-3 text-[var(--accent-primary)]" />
@@ -161,7 +165,55 @@ export default function EditorialBulletinMagazine({
         </CardContent>
       </Card>
 
-      {/* Lobby radar */}
+      {/* Espoo */}
+      <Card className="overflow-hidden border-slate-800 border-emerald-950/40 bg-gradient-to-br from-emerald-950/30 via-slate-950 to-slate-900 shadow-xl shadow-black/20">
+        <CardHeader className="space-y-4 pb-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Sparkles className="h-5 w-5 text-emerald-400" aria-hidden />
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-200/90">
+              Espoo
+            </span>
+            <Badge
+              variant="outline"
+              className={
+                espooHigh
+                  ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200 gap-1"
+                  : "border-slate-600 text-slate-300 gap-1"
+              }
+            >
+              <Zap className="h-3.5 w-3.5" aria-hidden />
+              Vaikutus{" "}
+              <span className="tabular-nums">
+                {bulletin.espooArticle.aggregateImpactScore}
+              </span>
+              /100
+            </Badge>
+          </div>
+          <CardTitle
+            className={`${serifClassName} text-3xl font-bold leading-[1.15] tracking-tight text-white sm:text-4xl md:text-5xl`}
+          >
+            {bulletin.espooArticle.headline}
+          </CardTitle>
+          <CardDescription className="text-base text-slate-300 sm:text-lg">
+            {bulletin.espooArticle.dek}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-lg leading-relaxed text-slate-200">
+          <div className="whitespace-pre-wrap">
+            <ReferenceRichText
+              text={bulletin.espooArticle.body}
+              sources={src}
+            />
+          </div>
+          <p className="text-[10px] text-slate-500">
+            <Link2 className="mb-0.5 mr-1 inline h-3 w-3 text-[var(--accent-primary)]" />
+            Viitteet: klikkaa yläindeksoituja{" "}
+            <span className="text-[var(--accent-primary)]">[1]</span> jne.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Lobby radar — Lobbaus-tutka */}
       <section aria-labelledby="lobby-spotlight-h" className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <Eye className="h-6 w-6 text-[var(--accent-primary)]" aria-hidden />
@@ -169,11 +221,11 @@ export default function EditorialBulletinMagazine({
             id="lobby-spotlight-h"
             className={`${serifClassName} text-2xl font-semibold text-white sm:text-3xl`}
           >
-            Vaikuttajien jälki
+            Lobbaus-tutka
           </h2>
         </div>
         <p className="text-sm text-slate-500">
-          Lobbyistitutka: organisaatioiden aktiivisuus ja linja suhteessa
+          Vaikuttajien jälki: organisaatioiden aktiivisuus ja linja suhteessa
           päätös- ja menettelykulkuun.
         </p>
 

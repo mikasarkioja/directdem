@@ -11,6 +11,7 @@ import {
   getWeeklyMagazineEmailFromCache,
   saveWeeklyMagazineEmailCache,
 } from "@/lib/bulletin/weekly-magazine-cache";
+import { resolveWeeklyBulletinBaseUrl } from "@/lib/bulletin/site-url";
 
 type DecisionRow = {
   id: string;
@@ -127,13 +128,7 @@ export function fallbackWeeklyReportData(): WeeklyReportData {
 const LEGISLATIVE_HEADER_LIMIT = 200;
 
 function weeklyEmailBaseUrl(): string {
-  const raw =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    process.env.VERCEL_URL?.trim() ||
-    "";
-  if (!raw) return "https://omatase.fi";
-  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  return `https://${raw}`;
+  return resolveWeeklyBulletinBaseUrl();
 }
 
 function formatFiDateShort(iso: string | null | undefined): string {

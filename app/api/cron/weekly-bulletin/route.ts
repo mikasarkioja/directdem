@@ -12,6 +12,39 @@ const logger = {
   error: (...args: unknown[]) => console.error("[WeeklyBulletinCron]", ...args),
 };
 
+/** Vastaanottajat `ADMIN_EMAIL`-muuttujasta (pilkuilla erotettu lista sallittu). */
+function adminEmailsFromEnv(): string[] {
+  const raw = process.env.ADMIN_EMAIL?.trim();
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e.includes("@"));
+}
+
+function mergeRecipients(
+  subscribers: string[],
+  admins: string[],
+): { emails: string[]; adminAdded: number } {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const email of subscribers) {
+    const key = email.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(email);
+  }
+  let adminAdded = 0;
+  for (const email of admins) {
+    const key = email.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(email);
+    adminAdded += 1;
+  }
+  return { emails: out, adminAdded };
+}
+
 export async function GET(request: NextRequest) {
   const startedAt = new Date().toISOString();
 
@@ -83,9 +116,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const recipientEmails = (subscribers ?? [])
+    const subscriberEmails = (subscribers ?? [])
       .map((s) => s.email)
       .filter((email): email is string => Boolean(email));
+
+    const adminEmails = adminEmailsFromEnv();
+    const { emails: recipientEmails, adminAdded } = mergeRecipients(
+      subscriberEmails,
+      adminEmails,
+    );
+    if (adminEmails.length) {
+      logger.info(
+        "ADMIN_EMAIL:",
+        adminEmails.join(", "),
+        adminAdded > 0
+          ? `(+${adminAdded} not already in subscriber list)`
+          : "(all already subscribers)",
+      );
+    }
 
     // 6) Mass send the same generated content to everyone
     let sentCount = 0;
@@ -115,7 +163,10 @@ export async function GET(request: NextRequest) {
         success: true,
         startedAt,
         finishedAt: new Date().toISOString(),
-        subscribersFound: recipientEmails.length,
+        subscribersFromDb: subscriberEmails.length,
+        adminEmailsConfigured: adminEmails.length,
+        adminRecipientsMerged: adminAdded,
+        totalRecipients: recipientEmails.length,
         sentCount,
         sendErrors,
         queryWarnings: {

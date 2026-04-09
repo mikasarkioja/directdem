@@ -42,7 +42,7 @@ export function getResendFromEmail(): string {
   if (explicit) return explicit;
 
   if (process.env.NODE_ENV === "production") {
-    return "noreply@eduskuntavahti.fi";
+    return "Omatase <noreply@sentri.fi>";
   }
 
   return "Omatase <onboarding@resend.dev>";

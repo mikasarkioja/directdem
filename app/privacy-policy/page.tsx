@@ -12,8 +12,9 @@ export default function PrivacyPolicy() {
               1. Henkilötietojen käsittely
             </h2>
             <p className="text-nordic-dark dark:text-nordic-gray mb-4">
-              Eduskuntavahti käsittelee henkilötietojasi EU:n yleisen tietosuoja-asetuksen
-              (GDPR) mukaisesti. Keräämme seuraavia tietoja:
+              Eduskuntavahti käsittelee henkilötietojasi EU:n yleisen
+              tietosuoja-asetuksen (GDPR) mukaisesti. Keräämme seuraavia
+              tietoja:
             </p>
             <ul className="list-disc list-inside space-y-2 text-nordic-dark dark:text-nordic-gray">
               <li>Sähköpostiosoite (kirjautumista varten)</li>
@@ -44,9 +45,10 @@ export default function PrivacyPolicy() {
               3. Tietojen jakaminen
             </h2>
             <p className="text-nordic-dark dark:text-nordic-gray">
-              Emme jaa henkilötietojasi kolmansien osapuolien kanssa. Äänestyksesi
-              näytetään vain aggregoituna muiden käyttäjien äänestysten kanssa. Yksittäisiä
-              äänestyksiäsi ei näytetä muille käyttäjille.
+              Emme jaa henkilötietojasi kolmansien osapuolien kanssa.
+              Äänestyksesi näytetään vain aggregoituna muiden käyttäjien
+              äänestysten kanssa. Yksittäisiä äänestyksiäsi ei näytetä muille
+              käyttäjille.
             </p>
           </section>
 
@@ -82,7 +84,7 @@ export default function PrivacyPolicy() {
             </h2>
             <p className="text-nordic-dark dark:text-nordic-gray">
               Jos sinulla on kysymyksiä tietosuojasta, ota yhteyttä:
-              tietosuoja@eduskuntavahti.fi
+              tietosuoja@sentri.fi
             </p>
           </section>
 
@@ -91,9 +93,9 @@ export default function PrivacyPolicy() {
               7. Hyväksyntä
             </h2>
             <p className="text-nordic-dark dark:text-nordic-gray">
-              Käyttämällä Eduskuntavahti-palvelua hyväksyt tämän tietosuojaselosteen ja
-              käyttöehdot. Voit peruuttaa suostumuksesi milloin tahansa poistamalla
-              tilisi.
+              Käyttämällä Eduskuntavahti-palvelua hyväksyt tämän
+              tietosuojaselosteen ja käyttöehdot. Voit peruuttaa suostumuksesi
+              milloin tahansa poistamalla tilisi.
             </p>
           </section>
         </div>
@@ -101,6 +103,3 @@ export default function PrivacyPolicy() {
     </div>
   );
 }
-
-
-

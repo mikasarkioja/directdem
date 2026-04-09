@@ -19,6 +19,8 @@
     "grant-admin": "tsx scripts/grant-admin-by-email.ts",
     "test-bulletin": "tsx scripts/send-test-weekly-bulletin.ts",
     "test-bulletin:fixture": "tsx scripts/send-test-weekly-bulletin.ts --fixture",
+    "bulletin:subscribers:dry-run": "tsx scripts/send-bulletin-to-active-subscribers.ts --dry-run",
+    "bulletin:subscribers:send": "tsx scripts/send-bulletin-to-active-subscribers.ts --send",
     "sync-bulletin-feed": "tsx scripts/sync-bulletin-feed.ts",
     "sync-news": "tsx scripts/sync-news.ts",
     "verify-data": "tsx scripts/verify-data.ts",

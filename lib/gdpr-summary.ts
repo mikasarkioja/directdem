@@ -31,7 +31,7 @@ poistaa henkilötietosi, vastustaa henkilötietojesi käsittelyä, ja siirtää 
 Käytämme evästeitä kirjautumisen ylläpitämiseen. Emme käytä seurantaevästeitä tai mainosevästeitä.
 
 6. Yhteydenotto
-Jos sinulla on kysymyksiä tietosuojasta, ota yhteyttä: tietosuoja@eduskuntavahti.fi
+Jos sinulla on kysymyksiä tietosuojasta, ota yhteyttä: tietosuoja@sentri.fi
 
 7. Hyväksyntä
 Käyttämällä Eduskuntavahti-palvelua hyväksyt tämän tietosuojaselosteen ja käyttöehdot. 
@@ -92,5 +92,3 @@ Keräämme sähköpostiosoitteesi ja äänestyksesi. Emme jaa tietojasi muille.
 Voit poistaa tilisi milloin tahansa asetuksista.`;
   }
 }
-
-
